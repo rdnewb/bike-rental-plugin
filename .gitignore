@@ -1,0 +1,41 @@
+# Local editors and OS files.
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Runtime/debug output and local test artifacts.
+*.log
+*.tmp
+*.bak
+.cache/
+.phpunit.cache/
+coverage/
+test-results/
+playwright-report/
+.release/
+releases/
+
+# Local secrets, exports, certificates, and connection configuration.
+.env
+.env.*
+!.env.example
+wp-config.php
+wp-config-*.php
+*.sql
+*.sql.gz
+*.pem
+*.key
+*.pfx
+*.ppk
+credentials*.json
+sftp*.json
+.ftpconfig
+.ssh/
+
+# Development dependencies. No runtime vendor dependency in this milestone.
+/vendor/
+/node_modules/
