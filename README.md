@@ -79,7 +79,7 @@ There is no autoload framework or runtime dependency manager. All runtime PHP ha
 
 Use GitHub Desktop to clone/update, open the local repository in Visual Studio Code, and edit locally. Git/GitHub is the source of truth. Do not edit production files directly unless expressly authorized.
 
-Use `main` for reviewed release-ready work and short-lived branches such as `feature/plugin-foundation`. Keep commits focused, push reviewed changes, and tag deployments using semantic versions. Keep the plugin header, `Plugin::VERSION`, readme stable tag, and changelog synchronized. Do not commit credentials, exports, signed evidence, or local dependencies.
+Make all commits directly on `main`; do not create feature or development branches unless explicitly requested. Keep commits focused, push reviewed changes, and tag tested deployments using semantic versions. A commit on `main` does not by itself authorize deployment. Keep the plugin header, `Plugin::VERSION`, readme stable tag, and changelog synchronized. Do not commit credentials, exports, signed evidence, or local dependencies.
 
 No build command is needed. To syntax-check with a local PHP executable in PowerShell:
 
