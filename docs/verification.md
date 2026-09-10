@@ -1,6 +1,6 @@
 # Milestone 1 verification
 
-Version: **0.1.0**. Branch: `feature/plugin-foundation`.
+Version: **0.1.0**. Branch: `main` (renamed from the initial foundation branch; the implementation commit is unchanged).
 
 ## Completed locally
 
