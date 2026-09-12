@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 
-	const VERSION = '0.1.0';
+	const VERSION = '0.2.0';
 
 	/** Initialize defaults once; never replace existing configuration. */
 	public static function activate() {
@@ -20,7 +20,7 @@ final class Plugin {
 		}
 	}
 
-	/** No commerce hooks or public interface are registered in this milestone. */
+	/** Product administration is loaded only after WooCommerce initializes. */
 	public static function boot() {
 		static $booted = false;
 		if ( $booted ) {
@@ -28,11 +28,35 @@ final class Plugin {
 		}
 		$booted = true;
 		add_action( 'init', array( self::class, 'load_textdomain' ) );
+		add_action( 'woocommerce_init', array( self::class, 'load_packages' ) );
 		if ( is_admin() ) {
 			$settings = new Settings();
 			$settings->register_hooks();
 			add_action( 'admin_init', array( self::class, 'record_version' ) );
+			add_action( 'admin_notices', array( self::class, 'packages_dependency_notice' ) );
 		}
+	}
+
+	public static function load_packages() {
+		static $loaded = false;
+		if ( $loaded || ! function_exists( 'wc_get_product' ) || ! class_exists( 'WC_Product' ) ) {
+			return;
+		}
+		$loaded = true;
+		require_once __DIR__ . '/Packages.php';
+		$packages = new Packages();
+		$packages->register_hooks();
+	}
+
+	public static function packages_dependency_notice() {
+		if ( function_exists( 'wc_get_product' ) && class_exists( 'WC_Product' ) ) {
+			return;
+		}
+		$screen = get_current_screen();
+		if ( ! $screen || ! in_array( $screen->id, array( 'toplevel_page_' . Settings::PAGE, 'plugins', 'product', 'edit-product' ), true ) || ! ( Settings::can_manage() || current_user_can( 'edit_products' ) ) ) {
+			return;
+		}
+		echo '<div class="notice notice-warning"><p>' . esc_html__( 'Rental package management requires WooCommerce. Install or activate WooCommerce, then open a simple product to configure Rental Settings. Bike Rentals settings remain available.', 'bike-rental-plugin' ) . '</p></div>';
 	}
 
 	public static function load_textdomain() {

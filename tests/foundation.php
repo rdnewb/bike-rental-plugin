@@ -34,7 +34,10 @@ function esc_html_e( $text, $domain = '' ) { echo esc_html( $text ); }
 function esc_attr_e( $text, $domain = '' ) { echo esc_attr( $text ); }
 // Only a test double. Real WordPress sanitization still needs integration testing.
 function sanitize_text_field( $text ) { return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $text ) ) ); }
-function current_user_can( $cap ) { return in_array( $cap, $GLOBALS['caps'], true ); }
+function current_user_can( $cap, ...$args ) {
+	if ( 'edit_post' === $cap && in_array( $args[0] ?? 0, $GLOBALS['denied_posts'] ?? array(), true ) ) { return false; }
+	return in_array( $cap, $GLOBALS['caps'], true );
+}
 function get_option( $key, $default = false ) { return $GLOBALS['options'][ $key ] ?? $default; }
 function add_option( $key, $value, $deprecated = '', $autoload = null ) {
 	if ( array_key_exists( $key, $GLOBALS['options'] ) ) { return false; }
@@ -73,7 +76,7 @@ function check( $condition, $label ) {
 
 $settings = new Settings();
 $defaults = Settings::defaults();
-check( '0.1.0' === Plugin::VERSION, 'version constant' );
+check( '0.2.0' === Plugin::VERSION, 'version constant' );
 check( isset( $hooks['plugins_loaded'] ) && ! isset( $hooks['admin_init'] ), 'bootstrap defers initialization' );
 check( 90 === $defaults['booking_horizon'] && 30 === $defaults['time_increment'], 'neutral scheduling defaults' );
 check( 0 === array_sum( array_column( $defaults['weekly_hours'], 'open' ) ), 'all seven days default closed' );
@@ -90,7 +93,7 @@ $options[ Settings::OPTION ] = $valid;
 Plugin::activate();
 Plugin::record_version();
 check( $valid === $options[ Settings::OPTION ], 'reactivation and version handling preserve saved settings' );
-check( '0.1.0' === $options['brp_plugin_version'], 'version recorded independently of settings' );
+check( '0.2.0' === $options['brp_plugin_version'], 'version recorded independently of settings' );
 check( 'Ready for Package Setup' === Settings::configuration_status( $valid ), 'valid business and open day ready for package setup' );
 $partial = $defaults;
 $partial['business_name'] = 'Coastal Cycles';

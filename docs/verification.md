@@ -1,5 +1,7 @@
 # Milestone 1 verification
 
+Historical foundation record. The user subsequently confirmed version 0.1.0 activation, settings, persistence, timezone, and listed dependency detection in WordPress. All 113 local foundation checks remain regression tests for version 0.2.0. For current package work and the dedicated test-site checklist, see [Milestone 2 verification](packages-verification.md).
+
 Version: **0.1.0**. Branch: `main` (renamed from the initial foundation branch; the implementation commit is unchanged).
 
 ## Completed locally
