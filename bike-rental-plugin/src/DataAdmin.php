@@ -34,7 +34,11 @@ final class DataAdmin {
 			case 'block_update': return Fleet::save_block( $post, $id );
 			case 'block_disable': return Fleet::disable_block( $id );
 			case 'reservation_create': return Reservations::create( $post );
-			case 'reservation_update': return Reservations::update( $id, $post, $post['revision'] ?? null );
+			case 'reservation_update':
+				foreach ( array( 'package_product_id', 'quantity', 'start', 'end', 'status', 'issue_code', 'revision' ) as $field ) {
+					if ( ! array_key_exists( $field, $post ) ) { return Database::error( 'input', 'The edit form is incomplete. Reload the reservation and submit all editable fields.' ); }
+				}
+				return Reservations::update( $id, $post, $post['revision'] );
 			case 'reservation_status': return Reservations::change_status( $id, $post['status'] ?? null, $post['revision'] ?? null );
 		}
 	}

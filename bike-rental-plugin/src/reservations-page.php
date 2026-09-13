@@ -1,26 +1,46 @@
 <?php
-/** Reservation test forms and historical detail; no customer data collection. */
+/** Reservation test editing and read-only system details; no customer data collection. */
 namespace BikeRentalPlugin;
 defined( 'ABSPATH' ) || exit;
 
 if ( $row ) :
 	$snapshot = json_decode( $row['snapshot'], true );
 	$details = array(
-		'quantity' => __( 'Quantity', 'bike-rental-plugin' ),
-		'start_utc' => __( 'Start (local)', 'bike-rental-plugin' ),
-		'end_utc' => __( 'End (local)', 'bike-rental-plugin' ),
 		'occupied_start_utc' => __( 'Occupied start (local)', 'bike-rental-plugin' ),
 		'occupied_end_utc' => __( 'Occupied end (local)', 'bike-rental-plugin' ),
 		'timezone' => __( 'Schedule entry timezone', 'bike-rental-plugin' ),
-		'status' => __( 'Status', 'bike-rental-plugin' ),
 		'revision' => __( 'Revision', 'bike-rental-plugin' ),
-		'issue_code' => __( 'Issue code', 'bike-rental-plugin' ),
 		'order_item_id' => __( 'Order item ID', 'bike-rental-plugin' ),
 		'created_at' => __( 'Created (local)', 'bike-rental-plugin' ),
 		'updated_at' => __( 'Updated (local)', 'bike-rental-plugin' ),
 	);
 ?>
 <h2><?php echo esc_html( $row['reference'] ); ?></h2>
+<div class="notice notice-warning inline"><p><?php esc_html_e( 'Availability conflict checking will be enforced in the next milestone. Administrative edits on this development version should be used for testing only.', 'bike-rental-plugin' ); ?></p></div>
+<h3><?php esc_html_e( 'Edit reservation', 'bike-rental-plugin' ); ?></h3>
+<?php if ( function_exists( 'wc_get_product' ) && class_exists( Packages::class ) ) :
+	$edit_packages = Packages::get_active_packages();
+	$current_package = Packages::get_package( $row['package_product_id'] );
+	if ( $current_package && ! in_array( (int) $row['package_product_id'], array_column( $edit_packages, 'product_id' ), true ) ) { $edit_packages[] = $current_package; }
+	$this->form( 'reservation_update', $row['id'], $row['revision'] );
+?>
+<p><label><?php esc_html_e( 'Rental package', 'bike-rental-plugin' ); ?><br><select name="package_product_id" required>
+<?php if ( ! $current_package ) : ?><option value="" selected disabled><?php esc_html_e( 'Current package unavailable — select a replacement', 'bike-rental-plugin' ); ?></option><?php endif; ?>
+<?php foreach ( $edit_packages as $package ) : ?><option value="<?php echo esc_attr( $package['product_id'] ); ?>" <?php selected( $row['package_product_id'], $package['product_id'] ); ?>><?php echo esc_html( $package['name'] . ( (int) $row['package_product_id'] === $package['product_id'] ? __( ' (current)', 'bike-rental-plugin' ) : '' ) ); ?></option><?php endforeach; ?>
+</select></label></p>
+<p class="description"><?php esc_html_e( 'Keeping the package preserves its agreed price and duration. A replacement captures its current WooCommerce selling price and package details. Dates, quantity, and status update the current reservation snapshot. Related orders are not changed.', 'bike-rental-plugin' ); ?></p>
+<?php
+$this->field( 'quantity', __( 'Quantity', 'bike-rental-plugin' ), $row['quantity'], 'number' );
+$this->field( 'start', __( 'Start (local)', 'bike-rental-plugin' ), RentalTime::display( $row['start_utc'], true ), 'datetime-local' );
+$this->field( 'end', __( 'End (local)', 'bike-rental-plugin' ), RentalTime::display( $row['end_utc'], true ), 'datetime-local' );
+$this->statuses( $row['status'], Reservations::STATUSES );
+$this->field( 'issue_code', __( 'Issue code / short internal note (maximum 64 UTF-8 bytes)', 'bike-rental-plugin' ), $row['issue_code'] ?? '', 'text', false );
+$this->end_form( __( 'Save reservation', 'bike-rental-plugin' ) );
+else : ?>
+<p><?php esc_html_e( 'Activate WooCommerce to validate and edit reservation packages. Stored details remain available below.', 'bike-rental-plugin' ); ?></p>
+<?php endif; ?>
+<h3><?php esc_html_e( 'Read-only reservation details', 'bike-rental-plugin' ); ?></h3>
+<p><?php esc_html_e( 'Reservation reference:', 'bike-rental-plugin' ); ?> <strong><?php echo esc_html( $row['reference'] ); ?></strong></p>
 <table class="widefat striped"><tbody>
 <?php foreach ( $details as $key => $label ) : ?>
 <tr><th scope="row"><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( str_ends_with( $key, '_utc' ) || in_array( $key, array( 'created_at', 'updated_at' ), true ) ? RentalTime::display( $row[ $key ] ) : ( $row[ $key ] ?? '—' ) ); ?></td></tr>
@@ -33,25 +53,9 @@ if ( $order && ( current_user_can( 'manage_options' ) || current_user_can( 'edit
 } else { echo esc_html( $row['order_id'] ?? __( 'None', 'bike-rental-plugin' ) ); }
 ?>
 </td></tr></tbody></table>
-<h3><?php esc_html_e( 'Original package snapshot', 'bike-rental-plugin' ); ?></h3>
-<p><?php esc_html_e( 'Captured at creation; schedule edits do not rewrite this historical snapshot. Current times appear above in the current WordPress timezone; timezone records the timezone used for the last schedule save.', 'bike-rental-plugin' ); ?></p>
+<h3><?php esc_html_e( 'Current reservation snapshot (read-only)', 'bike-rental-plugin' ); ?></h3>
+<p><?php esc_html_e( 'Maintained by validated reservation saves. Prior snapshot revisions are not retained in this version; future audit/history functionality may retain them.', 'bike-rental-plugin' ); ?></p>
 <pre style="white-space:pre-wrap;overflow-wrap:anywhere"><?php echo esc_html( is_array( $snapshot ) ? wp_json_encode( $snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) : $row['snapshot'] ); ?></pre>
-<?php if ( in_array( $row['status'], array( 'hold', 'confirmed' ), true ) ) : ?>
-<h3><?php esc_html_e( 'Edit test reservation', 'bike-rental-plugin' ); ?></h3>
-<?php
-$this->form( 'reservation_update', $row['id'], $row['revision'] );
-$this->field( 'quantity', __( 'Quantity', 'bike-rental-plugin' ), $row['quantity'], 'number' );
-$this->field( 'start', __( 'Start (local)', 'bike-rental-plugin' ), RentalTime::display( $row['start_utc'], true ), 'datetime-local' );
-$this->field( 'end', __( 'End (local)', 'bike-rental-plugin' ), RentalTime::display( $row['end_utc'], true ), 'datetime-local' );
-$this->end_form( __( 'Save schedule and quantity', 'bike-rental-plugin' ) );
-endif;
-$next = Reservations::TRANSITIONS[ $row['status'] ] ?? array();
-if ( $next ) {
-	$this->form( 'reservation_status', $row['id'], $row['revision'] );
-	$this->statuses( $row['status'], array_merge( array( $row['status'] ), $next ) );
-	$this->end_form( __( 'Save status', 'bike-rental-plugin' ) );
-}
-?>
 <p><a href="<?php echo esc_url( self::url( self::RESERVATIONS ) ); ?>"><?php esc_html_e( 'Back to list / create test reservation', 'bike-rental-plugin' ); ?></a></p>
 <?php else : ?>
 <h2><?php esc_html_e( 'Create manual test reservation', 'bike-rental-plugin' ); ?></h2>

@@ -1,6 +1,6 @@
-# Reservation storage — version 0.3.0
+# Reservation storage — version 0.3.1
 
-Milestone 3 only. Plugin version **0.3.0**; database schema version **1** in `brp_db_version`. The custom plugin alone owns shared rental capacity. Product stock and payment gateway stock have no role in these tables.
+Corrective Milestone 3 update only. Plugin version **0.3.1**; database schema version remains **1** in `brp_db_version`. No columns, tables, or indexes changed in this correction. The custom plugin alone owns shared rental capacity. Product stock and payment gateway stock have no role in these tables.
 
 ## Tables and indexes
 
@@ -22,9 +22,9 @@ Exactly two custom tables use `$wpdb->prefix` and the database's WordPress chars
 | `hold_expires_at` | datetime, nullable; unused for manual test holds in this milestone |
 | `request_key` | varchar(64), nullable, unique when non-null; future checkout idempotency identifier |
 | `request_hash`, `session_hash` | varchar(64), nullable; reserved and not populated in Milestone 3 |
-| `snapshot` | longtext, required JSON historical snapshot |
+| `snapshot` | longtext, required JSON current agreed reservation snapshot; no direct JSON editing |
 | `revision` | bigint unsigned, required, initial 1; increments on actual changes |
-| `issue_code` | varchar(64), nullable; reserved diagnostic code, no editor yet |
+| `issue_code` | varchar(64), nullable; optional sanitized issue code/short internal note, maximum 64 UTF-8 bytes |
 | `created_at`, `updated_at` | datetime, required UTC |
 
 Indexes:
@@ -82,7 +82,7 @@ All persistent service methods require `manage_options` or `manage_woocommerce` 
 | `Fleet::disable_block($id)` | Persist inactive flag and return retained block |
 | `Reservations::create($input)` | Input `package_product_id`, `quantity`, local `start`, local `end`, `status` (default hold); return stored row |
 | `Reservations::read($id)` | Stored row including JSON snapshot string, with no live package dependency |
-| `Reservations::update($id, $input, $expected_revision)` | Edit quantity/start/end for hold or confirmed records; keep package identity and original snapshot |
+| `Reservations::update($id, $input, $expected_revision)` | Administrative correction for any valid status: package, quantity, local start/end, status, issue code; regenerate current state snapshot only on actual changes |
 | `Reservations::change_status($id, $status, $expected_revision)` | Apply validated lifecycle transition and revision check |
 | `Reservations::cancel($id, $revision)` | Transition to cancelled; no deletion |
 | `Reservations::mark_active($id, $revision)` | Confirmed → active |
@@ -94,9 +94,13 @@ All persistent service methods require `manage_options` or `manage_woocommerce` 
 
 New reservations require a published, active Simple rental package with valid duration and entered regular price. Quantity must fit total fleet, even though aggregate availability is not checked. Manual start/end values do not yet enforce package duration, business hours, notice, time increments, or horizon. Valid supported input years are 1001–9998, allowing UTC/buffer conversion to remain within MySQL datetime bounds. Named and fixed-offset WordPress timezones are supported; impossible and repeated local clock times are rejected. The server default timezone is never used.
 
-Snapshot keys: `product_id`, `name`, `price` (regular price decimal string), `currency`, `duration_type`, `duration_amount`, `promotional_label`, `local_start`, `local_end`, `timezone`, and `buffers` containing `preparation_buffer`/`turnaround_buffer`. It remains immutable even on schedule changes; current schedule fields are separate. No totals, taxes, payments, customer identities, or signatures are collected.
+Snapshot keys: `product_id`, `name`, `price` (decimal string), `currency`, `duration_type`, `duration_amount`, `promotional_label`, `local_start`, `local_end`, `timezone`, `quantity`, `status`, and `buffers` containing `preparation_buffer`/`turnaround_buffer`. New manual creation retains the prior regular-price contract. Package replacements use WooCommerce `get_price('edit')` for the current selling price, including an active sale; no tax or coupon calculation is performed. The Milestone 2 package API itself still returns regular prices.
 
-Allowed transitions:
+Catalog changes alone never rewrite agreed package terms. A retained package must still be a valid rental package, but may be inactive/unpublished; replacements must be published, active, and priced. Dates/quantity/status edits refresh those values in the current snapshot while preserving its package name, price, duration, promotion, and currency. Package replacement refreshes those package terms too. All edits reuse the reservation's existing buffer snapshot. Raw snapshot JSON is never accepted from the client.
+
+There is no audit/history table, nor automatic retention of previous snapshot revisions, in 0.3.1. Future audit/history functionality may retain old revisions. Existing rows are not bulk migrated or silently rewritten; older snapshots gain current quantity/status on their next real reservation change, while no-op saves preserve their existing bytes. Order IDs, reference, creation time, IDs, request/session fields, WooCommerce orders, and other reservations remain unchanged. Modification timestamps record actual UTC with existing one-second precision; revision identifies separate saves within the same second. No totals, taxes, payments, customer identities, or signatures are collected.
+
+Ordinary lifecycle helper transitions (`change_status`, `cancel`, `mark_active`, `mark_completed`):
 
 ```mermaid
 stateDiagram-v2
@@ -108,7 +112,9 @@ stateDiagram-v2
     active --> completed
 ```
 
-Completed, cancelled, and expired are terminal. Initial manual creation permits all six statuses solely to create test fixtures. Manual holds have nullable expiry and no scheduled expiry processing. Payment and waiver state will remain separate in future milestones.
+Completed, cancelled, and expired are terminal for ordinary lifecycle helpers. The full administrative correction form and `Reservations::update()` allow any of the six validated statuses, and permit field edits on every status, as required for development testing. Initial manual creation also permits all six statuses. Manual holds have nullable expiry and no scheduled expiry processing. Payment and waiver state will remain separate in future milestones.
+
+The edit form submits `package_product_id`, `quantity`, `start`, `end`, `status`, `issue_code`, and `revision`, plus its operation/record-bound nonce and WordPress timezone. Missing form fields, invalid values, changed form timezone, or stale revision reject the entire save. Existing PHP callers may omit package/status/issue to retain those values, but full form submissions must include all fields. No availability conflict checks are added; the edit page explicitly warns that these development edits are for testing only.
 
 ## Runtime folder structure
 

@@ -72,7 +72,7 @@ final class Packages {
 	/**
 	 * Read current configuration. Call after woocommerce_init. No persistence/cache.
 	 * Returns null for non-rentals or malformed rental metadata. Null price means unset.
-	 * Future reservations must copy this data into their own immutable snapshot.
+	 * Reservations copy these values; catalog changes alone never rewrite saved terms.
 	 */
 	public static function get_package( $product_or_id ) {
 		$product = self::product( $product_or_id );

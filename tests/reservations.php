@@ -133,7 +133,7 @@ foreach ( array( '', '2030-06-16T08:00', $input['start'], '2030-06-16T25:00', ar
 bad( Reservations::create( array_replace( $input, array( 'status' => 'paid' ) ) ), 'payment status not introduced as reservation status' );
 $updated = good( Reservations::update( $id, array_replace( $input, array( 'quantity' => 3, 'end' => '2030-06-16T14:00' ) ), 1 ), 'reservation schedule and quantity updated' );
 verify( 2 === (int) $updated['revision'] && 3 === (int) $updated['quantity'] && '2030-06-16 18:00:00' === $updated['end_utc'], 'schedule edit persists and increments revision' );
-verify( $reservation['snapshot'] === $updated['snapshot'], 'schedule edit preserves original snapshot' );
+verify( '83.27' === json_decode( $updated['snapshot'], true )['price'] && '2030-06-16T14:00' === json_decode( $updated['snapshot'], true )['local_end'] && 3 === json_decode( $updated['snapshot'], true )['quantity'], 'schedule edit refreshes current snapshot while preserving agreed package price' );
 bad( Reservations::update( $id, $input, 1 ), 'stale schedule revision rejected' );
 $confirmed = good( Reservations::change_status( $id, 'confirmed', 2 ), 'hold changes to confirmed' );
 verify( 3 === (int) $confirmed['revision'], 'status change increments revision' );
@@ -143,7 +143,7 @@ bad( Reservations::change_status( $id, 'confirmed', 2 ), 'stale duplicate status
 $cancelled = good( Reservations::cancel( $id, 3 ), 'confirmed reservation cancelled' );
 verify( 'cancelled' === Reservations::read( $id )['status'] && 4 === (int) $cancelled['revision'], 'cancelled reservation retained with incremented revision' );
 bad( Reservations::mark_active( $id, 4 ), 'cancelled reservation cannot reactivate' );
-bad( Reservations::update( $id, $input, 4 ), 'terminal reservation cannot be rescheduled' );
+good( Reservations::update( $id, array_replace( $input, array( 'status' => 'cancelled' ) ), 4 ), 'administrative correction can reschedule a retained cancelled reservation' );
 $active = good( Reservations::change_status( $another['id'], 'confirmed', 1 ), 'second reservation confirmed' );
 $active = good( Reservations::mark_active( $another['id'], 2 ), 'confirmed reservation marked active' );
 bad( Reservations::cancel( $another['id'], 3 ), 'active rental requires completion rather than cancellation' );

@@ -2,7 +2,7 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current release: 0.3.0 — Milestone 3, reservation storage and fleet capacity foundation.**
+**Current release: 0.3.1 — corrective Milestone 3 update, full administrative reservation editing.**
 
 Develop and validate test releases on the separate WordPress test site. Production installation follows approval of the completed plugin; no site URLs or credentials belong in source control.
 
@@ -20,8 +20,8 @@ Develop and validate test releases on the separate WordPress test site. Producti
 - **Bike Rentals > Packages**: paginated read-only overview with product-editor links, regular prices, status, and WooCommerce display order.
 - A reusable PHP package reader for later milestones; no public endpoint.
 - **Bike Rentals > Fleet**: persistent shared fleet quantity, dated or indefinite quantity blocks, editing, and disabling.
-- **Bike Rentals > Reservations**: paginated list, historical detail, manual test creation, schedule edits, and revision-protected lifecycle changes.
-- Two InnoDB tables, verified versioned schema installation on normal initialization, and immutable package snapshots.
+- **Bike Rentals > Reservations**: paginated list, manual test creation, and a full revision-protected edit form for package, quantity, dates, status, and issue code.
+- Two InnoDB tables, verified versioned schema installation on normal initialization, and current reservation snapshots protected from direct editing and automatic catalog changes.
 
 **No public rental booking, overlap/remaining-capacity calculations, checkout changes, payment processing, waiver forms, customer emails, calendar, or inventory synchronization exist yet. Manual reservations are administration test records and do not establish fulfillment readiness.**
 
@@ -38,7 +38,7 @@ Develop and validate test releases on the separate WordPress test site. Producti
 
 Do not upload the repository root, `.git`, `tests`, editor configuration, logs, or credentials. No compilation, Composer, Node.js, SSH, WP-CLI, or production build commands are required. One small JavaScript file controls rental-field visibility in the product editor; no custom CSS or public script is loaded.
 
-WooCommerce is required for package management and new manual reservations but is not a hard activation dependency. If absent, administrators can still configure settings/fleet and read or update existing reservation records and snapshots. Square, WPForms, and a deposit extension are not required for this milestone.
+WooCommerce is required for package management, new manual reservations, and the full reservation edit form, which validates the selected package. It is not a hard activation dependency. If absent, administrators can still configure settings/fleet and read existing reservation records and snapshots; internal lifecycle helpers remain available. Square, WPForms, and a deposit extension are not required for this milestone.
 
 ## Rental packages
 
@@ -83,20 +83,22 @@ The array includes `product_id`, `name`, `price`, `currency`, `duration_type`, `
 
 The active catalog is small and reads all matching package products through `wc_get_products()`. The administration overview paginates 25 products at a time. A narrow, documented WooCommerce product-query extension adds the rental marker constraint; no direct SQL or direct product-table access is used. The query adapter targets WooCommerce's current standard product data store, independently of HPOS order storage.
 
-These APIs return current product data. `Reservations::create()` captures an immutable historical snapshot for each manual test reservation; later price, duration, label, or product changes do not rewrite it.
+These APIs return current product data. `Reservations::create()` captures agreed package details for each manual test reservation; later catalog price, duration, label, or product changes alone do not rewrite it. Authorized reservation edits maintain a current snapshot, as described below.
 
 ## Fleet and reservation storage
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` is **1**, separate from plugin version **0.3.0**. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.3.1**. No schema migration is needed for this correction. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Each block must fit the fleet. Active current/upcoming blocks prevent lowering the fleet below that individual block's quantity. Combined block/reservation overlaps are deferred.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.
 - New test reservations use active, published, valid packages and an explicit start/end. Quantity must fit total fleet. Package duration, business hours, notice, horizon, and aggregate availability are not yet enforced.
-- Occupied intervals include preparation/turnaround buffers captured at creation. Subsequent schedule edits reuse those captured buffers. The original package/local-time snapshot stays unchanged; current schedule fields are displayed separately.
-- Status transitions: `hold → confirmed / cancelled / expired`, `confirmed → active / cancelled`, `active → completed`. Completed/cancelled/expired records remain stored and terminal. Creation permits any of the six statuses for test fixtures. A manual `hold` has no automatic expiration yet.
-- Schedule/quantity edits are limited to hold/confirmed records. Successful changes increment revision; stale edits fail with a reload instruction. Same-value saves are no-ops. Cancellation is persistent, with no delete action.
+- Occupied intervals include preparation/turnaround buffers captured at creation. Administrative edits reuse those buffers. Changes to schedule, quantity, or status refresh those values in the current snapshot while keeping the agreed package price/duration. A package replacement captures the new package name, current WooCommerce selling price (`get_price('edit')`, including an active sale), duration, promotional label, and currency. Initial manual creation retains the existing regular-price contract.
+- The **View / edit** detail page edits package, quantity, local start/end, any of the six valid statuses, and an optional issue code/short note (64 UTF-8 bytes). The current selection must still be a valid rental package; an existing inactive/unpublished package can retain its agreed terms, while a replacement must be published, active, and priced.
+- Reference, created time, order relationships, IDs, hashes, and raw snapshot JSON cannot be edited. One successful multi-field save increments revision once and records the current UTC modification time. Stale revisions fail with a reload instruction; no-op saves leave the row and snapshot unchanged. Timestamps have one-second precision; revision distinguishes saves within one second.
+- Administrative corrections are available for all six statuses, including completed/cancelled/expired records. Existing lifecycle helpers retain their ordinary transitions: `hold → confirmed / cancelled / expired`, `confirmed → active / cancelled`, `active → completed`. Cancellation is persistent, with no delete action. A manual `hold` has no automatic expiration yet.
+- Edits change only the selected reservation, never WooCommerce orders or other reservations. There is no audit-history table or automatic retention of previous snapshot revisions in this version; future audit/history functionality may retain them. The edit page visibly warns that availability conflict checking belongs to the next milestone and edits are for testing only.
 
 ## Settings contract
 
@@ -169,7 +171,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Package/foundation checks failed' }
 git diff --check
 ```
 
-The dependency-free package test script runs all **208** foundation/package checks using API doubles. The user confirmed Milestones 1 and 2 on the dedicated WordPress test site. Milestone 3 adds separate real WordPress/WooCommerce/MariaDB scripts covering storage, real nonce verification, migration recovery, and missing-WooCommerce operation. See [Milestone 3 verification](docs/reservations-verification.md) for **169** integration checks, setup, limitations, and the pending dedicated-site checklist. Prior records: [Milestone 2](docs/packages-verification.md), [foundation](docs/verification.md).
+The dependency-free package test script runs all **208** foundation/package checks using API doubles. The user confirmed Milestones 1 and 2 on the dedicated WordPress test site. Version 0.3.1 passes **477 checks**: those 208 plus **269** real WordPress/WooCommerce/MariaDB checks (159 storage, 100 editing, 10 missing-WooCommerce). See [0.3.1 verification and manual edit checklist](docs/reservation-editing-verification.md). Prior records and database setup: [Milestone 3](docs/reservations-verification.md), [Milestone 2](docs/packages-verification.md), [foundation](docs/verification.md).
 
 ## SFTP update and rollback checklist
 
@@ -178,7 +180,7 @@ The dependency-free package test script runs all **208** foundation/package chec
 - Use a hosting-supported maintenance window so requests cannot execute a mixture of old and new PHP files. Stage a complete directory and replace it when supported; do not assume SFTP performs an atomic live update.
 - After replacement, visit administration and confirm both plugin/schema versions and saved settings. Reactivation is not required: normal `init` installs/upgrades the schema, verifies columns/indexes/InnoDB, and initializes only a missing capacity row. Resolve any database notice before entering test data. Database CREATE/ALTER/INDEX permissions and MySQL named locks are required for installation.
 - Check page rendering, permissions, validation, timezone and dependency visibility. No cache clearing is normally needed; if the host serves stale PHP, use its supported cache reset.
-- If necessary, restore the previous compatible plugin directory. Do not restore an old database over later business changes. Version 0.2.0 ignores the new tables and does not delete them; a later return to 0.3.0 preserves them. Future newer schema versions are rejected by 0.3.0 rather than downgraded automatically.
+- If necessary, restore the previous compatible plugin directory. Do not restore an old database over later business changes. Version 0.2.0 ignores the new tables and does not delete them; a later return to 0.3.1 preserves them. Version 0.3.0 shares schema 1 but labels snapshots as original and has older editing restrictions; it cannot recover snapshot revisions replaced by 0.3.1. Future newer schema versions are rejected rather than downgraded automatically.
 - Keep backups, settings, evidence, and secrets outside the replaceable plugin directory.
 
 ## References used during implementation

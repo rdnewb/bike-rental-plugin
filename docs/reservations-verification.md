@@ -1,5 +1,7 @@
 # Verification — version 0.3.0
 
+Historical 0.3.0 record. Version 0.3.1 corrects full administrative editing and current snapshot behavior; see [current verification](reservation-editing-verification.md). The obsolete immutable-on-edit and terminal-admin-edit restrictions below describe the earlier release, not current behavior.
+
 Milestone 3 implementation verified locally on **2026-09-12**. Milestones 1 and 2 were previously confirmed working by the user on the dedicated WordPress test site. Milestone 3's dedicated-site SFTP/browser acceptance is **pending**; no remote site was accessed or deployed to.
 
 ## Automated results

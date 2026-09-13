@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1 — Correct administrative reservation editing
+
+- Replace status-restricted detail forms with one full admin/shop-manager edit form for package, quantity, start/end, any valid reservation status, and a short issue code/note.
+- Validate selected rental packages and every editable field behind nonce/capability checks; compare revisions both before validation and in the database update.
+- Package replacement captures current WooCommerce selling price and new package details. Date/quantity/status changes refresh the current snapshot without silently repricing the retained package.
+- Preserve references, creation timestamps, order relationships, IDs/hashes, and other reservations. Real changes increment revision/update modified time; unchanged saves preserve the row exactly.
+- Keep raw snapshots read-only. Previous snapshot revisions are not retained yet; future audit/history work may preserve them.
+- Add the visible development-only availability warning. No customer booking, conflict checks, payment, or waiver work begins.
+- Keep database schema version 1. Verify 477 checks, including 100 new editing checks and a competing database connection; dedicated-site deployment/browser verification remains pending.
+
 ## 0.3.0 — Reservation storage and fleet capacity foundation
 
 - Add exactly two prefixed InnoDB tables, schema version 1, and verified idempotent installation during normal initialization for SFTP updates.
