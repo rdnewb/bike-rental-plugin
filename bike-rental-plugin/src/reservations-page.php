@@ -45,6 +45,7 @@ else : ?>
 <p><?php esc_html_e( 'Activate WooCommerce to validate and edit reservation packages. Stored details remain available below.', 'bike-rental-plugin' ); ?></p>
 <?php endif; ?>
 <h3><?php esc_html_e( 'Read-only reservation details', 'bike-rental-plugin' ); ?></h3>
+<p><?php echo esc_html( 'Request association: ' . ( empty( $row['request_key'] ) ? 'None' : 'Present' ) . '. Session association: ' . ( empty( $row['session_hash'] ) ? 'None' : 'Present (protected)' ) . '.' ); ?></p>
 <p><?php esc_html_e( 'Reservation reference:', 'bike-rental-plugin' ); ?> <strong><?php echo esc_html( $row['reference'] ); ?></strong></p>
 <table class="widefat striped"><tbody>
 <?php foreach ( $details as $key => $label ) : ?>

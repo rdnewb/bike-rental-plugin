@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -10,6 +10,8 @@ Reusable bicycle-rental settings, packages, reservations, and shared fleet avail
 == Description ==
 
 Milestone 4 adds authoritative shared fleet availability and double-booking protection.
+Milestone 5 adds [bike_rental_booking] for public package/date/time/quantity selection,
+calculated pickup, current availability, and protected guest holds with expiry display.
 Configure shared fleet quantity, add/edit/disable unavailability blocks, and create
 manual test reservations with current package snapshots and revision checks.
 Full reservation editing supports package, quantity, start/end, status,
@@ -26,7 +28,8 @@ expired timestamps even before cleanup. Deactivation removes the recurring sched
 Active rentals remain allocated until completion; actual-return turnaround uses dated blocks.
 Bike Rentals > Availability test displays capacity, peak usage, available quantity, and fit.
 
-There is no public rental booking, checkout, payment, or waiver processing.
+The public form stops at a temporary hold and a development-only next-step message.
+There is no cart/order creation, checkout, payment, deposit, or waiver processing.
 Manual test records enforce availability but do not establish fulfillment readiness.
 Available dependencies have NOT been integration tested by this plugin.
 WooCommerce is required for package management, new reservations, and full reservation editing,
@@ -38,7 +41,7 @@ Existing fleet and reservation data remain available without WooCommerce.
 1. Upload this complete bike-rental-plugin directory into wp-content/plugins/ via SFTP.
 2. Activate Bike Rental Plugin in WordPress Plugins.
 3. Open Bike Rentals > Settings and review/save the configuration.
-4. All days initially remain closed. No public rental functionality is enabled.
+4. All days initially remain closed. Configure open hours before public selection testing.
 5. With WooCommerce active, create a Simple product and open Product data > Rental Settings.
 6. Set the regular price using WooCommerce and the duration using Rental Settings.
 7. Use Advanced > Menu order for display order. No packages are created automatically.
@@ -47,12 +50,24 @@ Existing fleet and reservation data remain available without WooCommerce.
 10. Resolve any database installation notice before using the test tools. SFTP updates
     trigger schema checks without requiring reactivation. InnoDB and named locks are required.
 11. Use Availability test with occupied local intervals (including buffers) to verify fit.
+12. Insert [bike_rental_booking] into a WordPress/Divi test page. Test mobile and keyboard use.
+13. Public holds use selling prices, signed HttpOnly cookies, session-bound request tokens,
+    and the existing inventory lock. JavaScript is required.
+14. Public start/end rules enforce hours, notice, increments, horizon, and calendar-day pickup.
+    Three days end on day three. Interior closed days are allowed; closed endpoints are not.
 
 No server-side build tools, Composer, Node.js, WP-CLI, or SSH are required.
 Settings, package metadata, fleet, blocks, and reservations are retained on updates,
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.5.0 =
+* Add public booking shortcode, scoped mobile layout, loading/error states, and hold summary.
+* Add validated catalog/time/availability reads and protected guest session/hold/status REST routes.
+* Calculate elapsed-hour and inclusive calendar-day endpoints in the WordPress timezone.
+* Snapshot selling prices and retain request-key idempotency, expiry, and shared inventory locking.
+* Keep schema 1. Checkout, orders, Square, deposits, waivers, and emails remain deferred.
 
 = 0.4.0 =
 * Enforce shared fleet peak availability on reservations, edits, blocks, and capacity changes.

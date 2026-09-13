@@ -1,6 +1,6 @@
-# Reservation storage — version 0.4.0
+# Reservation storage — version 0.5.0
 
-Milestone 4 availability services. Plugin version **0.4.0**; database schema version remains **1** in `brp_db_version`. No columns, tables, or indexes changed. The custom plugin alone owns shared rental capacity. Product stock and payment gateway stock have no role in these tables. See [availability verification and acceptance](availability-verification.md) for algorithm, failure, and concurrency evidence.
+Milestone 5 public selection uses the existing allocation services. Plugin version **0.5.0**; schema remains **1** in `brp_db_version`. No columns, tables, or indexes changed. The custom plugin alone owns rental capacity. Product/payment gateway stock has no role in these tables. See [M4 allocation evidence](availability-verification.md) and [current public booking verification](public-booking-verification.md).
 
 ## Tables and indexes
 
@@ -73,7 +73,7 @@ Deactivation clears the cleanup schedule. Deactivation and uninstall preserve ta
 
 ## Service contracts
 
-All business service methods require `manage_options` or `manage_woocommerce` and a ready schema. The sole capability exception permits expired-hold housekeeping from its registered cron action. Methods return the value/record shown below or `WP_Error`; they do not redirect or render. PHP callers perform their own request nonce checks. The administration controller checks an operation/record-bound WordPress nonce for every mutation and availability test. Future customer code must introduce a trusted integration boundary; these methods do not currently authorize anonymous allocation.
+Ordinary service methods require `manage_options` or `manage_woocommerce` and a ready schema. The registered cron action permits anonymous expired-hold housekeeping. M5 adds `Database::public_booking($callback)`, a trusted PHP scope entered only by the public controller after parameter and guest validation. It restores the prior gate state in `finally` without changing WordPress users/capabilities. Admin mutations retain operation/record-bound nonces. Public holds instead require signed-cookie ownership, same-origin/custom-header checks, and a session-bound CSRF token. The public controller returns only allowlisted customer fields and cannot cancel, edit, or confirm arbitrary reservations. Methods return data or `WP_Error`; they do not render or redirect.
 
 | Method | Contract |
 |---|---|
@@ -84,6 +84,7 @@ All business service methods require `manage_options` or `manage_woocommerce` an
 | `Fleet::disable_block($id)` | Persist inactive flag and return retained block |
 | `Reservations::create($input)` | Input `package_product_id`, `quantity`, local `start`, local `end`, `status` (default hold), optional stable `request_key`; return stored row; consuming states must fit |
 | `Reservations::create_hold($input, $request_key, $session_hash)` | Force hold status, compute intent hash, set 15-minute expiry, reuse matching prior result; reject conflicting key/session |
+| `Reservations::create_booking_hold($input, $request_key, $session_hash)` | Protected public path: package ID, date/time, quantity; derive endpoints and selling-price snapshot; recheck notice/allocation under lock; one live public hold per guest |
 | `Reservations::read($id)` | Stored row including JSON snapshot string, with no live package dependency |
 | `Reservations::update($id, $input, $expected_revision)` | Administrative correction for any valid status: package, quantity, local start/end, status, issue code; regenerate current state snapshot only on actual changes |
 | `Reservations::change_status($id, $status, $expected_revision)` | Apply validated lifecycle transition and revision check |
@@ -106,7 +107,9 @@ Snapshot keys: `product_id`, `name`, `price` (decimal string), `currency`, `dura
 
 Catalog changes alone never rewrite agreed package terms. A retained package must still be a valid rental package, but may be inactive/unpublished; replacements must be published, active, and priced. Dates/quantity/status edits refresh those values in the current snapshot while preserving its package name, price, duration, promotion, and currency. Package replacement refreshes those package terms too. All edits reuse the reservation's existing buffer snapshot. Raw snapshot JSON is never accepted from the client.
 
-There is no audit/history table, nor automatic retention of previous snapshot revisions, in 0.4.0. Future audit/history functionality may retain old revisions. Existing rows are not bulk migrated or silently rewritten; older snapshots gain current quantity/status on their next real reservation change, while no-op saves preserve their existing bytes. Order IDs, reference, creation time, IDs, existing request/session identity, WooCommerce orders, and other reservations remain unchanged. Returning a non-hold to hold fills missing request identity and starts a fresh expiry under the lock. Modification timestamps record actual UTC with existing one-second precision; revision identifies separate saves within the same second. No totals, taxes, payments, rider identities, or signatures are collected.
+There is no audit/history table or automatic retention of previous snapshot revisions in 0.5.0. Future history functionality may retain old revisions. Existing rows are not bulk migrated; older snapshots gain current quantity/status on their next real change, while no-op saves preserve bytes. Order IDs, reference, created time, IDs, existing request/session identity, WooCommerce orders, and other reservations remain unchanged. Returning a non-hold to hold fills missing identity and starts a fresh expiry under lock. Modified times retain one-second UTC precision; revision distinguishes separate saves. No totals, taxes, payments, rider identities, or signatures are collected.
+
+Public holds use current WooCommerce selling price rather than the manual creation reader's regular price. `BookingSchedule` derives elapsed-hour or inclusive calendar-day endpoints, validates public opening/notice/increment/horizon rules, and captures the same snapshot keys and buffers. Products/settings are staged on the server before allocation; the final locked check revalidates notice against database UTC. Raw request/session values are never customer-editable or exposed; administration displays only association presence. Existing manual explicit-date behavior is preserved.
 
 Ordinary lifecycle helper transitions (`change_status`, `cancel`, `mark_active`, `mark_completed`):
 
@@ -148,14 +151,20 @@ bike-rental-plugin/
     Reservations.php
     Availability.php
     HoldCleanup.php
+    BookingSchedule.php
+    GuestSession.php
+    PublicBooking.php
+    booking-form.php
     DataAdmin.php
     fleet-page.php
     reservations-page.php
   assets/
     css/.gitkeep
+    css/booking.css
     js/.gitkeep
     js/package-admin.js
+    js/booking.js
   languages/.gitkeep
 ```
 
-Repository-only tests and documentation are outside that deployable directory. No build tools or additional runtime dependencies are introduced. **Milestone 5 has not started.**
+Repository-only tests and documentation are outside that deployable directory. No build tools or additional runtime dependencies are introduced. **Milestone 6 has not started.**

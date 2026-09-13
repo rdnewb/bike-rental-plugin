@@ -1,0 +1,16 @@
+.brp-booking { max-width: 42rem; margin-inline: auto; overflow-wrap: anywhere; color: inherit; font: inherit; }
+.brp-booking *, .brp-booking *::before, .brp-booking *::after { box-sizing: border-box; }
+.brp-booking [hidden] { display: none !important; }
+.brp-booking fieldset { border: 1px solid currentColor; border-radius: .4rem; padding: 1rem; margin: 0 0 1rem; min-width: 0; }
+.brp-booking legend { padding-inline: .35rem; font-weight: 600; }
+.brp-booking label { display: block; margin-block: 1rem .35rem; font-weight: 600; }
+.brp-booking input, .brp-booking select, .brp-booking button { font: inherit; min-height: 48px; max-width: 100%; padding: .65rem; border: 1px solid currentColor; border-radius: .25rem; }
+.brp-booking input, .brp-booking select { width: 100%; min-width: 0; }
+.brp-booking button { color: inherit; background: transparent; cursor: pointer; }
+.brp-booking button:disabled { opacity: .55; cursor: wait; }
+.brp-booking :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.brp-booking .brp-submit, .brp-booking .brp-restart { width: 100%; font-weight: 600; }
+.brp-booking .brp-status, .brp-booking .brp-summary, .brp-booking .brp-package { margin-block: 1rem; }
+.brp-booking .brp-status:empty, .brp-booking .brp-summary:empty, .brp-booking .brp-package:empty { display: none; }
+.brp-booking .brp-result { border: 1px solid currentColor; border-radius: .4rem; padding: 1rem; }
+.brp-booking p { margin-block: .65rem; }

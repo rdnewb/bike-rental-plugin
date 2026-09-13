@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — Public rental selection and temporary guest holds
+
+- Add `[bike_rental_booking]` with scoped native controls, loading/error announcements, live quantity limits, calculated pickup, and temporary-hold receipt/countdown/refresh recovery.
+- Add public REST catalog/times/availability reads and protected guest session, hold creation, and owned-status requests. Require exact fields, same origin, signed HttpOnly cookie, and session-bound CSRF token for hold operations; suppress private database errors.
+- Enforce public start horizon, elapsed notice, opening-relative increments, open endpoints, UTC hourly duration, and inclusive calendar-day pickup. Allow interior closed days and reject invalid DST endpoints.
+- Reuse M4 sweep/capacity locking for guest allocations. Capture current selling prices, retain 15-minute expiry and five-minute cleanup, and allow one live public hold per guest session.
+- Show association indicators in administration without secrets. Keep schema 1 and all prior administrative editing behavior.
+- Verify 690 checks, including 74 public-booking and 45 real multiprocess concurrency checks, plus actual local HTTP behavior and JavaScript syntax. Visual/mobile/keyboard/Divi acceptance remains pending; UI tools had no browser available.
+- Stop before Milestone 6: no cart/order creation, checkout redirect, Square calls, deposits, waivers, customer emails, or admin calendar enhancements.
+
 ## 0.4.0 — Shared fleet availability and double-booking protection
 
 - Add one sweep-line service using peak simultaneous usage of clipped, half-open occupied intervals; include confirmed/active reservations, unexpired holds, and active dated/indefinite blocks.

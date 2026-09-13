@@ -50,7 +50,14 @@ final class Reservations {
 		return self::create_request( $input, $request_key, $session_hash );
 	}
 
-	private static function create_request( $input, $request_key, $session_hash ) {
+	/** Called only by the protected public controller, never with browser-supplied endpoints/prices. */
+	public static function create_booking_hold( $input, $request_key, $session_hash ) {
+		$booking = BookingSchedule::prepare( $input );
+		if ( is_wp_error( $booking ) ) { return $booking; }
+		return self::create_request( $booking['input'], $request_key, $session_hash, $booking );
+	}
+
+	private static function create_request( $input, $request_key, $session_hash, $booking = null ) {
 		$gate = Database::gate();
 		if ( is_wp_error( $gate ) ) { return $gate; }
 		if ( ! is_string( $request_key ) || ! preg_match( '/^[a-zA-Z0-9_-]{1,64}$/D', $request_key ) || ! is_string( $session_hash ) || ! preg_match( '/^[a-f0-9]{64}$/D', $session_hash ) || ! is_array( $input ) || ! Database::positive( $input['package_product_id'] ?? null ) || ! Database::positive( $input['quantity'] ?? null ) ) { return Database::error( 'request', 'Invalid hold request key, session hash, package, or quantity.' ); }
@@ -60,7 +67,7 @@ final class Reservations {
 		$identity = array( 'request_key' => strtolower( $request_key ), 'session_hash' => $session_hash, 'request_hash' => hash( 'sha256', wp_json_encode( array( (int) $input['package_product_id'], (int) $input['quantity'], $interval, wp_timezone_string(), $input['status'] ) ) ) );
 		$existing = Database::locked( static fn() => self::existing_request( $identity ) );
 		if ( null !== $existing ) { return $existing; }
-		return self::create_record( $input, $identity );
+		return self::create_record( $input, $identity, $booking );
 	}
 
 	private static function existing_request( $identity ) {
@@ -72,11 +79,11 @@ final class Reservations {
 		return $row;
 	}
 
-	private static function create_record( $input, $identity = null ) {
+	private static function create_record( $input, $identity = null, $booking = null ) {
 		$gate = Database::gate();
 		if ( is_wp_error( $gate ) ) { return $gate; }
 		if ( ! is_array( $input ) ) { return Database::error( 'input', 'Invalid reservation input.' ); }
-		$package = self::package( $input['package_product_id'] ?? null );
+		$package = $booking ? $booking['package'] : self::package( $input['package_product_id'] ?? null );
 		if ( is_wp_error( $package ) ) { return $package; }
 		$status = $input['status'] ?? 'hold';
 		if ( ! in_array( $status, self::STATUSES, true ) ) { return Database::error( 'status', 'Invalid reservation status.' ); }
@@ -95,13 +102,20 @@ final class Reservations {
 		$snapshot['status'] = $status;
 		$data += array( 'package_product_id' => $package['product_id'], 'status' => $status, 'snapshot' => wp_json_encode( $snapshot ), 'revision' => 1, 'created_at' => gmdate( 'Y-m-d H:i:s' ), 'updated_at' => gmdate( 'Y-m-d H:i:s' ) );
 		if ( false === $data['snapshot'] ) { return Database::error( 'snapshot', 'Could not encode the package snapshot.' ); }
-		return Database::locked( static function ( $capacity ) use ( $data, $identity ) {
+		return Database::locked( static function ( $capacity ) use ( $data, $identity, $booking ) {
 			global $wpdb;
 			if ( $identity ) {
 				$existing = self::existing_request( $identity );
 				if ( null !== $existing ) { return $existing; }
 				$data = array_merge( $data, $identity );
 				if ( 'hold' === $data['status'] ) { $data['hold_expires_at'] = RentalTime::shift( Database::now(), self::HOLD_MINUTES ); }
+			}
+			if ( $booking ) {
+				$check = BookingSchedule::calculate( $booking['package'], substr( $booking['input']['start'], 0, 10 ), substr( $booking['input']['start'], 11 ), $booking['settings'], Database::now() );
+				if ( is_wp_error( $check ) ) { return $check; }
+				$other = $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM %i WHERE session_hash = %s AND status = %s AND hold_expires_at > %s LIMIT 1 FOR UPDATE', Database::table( 'reservations' ), $identity['session_hash'], 'hold', Database::now() ) );
+				if ( $wpdb->last_error ) { return Database::retry_error(); }
+				if ( $other ) { return Database::error( 'existing_hold', 'You already have a temporary reservation. Wait for it to expire before starting another.' ); }
 			}
 			if ( $data['quantity'] > $capacity ) { return Database::error( 'quantity', 'Reservation quantity must be at least 1 and no greater than total fleet.' ); }
 			$available = Availability::allocation( $capacity, $data );

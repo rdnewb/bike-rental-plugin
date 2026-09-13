@@ -286,5 +286,5 @@ foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $runtim
 }
 check( ! preg_match( '/manatee|\bmbr\b|anna maria island/i', $source ), 'generic runtime branding' );
 check( ! preg_match( '/set_(?:regular_price|sale_price|price|stock_quantity)\s*\(|\b(?:49\.00|79\.00|158\.00|229\.00)\b/', $source ), 'no hard-coded selling price or stock mutations' );
-check( ! preg_match( '/add_shortcode\s*\(|register_rest_route\s*\(|woocommerce_checkout|wp_remote_/', $source ), 'no public booking, checkout, or remote integration' );
+check( ! preg_match( '/woocommerce_checkout|wp_remote_|wc_create_order|add_to_cart\s*\(/', $source ), 'no checkout, order creation, cart, or remote integration' );
 echo PHP_EOL . ( $checks - $foundation_checks ) . ' package checks + ' . $foundation_checks . ' foundation checks = ' . $checks . ' passed. API doubles only; test-site verification remains required.' . PHP_EOL;

@@ -10,6 +10,14 @@ final class Database {
 	const ERROR = 'brp_db_error';
 	private static $token = null;
 	private static $now = null;
+	private static $public_booking = false;
+
+	/** Trusted PHP boundary only; REST controllers validate guest ownership before entering. */
+	public static function public_booking( $callback ) {
+		$previous = self::$public_booking;
+		self::$public_booking = true;
+		try { return $callback(); } finally { self::$public_booking = $previous; }
+	}
 
 	public static function table( $kind ) {
 		global $wpdb;
@@ -164,7 +172,7 @@ KEY block_end (end_utc)
 	}
 
 	public static function gate( $cleanup = false ) {
-		if ( ! Settings::can_manage() && ! ( $cleanup && doing_action( 'brp_expire_holds' ) ) ) { return self::error( 'permission', 'You do not have permission to manage rental data.' ); }
+		if ( ! Settings::can_manage() && ! self::$public_booking && ! ( $cleanup && doing_action( 'brp_expire_holds' ) ) ) { return self::error( 'permission', 'You do not have permission to manage rental data.' ); }
 		if ( self::VERSION !== (string) get_option( self::OPTION, '' ) || get_option( self::ERROR, '' ) ) {
 			return self::error( 'schema', 'Rental storage is unavailable. Reload administration and resolve the database notice before saving.' );
 		}

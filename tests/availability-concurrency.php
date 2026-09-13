@@ -92,4 +92,13 @@ $job = array( 'operation' => 'hold', 'input' => $input, 'key' => 'same-concurren
 $results = run_race( array( $job, $job ), 'Duplicate hold race' );
 race_check( $results[0]['success'] && $results[1]['success'] && $results[0]['value']['id'] === $results[1]['value']['id'], 'concurrent duplicate requests reuse one hold' );
 race_check( Database::listing( 'reservations' )['total'] === 1, 'duplicate request race consumes exactly one bike' );
+reset_race( 1 );
+foreach ( $settings['weekly_hours'] as &$hours ) { $hours = array( 'open' => 1, 'start' => '08:00', 'end' => '18:00' ); } unset( $hours );
+update_option( Settings::OPTION, $settings );
+$public_input = array( 'package_id' => $pid, 'date' => ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+7 days' )->format( 'Y-m-d' ), 'time' => '09:00', 'quantity' => 1 );
+$client_ip = 'fd00:' . implode( ':', str_split( bin2hex( random_bytes( 14 ) ), 4 ) );
+$results = run_race( array( array( 'operation' => 'public_hold', 'input' => $public_input, 'key' => 'public-race-a', 'client_ip' => $client_ip ), array( 'operation' => 'public_hold', 'input' => $public_input, 'key' => 'public-race-b', 'client_ip' => $client_ip ) ), 'Two anonymous REST holds for last bike' );
+race_check( count( array_filter( array_column( $results, 'success' ) ) ) === 1, 'exactly one public hold succeeds' );
+race_check( in_array( 'brp_public_409', array_column( $results, 'code' ), true ), 'losing public request gets safe capacity conflict' );
+race_check( Database::listing( 'reservations' )['total'] === 1, 'public REST race stores exactly one allocation' );
 echo PHP_EOL . $checks . ' real multiprocess concurrency checks passed.' . PHP_EOL;
