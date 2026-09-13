@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 
-	const VERSION = '0.3.1';
+	const VERSION = '0.4.0';
 
 	/** Initialize defaults once; never replace existing configuration. */
 	public static function activate() {
@@ -29,6 +29,7 @@ final class Plugin {
 		$booted = true;
 		add_action( 'init', array( self::class, 'load_textdomain' ) );
 		add_action( 'init', array( Database::class, 'install' ), 20 );
+		HoldCleanup::register_hooks();
 		add_action( 'woocommerce_init', array( self::class, 'load_packages' ) );
 		if ( is_admin() ) {
 			$settings = new Settings();

@@ -11,15 +11,16 @@ final class Fleet {
 	}
 
 	public static function set_capacity( $quantity ) {
-		return Database::locked( static function () use ( $quantity ) {
+		return Database::locked( static function ( $capacity ) use ( $quantity ) {
 			global $wpdb;
 			if ( ! Database::positive( $quantity ) ) { return Database::error( 'quantity', 'Fleet quantity must be a positive whole number, at most 2147483647.' ); }
-			// Individual block bounds only; no overlap or remaining-pool calculation.
-			$largest = $wpdb->get_var( $wpdb->prepare( 'SELECT MAX(quantity) FROM %i WHERE record_type = %s AND active = %d AND (end_utc IS NULL OR end_utc > %s)', Database::table( 'availability' ), 'block', 1, gmdate( 'Y-m-d H:i:s' ) ) );
-			if ( $wpdb->last_error ) { return Database::error( 'database', 'Could not validate existing blocks.' ); }
-			if ( (int) $largest > (int) $quantity ) { return Database::error( 'quantity', 'An active current or upcoming block exceeds this fleet quantity. Edit or disable that block first.' ); }
-			$result = $wpdb->update( Database::table( 'availability' ), array( 'quantity' => (int) $quantity, 'updated_at' => gmdate( 'Y-m-d H:i:s' ) ), array( 'id' => 1, 'record_type' => 'capacity' ), array( '%d', '%s' ), array( '%d', '%s' ) );
-			return false === $result ? Database::error( 'database', 'Could not save fleet quantity.' ) : (int) $quantity;
+			if ( (int) $quantity < $capacity ) {
+				$usage = Availability::evaluate( (int) $quantity, Database::now(), null );
+				if ( is_wp_error( $usage ) ) { return $usage; }
+				if ( $usage['peak_existing_usage'] > (int) $quantity ) { return Availability::conflict( $usage, 'This fleet reduction would conflict with existing reservations or blocks.' ); }
+			}
+			$result = Database::update( 'availability', array( 'quantity' => (int) $quantity, 'updated_at' => Database::now() ), array( 'id' => 1, 'record_type' => 'capacity' ) );
+			return false === $result ? Database::retry_error() : (int) $quantity;
 		} );
 	}
 
@@ -47,16 +48,21 @@ final class Fleet {
 			if ( '' === $reason || strlen( $reason ) > 240 ) { return Database::error( 'reason', 'A block reason is required (maximum 240 UTF-8 bytes).' ); }
 			$active = $input['active'] ?? '1';
 			if ( ! in_array( $active, array( 0, 1, '0', '1' ), true ) ) { return Database::error( 'active', 'Invalid block active flag.' ); }
-			$data = array_merge( $interval, array( 'record_type' => 'block', 'quantity' => (int) $quantity, 'reason' => $reason, 'active' => (int) $active, 'updated_at' => gmdate( 'Y-m-d H:i:s' ) ) );
+			$data = array_merge( $interval, array( 'record_type' => 'block', 'quantity' => (int) $quantity, 'reason' => $reason, 'active' => (int) $active, 'updated_at' => Database::now() ) );
+			if ( $data['active'] ) {
+				$availability = Availability::evaluate( $capacity, $data['start_utc'], $data['end_utc'], $data['quantity'], null, $id );
+				if ( is_wp_error( $availability ) ) { return $availability; }
+				if ( ! $availability['fits'] ) { return Availability::conflict( $availability, 'This maintenance block would exceed available fleet capacity.' ); }
+			}
 			if ( null === $id ) {
 				$data['created_at'] = $data['updated_at'];
 				$data['created_by'] = get_current_user_id();
-				$result = $wpdb->insert( Database::table( 'availability' ), $data );
+				$result = Database::insert( 'availability', $data );
 				$id = $wpdb->insert_id;
 			} else {
-				$result = $wpdb->update( Database::table( 'availability' ), $data, array( 'id' => (int) $id, 'record_type' => 'block' ) );
+				$result = Database::update( 'availability', $data, array( 'id' => (int) $id, 'record_type' => 'block' ) );
 			}
-			return false === $result ? Database::error( 'database', 'Could not save the block.' ) : self::block( $id );
+			return false === $result ? Database::retry_error() : self::block( $id );
 		} );
 	}
 
@@ -65,8 +71,8 @@ final class Fleet {
 			global $wpdb;
 			$row = self::block( $id );
 			if ( is_wp_error( $row ) ) { return $row; }
-			$result = $wpdb->update( Database::table( 'availability' ), array( 'active' => 0, 'updated_at' => gmdate( 'Y-m-d H:i:s' ) ), array( 'id' => (int) $id, 'record_type' => 'block' ) );
-			return false === $result ? Database::error( 'database', 'Could not disable the block.' ) : self::block( $id );
+			$result = Database::update( 'availability', array( 'active' => 0, 'updated_at' => Database::now() ), array( 'id' => (int) $id, 'record_type' => 'block' ) );
+			return false === $result ? Database::retry_error() : self::block( $id );
 		} );
 	}
 }

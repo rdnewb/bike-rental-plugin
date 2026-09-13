@@ -11,6 +11,10 @@ use BikeRentalPlugin\RentalTime;
 $storage_checks = $checks;
 wp_set_current_user( 1 );
 $admin = new DataAdmin();
+// Editing tests isolate field behavior; the M4 engine suite tests positive return buffers.
+$edit_settings = \BikeRentalPlugin\Settings::get();
+$edit_settings['preparation_buffer'] = 0; $edit_settings['turnaround_buffer'] = 0;
+update_option( \BikeRentalPlugin\Settings::OPTION, $edit_settings );
 $original = good( Reservations::create( $input ), 'editing fixture created' );
 $edit_id = $original['id'];
 $table = Database::table( 'reservations' );
@@ -115,7 +119,7 @@ $_GET = array( 'id' => $edit_id );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
 foreach ( array( 'package_product_id', 'quantity', 'start', 'end', 'status', 'issue_code', 'revision', '_wpnonce' ) as $field ) { verify( str_contains( $html, 'name="' . $field . '"' ), 'detail renders edit control/security field: ' . $field ); }
 verify( str_contains( $html, 'Save reservation' ) && str_contains( $html, 'Read-only reservation details' ) && str_contains( $html, 'Current reservation snapshot (read-only)' ), 'detail clearly separates editable controls and read-only system values for terminal records' );
-verify( str_contains( $html, 'Availability conflict checking will be enforced in the next milestone.' ), 'visible development-only availability notice rendered' );
+verify( str_contains( $html, 'Availability conflict checking is enforced under the shared inventory lock.' ), 'visible enforced availability notice rendered' );
 foreach ( array( 'reference', 'created_at', 'updated_at', 'snapshot', 'order_id', 'order_item_id', 'request_hash', 'session_hash' ) as $field ) { verify( ! str_contains( $html, 'name="' . $field . '"' ), 'protected value has no editable form control: ' . $field ); }
 set_transient( 'brp_data_notice_1', array( 'error' => false, 'message' => 'Rental data saved.' ), 60 );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
@@ -124,28 +128,7 @@ set_transient( 'brp_data_notice_1', array( 'error' => true, 'message' => $stale-
 ob_start(); $admin->reservations(); $html = ob_get_clean();
 verify( str_contains( $html, 'notice-error' ) && str_contains( $html, 'changed elsewhere' ), 'validation/conflict notice rendered after redirect' );
 
-// Compete after initial read but before UPDATE; the SQL revision predicate must still win.
-class BRP_Edit_Race_Wpdb extends wpdb {
-	public $race_id;
-	public $raced = false;
-	public function update( $table, $data, $where, $format = null, $where_format = null ) {
-		if ( ! $this->raced && $this->race_id === (int) ( $where['id'] ?? 0 ) && isset( $data['revision'] ) ) {
-			$this->raced = true;
-			$GLOBALS['wpdb'] = $GLOBALS['other_edit_db'];
-			try { good( Reservations::change_status( $this->race_id, 'confirmed', 1 ), 'competing connection commits a newer status revision' ); }
-			finally { $GLOBALS['wpdb'] = $this; }
-		}
-		return parent::update( $table, $data, $where, $format, $where_format );
-	}
-}
-$racing_row = good( Reservations::create( $input ), 'concurrent edit fixture created' );
-$main_edit_db = $wpdb;
-$other_edit_db = new wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST ); $other_edit_db->set_prefix( 'm3_' );
-$wpdb = new BRP_Edit_Race_Wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST ); $wpdb->set_prefix( 'm3_' ); $wpdb->race_id = (int) $racing_row['id'];
-bad( Reservations::update( $racing_row['id'], array_replace( $input, array( 'quantity' => 5 ) ), 1 ), 'SQL revision guard rejects a race after the initial revision comparison' );
-$wpdb->close(); $wpdb = $main_edit_db; $other_edit_db->close();
-$winner = Reservations::read( $racing_row['id'] );
-verify( 'confirmed' === $winner['status'] && 2 === (int) $winner['revision'] && 2 === (int) $winner['quantity'] && 'confirmed' === json_decode( $winner['snapshot'], true )['status'], 'winning concurrent edit and its snapshot remain intact' );
+// True simultaneous allocation/edit races now live in tests/availability-concurrency.php.
 verify( '1' === Database::VERSION && '1' === get_option( Database::OPTION ), 'corrective update leaves schema version unchanged' );
 update_option( 'brp_m3_verification_count', Database::listing( 'reservations' )['total'] );
 echo PHP_EOL . ( $checks - $storage_checks ) . ' editing checks + ' . $storage_checks . ' storage checks = ' . $checks . ' real integration checks passed.' . PHP_EOL;

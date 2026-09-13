@@ -17,7 +17,7 @@ $this->field( 'reason', __( 'Reason (maximum 240 UTF-8 bytes)', 'bike-rental-plu
 <p><a href="<?php echo esc_url( self::url( self::FLEET ) ); ?>"><?php esc_html_e( 'Add another block', 'bike-rental-plugin' ); ?></a></p>
 <?php endif; ?>
 <h2><?php esc_html_e( 'Unavailability blocks', 'bike-rental-plugin' ); ?></h2>
-<p><?php esc_html_e( 'Quantity-based records for the shared pool. Overlapping block totals will be evaluated in a later milestone.', 'bike-rental-plugin' ); ?></p>
+<p><?php esc_html_e( 'Quantity-based records for the shared pool. Reservation and block overlaps are validated together under the shared inventory lock.', 'bike-rental-plugin' ); ?></p>
 <?php
 $listing = Database::listing( 'availability', $_GET['paged'] ?? 1 );
 if ( is_wp_error( $listing ) ) { $this->error( $listing ); return; }

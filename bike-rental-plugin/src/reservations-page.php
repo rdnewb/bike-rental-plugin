@@ -13,10 +13,11 @@ if ( $row ) :
 		'order_item_id' => __( 'Order item ID', 'bike-rental-plugin' ),
 		'created_at' => __( 'Created (local)', 'bike-rental-plugin' ),
 		'updated_at' => __( 'Updated (local)', 'bike-rental-plugin' ),
+		'hold_expires_at' => __( 'Hold expires (local)', 'bike-rental-plugin' ),
 	);
 ?>
 <h2><?php echo esc_html( $row['reference'] ); ?></h2>
-<div class="notice notice-warning inline"><p><?php esc_html_e( 'Availability conflict checking will be enforced in the next milestone. Administrative edits on this development version should be used for testing only.', 'bike-rental-plugin' ); ?></p></div>
+<div class="notice notice-info inline"><p><?php esc_html_e( 'Availability conflict checking is enforced under the shared inventory lock. These admin tools do not verify payments or authorize fulfillment.', 'bike-rental-plugin' ); ?></p></div>
 <h3><?php esc_html_e( 'Edit reservation', 'bike-rental-plugin' ); ?></h3>
 <?php if ( function_exists( 'wc_get_product' ) && class_exists( Packages::class ) ) :
 	$edit_packages = Packages::get_active_packages();
@@ -36,6 +37,10 @@ $this->field( 'end', __( 'End (local)', 'bike-rental-plugin' ), RentalTime::disp
 $this->statuses( $row['status'], Reservations::STATUSES );
 $this->field( 'issue_code', __( 'Issue code / short internal note (maximum 64 UTF-8 bytes)', 'bike-rental-plugin' ), $row['issue_code'] ?? '', 'text', false );
 $this->end_form( __( 'Save reservation', 'bike-rental-plugin' ) );
+if ( in_array( $row['status'], array( 'hold', 'expired' ), true ) ) :
+	$this->form( 'reservation_confirm_hold', $row['id'], $row['revision'] );
+	$this->end_form( __( 'Confirm hold (admin test; rechecks availability)', 'bike-rental-plugin' ) );
+endif;
 else : ?>
 <p><?php esc_html_e( 'Activate WooCommerce to validate and edit reservation packages. Stored details remain available below.', 'bike-rental-plugin' ); ?></p>
 <?php endif; ?>
@@ -43,7 +48,7 @@ else : ?>
 <p><?php esc_html_e( 'Reservation reference:', 'bike-rental-plugin' ); ?> <strong><?php echo esc_html( $row['reference'] ); ?></strong></p>
 <table class="widefat striped"><tbody>
 <?php foreach ( $details as $key => $label ) : ?>
-<tr><th scope="row"><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( str_ends_with( $key, '_utc' ) || in_array( $key, array( 'created_at', 'updated_at' ), true ) ? RentalTime::display( $row[ $key ] ) : ( $row[ $key ] ?? '—' ) ); ?></td></tr>
+<tr><th scope="row"><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( str_ends_with( $key, '_utc' ) || in_array( $key, array( 'created_at', 'updated_at', 'hold_expires_at' ), true ) ? RentalTime::display( $row[ $key ] ) : ( $row[ $key ] ?? '—' ) ); ?></td></tr>
 <?php endforeach; ?>
 <tr><th scope="row"><?php esc_html_e( 'Related order', 'bike-rental-plugin' ); ?></th><td>
 <?php
@@ -59,7 +64,7 @@ if ( $order && ( current_user_can( 'manage_options' ) || current_user_can( 'edit
 <p><a href="<?php echo esc_url( self::url( self::RESERVATIONS ) ); ?>"><?php esc_html_e( 'Back to list / create test reservation', 'bike-rental-plugin' ); ?></a></p>
 <?php else : ?>
 <h2><?php esc_html_e( 'Create manual test reservation', 'bike-rental-plugin' ); ?></h2>
-<p><?php esc_html_e( 'Explicit start/end values test storage; package-duration rules are not enforced yet. A hold here is a stored test status with no automatic expiry. This tool does not authorize fulfillment.', 'bike-rental-plugin' ); ?></p>
+<p><?php esc_html_e( 'Explicit start/end values define the rental interval; package-duration scheduling rules remain deferred. Holds expire after 15 minutes and retries of the same form reuse the existing result. All allocations check shared fleet availability. This tool does not authorize fulfillment.', 'bike-rental-plugin' ); ?></p>
 <?php
 $packages = function_exists( 'wc_get_product' ) && class_exists( Packages::class ) ? Packages::get_active_packages() : array();
 if ( ! $packages ) : ?>

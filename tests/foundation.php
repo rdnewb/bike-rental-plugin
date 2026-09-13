@@ -49,6 +49,7 @@ function add_settings_error( $setting, $code, $message, $type = 'error' ) { $GLO
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) { $GLOBALS['hooks'][ $hook ][] = $callback; }
 function add_filter( $hook, $callback ) { add_action( $hook, $callback ); }
 function register_activation_hook( $file, $callback ) { $GLOBALS['activation'] = $callback; }
+function register_deactivation_hook( $file, $callback ) { $GLOBALS['deactivation'] = $callback; }
 function register_setting( $group, $option, $args ) { $GLOBALS['registered'][ $option ] = array( $group, $args ); }
 function is_admin() { return $GLOBALS['is_admin']; }
 function get_plugins() { return $GLOBALS['installed']; }
@@ -76,7 +77,7 @@ function check( $condition, $label ) {
 
 $settings = new Settings();
 $defaults = Settings::defaults();
-check( '0.3.1' === Plugin::VERSION, 'version constant' );
+check( '0.4.0' === Plugin::VERSION, 'version constant' );
 check( isset( $hooks['plugins_loaded'] ) && ! isset( $hooks['admin_init'] ), 'bootstrap defers initialization' );
 check( 90 === $defaults['booking_horizon'] && 30 === $defaults['time_increment'], 'neutral scheduling defaults' );
 check( 0 === array_sum( array_column( $defaults['weekly_hours'], 'open' ) ), 'all seven days default closed' );
@@ -93,7 +94,7 @@ $options[ Settings::OPTION ] = $valid;
 Plugin::activate();
 Plugin::record_version();
 check( $valid === $options[ Settings::OPTION ], 'reactivation and version handling preserve saved settings' );
-check( '0.3.1' === $options['brp_plugin_version'], 'version recorded independently of settings' );
+check( '0.4.0' === $options['brp_plugin_version'], 'version recorded independently of settings' );
 check( 'Ready for Package Setup' === Settings::configuration_status( $valid ), 'valid business and open day ready for package setup' );
 $partial = $defaults;
 $partial['business_name'] = 'Coastal Cycles';

@@ -38,6 +38,13 @@ Plugin::boot();
 Plugin::load_packages();
 verify( has_action( 'init', array( Database::class, 'install' ) ) === 20, 'schema installation registered on normal init' );
 verify( class_exists( 'WC_Product_Simple' ), 'real WooCommerce loaded' );
+// Reset disposable plugin fixtures between runs; the strict DB/host/prefix guard above is mandatory.
+foreach ( array( 'reservations', 'availability' ) as $kind ) {
+	$table = Database::table( $kind );
+	if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) ) {
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE id <> %d', $table, 'availability' === $kind ? 1 : 0 ) );
+	}
+}
 $settings = Settings::defaults();
 $settings['business_name'] = 'Verification Cycle Shop';
 $settings['preparation_buffer'] = 15;
@@ -111,7 +118,7 @@ $another = good( Reservations::create( $input ), 'second independent test reserv
 verify( $another['reference'] !== $reservation['reference'], 'references unique across reservations' );
 verify( '2030-06-16 13:00:00' === $reservation['start_utc'] && '2030-06-16 17:00:00' === $reservation['end_utc'], 'reservation UTC storage' );
 verify( '2030-06-16 12:45:00' === $reservation['occupied_start_utc'] && '2030-06-16 17:30:00' === $reservation['occupied_end_utc'], 'occupied interval incorporates snapshotted preparation and turnaround buffers' );
-verify( null === $reservation['order_id'] && null === $reservation['order_item_id'] && null === $reservation['hold_expires_at'] && null === $reservation['request_key'], 'future checkout fields remain SQL NULL' );
+verify( null === $reservation['order_id'] && null === $reservation['order_item_id'] && $reservation['hold_expires_at'] > gmdate( 'Y-m-d H:i:s' ) && ! empty( $reservation['request_key'] ), 'order fields remain NULL while manual holds now have expiry and request identity' );
 $snapshot = json_decode( $reservation['snapshot'], true );
 verify( '83.27' === $snapshot['price'] && 4 === $snapshot['duration_amount'] && 'hours' === $snapshot['duration_type'], 'regular price and duration snapshotted' );
 verify( $product_id === $snapshot['product_id'] && 'USD' === $snapshot['currency'] && 'Sample offer' === $snapshot['promotional_label'] && 'America/New_York' === $snapshot['timezone'] && $input['start'] === $snapshot['local_start'] && $input['end'] === $snapshot['local_end'], 'snapshot contains required package and local-time evidence' );
@@ -238,9 +245,12 @@ verify( ! get_option( Database::ERROR ), 'repair retry clears schema error' );
 
 class BRP_Failing_Wpdb extends wpdb {
 	public $failure = '';
+	public $reservation_inserts = 0;
 	public function query( $query ) {
 		if ( $this->failure && str_contains( $query, $this->failure ) ) { $this->last_error = 'Injected verification failure'; return false; }
-		return parent::query( $query );
+		$result = parent::query( $query );
+		if ( 1 === $result && str_starts_with( $query, 'INSERT INTO `m3_brp_reservations`' ) ) { ++$this->reservation_inserts; }
+		return $result;
 	}
 }
 $real_db = $wpdb;
@@ -248,8 +258,8 @@ $wpdb = new BRP_Failing_Wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST );
 $wpdb->set_prefix( 'm3_' );
 $wpdb->failure = 'COMMIT';
 $before_rows = $real_db->get_var( $real_db->prepare( 'SELECT COUNT(*) FROM %i', $r ) );
-bad( Reservations::create( $input ), 'commit failure reported to caller' );
-verify( $before_rows === $real_db->get_var( $real_db->prepare( 'SELECT COUNT(*) FROM %i', $r ) ), 'failed commit rolls back inserted reservation' );
+bad( Reservations::create( array_replace( $input, array( 'status' => 'confirmed' ) ) ), 'commit failure reported to caller' );
+verify( 1 === $wpdb->reservation_inserts && $before_rows === $real_db->get_var( $real_db->prepare( 'SELECT COUNT(*) FROM %i', $r ) ), 'failed commit rolls back a verified successful reservation insert' );
 $wpdb->failure = 'GET_LOCK'; update_option( Database::OPTION, '0' ); Database::install();
 verify( '0' === get_option( Database::OPTION ) && get_option( Database::ERROR ), 'lock failure never records successful schema version' );
 $wpdb->failure = 'information_schema.TABLES'; Database::install();

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 — Shared fleet availability and double-booking protection
+
+- Add one sweep-line service using peak simultaneous usage of clipped, half-open occupied intervals; include confirmed/active reservations, unexpired holds, and active dated/indefinite blocks.
+- Serialize every allocation, edit, status change, block mutation, and fleet change with the permanent InnoDB capacity-row lock. Fresh replacement checks exclude the edited row and reject conflicts without partial writes.
+- Add SQL session-token guards against WordPress reconnecting and retrying an allocation after losing its lock. Failed statements/locks/commits return a bounded retryable error and roll back; no automatic transaction retries.
+- Add 15-minute holds, server-derived request hashes and session matching, duplicate-request reuse, and capacity rechecks for expired-hold confirmation.
+- Register one five-minute WP-Cron cleanup under a registration lock; expire up to 100 rows per run. Capacity correctness is independent of cleanup timing. Remove the schedule on deactivation while retaining business data.
+- Keep active rentals allocated until staff completes them; positive captured turnaround becomes a dated quantity block at actual return.
+- Add admin-only availability testing, hold expiry display/confirmation, and clear conflict feedback while preserving package snapshots, revisions, protected fields, permissions, and nonces.
+- Verify 611 checks, including 40 real simultaneous-process concurrency checks, with unchanged schema version 1. Dedicated-site SFTP/browser acceptance remains pending.
+- Milestone 5 has not started. Public booking, checkout, Square, deposits, waivers, calendar, and emails remain deferred.
+
 ## 0.3.1 — Correct administrative reservation editing
 
 - Replace status-restricted detail forms with one full admin/shop-manager edit form for package, quantity, start/end, any valid reservation status, and a short issue code/note.

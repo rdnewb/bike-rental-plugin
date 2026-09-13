@@ -8,6 +8,8 @@ final class Database {
 	const VERSION = '1';
 	const OPTION = 'brp_db_version';
 	const ERROR = 'brp_db_error';
+	private static $token = null;
+	private static $now = null;
 
 	public static function table( $kind ) {
 		global $wpdb;
@@ -161,8 +163,8 @@ KEY block_end (end_utc)
 		}
 	}
 
-	public static function gate() {
-		if ( ! Settings::can_manage() ) { return self::error( 'permission', 'You do not have permission to manage rental data.' ); }
+	public static function gate( $cleanup = false ) {
+		if ( ! Settings::can_manage() && ! ( $cleanup && doing_action( 'brp_expire_holds' ) ) ) { return self::error( 'permission', 'You do not have permission to manage rental data.' ); }
 		if ( self::VERSION !== (string) get_option( self::OPTION, '' ) || get_option( self::ERROR, '' ) ) {
 			return self::error( 'schema', 'Rental storage is unavailable. Reload administration and resolve the database notice before saving.' );
 		}
@@ -174,26 +176,70 @@ KEY block_end (end_utc)
 		return ( is_int( $value ) || is_string( $value ) ) && preg_match( '/^[1-9][0-9]{0,9}$/D', (string) $value ) && (float) $value <= 2147483647;
 	}
 
-	/** Short, capacity-row transaction for storage validation only, not availability. */
-	public static function locked( $callback ) {
+	/** One attempt, one connection, one shared row lock. Never nest transactions. */
+	public static function locked( $callback, $cleanup = false ) {
 		global $wpdb;
-		$gate = self::gate();
+		$gate = self::gate( $cleanup );
 		if ( is_wp_error( $gate ) ) { return $gate; }
-		if ( false === $wpdb->query( 'START TRANSACTION' ) ) { return self::error( 'database', 'Could not start the rental data transaction.' ); }
+		if ( null !== self::$token ) { return self::error( 'transaction', 'Nested rental transactions are not supported.' ); }
 		$committed = false;
 		try {
+			self::$token = bin2hex( random_bytes( 16 ) );
+			if ( false === $wpdb->query( $wpdb->prepare( 'SET @brp_inventory_token = %s', self::$token ) ) ) { return self::retry_error(); }
+			if ( false === $wpdb->query( 'START TRANSACTION' ) ) { return self::retry_error(); }
 			$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d FOR UPDATE', self::table( 'availability' ), 1 ), ARRAY_A );
+			if ( $wpdb->last_error || ! self::connection_valid() ) { return self::retry_error(); }
 			if ( ! $row || 'capacity' !== $row['record_type'] || ! self::positive( $row['quantity'] ) || 1 !== (int) $row['active'] ) {
 				return self::error( 'capacity', 'Fleet capacity is missing or invalid. Resolve the database setup before saving.' );
 			}
+			self::$now = $wpdb->get_var( 'SELECT UTC_TIMESTAMP()' );
+			if ( ! self::$now || $wpdb->last_error ) { return self::retry_error(); }
 			$result = $callback( (int) $row['quantity'] );
 			if ( is_wp_error( $result ) ) { return $result; }
-			if ( false === $wpdb->query( 'COMMIT' ) ) { return self::error( 'database', 'Could not commit rental data. Reload and check the saved record before retrying.' ); }
+			if ( ! self::connection_valid() || false === $wpdb->query( 'COMMIT' ) || ! self::connection_valid() ) { return self::retry_error(); }
 			$committed = true;
 			return $result;
 		} finally {
-			if ( ! $committed ) { $wpdb->query( 'ROLLBACK' ); }
+			if ( ! $committed && false === $wpdb->query( 'ROLLBACK' ) ) { $wpdb->close(); }
+			self::$token = null;
+			self::$now = null;
 		}
+	}
+
+	public static function retry_error() { return new \WP_Error( 'brp_retry', 'Rental storage was busy or the transaction failed. Reload and retry; verify the current record before resubmitting.', array( 'retryable' => true ) ); }
+	public static function in_transaction() { return null !== self::$token && null !== self::$now; }
+	public static function now() { return self::$now; }
+	private static function connection_valid() {
+		global $wpdb;
+		return null !== self::$token && self::$token === $wpdb->get_var( 'SELECT @brp_inventory_token' );
+	}
+
+	/** Guard the SQL itself against wpdb transparently reconnecting after a lost lock. */
+	public static function insert( $kind, $data ) {
+		global $wpdb;
+		if ( ! self::in_transaction() ) { return false; }
+		$columns = array(); $values = array();
+		foreach ( $data as $key => $value ) {
+			$columns[] = $wpdb->prepare( '%i', $key );
+			$values[] = null === $value ? 'NULL' : $wpdb->prepare( '%s', $value );
+		}
+		$sql = $wpdb->prepare( 'INSERT INTO %i ', self::table( $kind ) ) . '(' . implode( ',', $columns ) . ') SELECT ' . implode( ',', $values ) . $wpdb->prepare( ' WHERE @brp_inventory_token = %s', self::$token );
+		$result = $wpdb->query( $sql );
+		$id = $wpdb->insert_id;
+		$valid = self::connection_valid();
+		$wpdb->insert_id = $id;
+		return 1 === $result && $valid ? 1 : false;
+	}
+
+	public static function update( $kind, $data, $where ) {
+		global $wpdb;
+		if ( ! self::in_transaction() ) { return false; }
+		$set = array(); $conditions = array();
+		foreach ( $data as $key => $value ) { $set[] = $wpdb->prepare( '%i = ', $key ) . ( null === $value ? 'NULL' : $wpdb->prepare( '%s', $value ) ); }
+		foreach ( $where as $key => $value ) { $conditions[] = $wpdb->prepare( '%i = %s', $key, $value ); }
+		$conditions[] = $wpdb->prepare( '@brp_inventory_token = %s', self::$token );
+		$result = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET ', self::table( $kind ) ) . implode( ',', $set ) . ' WHERE ' . implode( ' AND ', $conditions ) );
+		return self::connection_valid() ? $result : false;
 	}
 
 	public static function read( $kind, $id ) {
@@ -201,7 +247,8 @@ KEY block_end (end_utc)
 		$gate = self::gate();
 		if ( is_wp_error( $gate ) ) { return $gate; }
 		if ( ! self::positive( $id ) ) { return self::error( 'id', 'Invalid record ID.' ); }
-		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', self::table( $kind ), $id ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', self::table( $kind ), $id ) . ( self::in_transaction() ? ' FOR UPDATE' : '' ), ARRAY_A );
+		if ( $wpdb->last_error ) { return self::retry_error(); }
 		return $row ?: self::error( 'record', 'Record unavailable. Check the ID and database connection.' );
 	}
 
