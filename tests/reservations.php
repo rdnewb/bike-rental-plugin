@@ -114,7 +114,7 @@ $input = array( 'package_product_id' => $product_id, 'quantity' => 2, 'start' =>
 $reservation = good( Reservations::create( $input ), 'manual reservation created' );
 $id = $reservation['id'];
 verify( preg_match( '/^BRP-[0-9]{8}-[A-F0-9]{16}$/D', $reservation['reference'] ), 'human-readable collision-resistant reference format' );
-$another = good( Reservations::create( $input ), 'second independent test reservation created' );
+$another = good( Reservations::create( array_replace( $input, array( 'start' => '2020-06-16T09:00', 'end' => '2020-06-16T13:00' ) ) ), 'second independent started test reservation created' );
 verify( $another['reference'] !== $reservation['reference'], 'references unique across reservations' );
 verify( '2030-06-16 13:00:00' === $reservation['start_utc'] && '2030-06-16 17:00:00' === $reservation['end_utc'], 'reservation UTC storage' );
 verify( '2030-06-16 12:45:00' === $reservation['occupied_start_utc'] && '2030-06-16 17:30:00' === $reservation['occupied_end_utc'], 'occupied interval incorporates snapshotted preparation and turnaround buffers' );

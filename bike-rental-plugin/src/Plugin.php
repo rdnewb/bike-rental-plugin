@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 
-	const VERSION = '0.5.0';
+	const VERSION = '0.5.1';
 
 	/** Initialize defaults once; never replace existing configuration. */
 	public static function activate() {

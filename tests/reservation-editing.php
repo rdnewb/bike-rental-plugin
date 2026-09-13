@@ -40,7 +40,7 @@ $replacement->update_meta_data( Packages::AMOUNT, 2 );
 $replacement->update_meta_data( Packages::PROMO, 'Replacement offer' );
 $replacement_id = $replacement->save();
 verify( '91.37' === wc_get_product( $replacement_id )->get_price( 'edit' ), 'replacement fixture has real WooCommerce selling price distinct from regular price' );
-$changes = array( 'package_product_id' => $replacement_id, 'quantity' => 4, 'start' => '2030-07-20T10:00', 'end' => '2030-07-22T10:00', 'status' => 'active', 'issue_code' => 'Review pickup', 'revision' => 1 );
+$changes = array( 'package_product_id' => $replacement_id, 'quantity' => 4, 'start' => '2030-07-20T10:00', 'end' => '2030-07-22T10:00', 'status' => 'confirmed', 'issue_code' => 'Review pickup', 'revision' => 1 );
 $post = form_data( 'reservation_update', $edit_id, $changes );
 
 wp_set_current_user( 0 );
@@ -64,7 +64,7 @@ verify( 'calendar_days' === $current['duration_type'] && 2 === $current['duratio
 verify( 4 === (int) $saved['quantity'] && 4 === $current['quantity'], 'quantity persists in row and current snapshot' );
 verify( '2030-07-20 14:00:00' === $saved['start_utc'] && '2030-07-22 14:00:00' === $saved['end_utc'], 'edited start/end persist in UTC' );
 verify( '2030-07-20T10:00' === RentalTime::display( $saved['start_utc'], true ) && $changes['start'] === $current['local_start'] && $changes['end'] === $current['local_end'] && 'America/New_York' === $current['timezone'], 'edited local schedule and timezone round-trip through snapshot and database' );
-verify( 'active' === $saved['status'] && 'active' === $current['status'], 'administrative valid status correction persists in row and snapshot' );
+verify( 'confirmed' === $saved['status'] && 'confirmed' === $current['status'], 'administrative valid status correction persists in row and snapshot' );
 verify( 'Review pickup' === $saved['issue_code'], 'internal issue code persists' );
 verify( 2 === (int) $saved['revision'], 'multi-field save increments revision exactly once' );
 verify( $original['reference'] === $saved['reference'], 'reference preserved despite forged payload' );
@@ -87,10 +87,10 @@ verify( $saved === $noop, 'unchanged selected package does not silently reprice 
 $quantity_only = good( $admin->dispatch( array_replace( $noop_post, array( 'quantity' => 5 ) ) ), 'quantity-only edit accepted' );
 $quantity_snapshot = json_decode( $quantity_only['snapshot'], true );
 verify( 5 === $quantity_snapshot['quantity'] && '91.37' === $quantity_snapshot['price'] && 2 === $quantity_snapshot['duration_amount'], 'quantity-only edit refreshes state while retaining agreed package terms' );
-$status_only = good( $admin->dispatch( array_replace( $noop_post, array( 'quantity' => 5, 'status' => 'completed', 'revision' => 3 ) ) ), 'status-only admin edit accepted' );
-verify( 'completed' === json_decode( $status_only['snapshot'], true )['status'], 'status-only edit updates current snapshot' );
+$status_only = good( $admin->dispatch( array_replace( $noop_post, array( 'quantity' => 5, 'status' => 'cancelled', 'revision' => 3 ) ) ), 'status-only admin edit accepted' );
+verify( 'cancelled' === json_decode( $status_only['snapshot'], true )['status'], 'status-only edit updates current snapshot' );
 
-$valid_post = array_replace( $noop_post, array( 'quantity' => 5, 'status' => 'completed', 'revision' => 4 ) );
+$valid_post = array_replace( $noop_post, array( 'quantity' => 5, 'status' => 'cancelled', 'revision' => 4 ) );
 foreach ( array(
 	array( 'quantity' => 0 ), array( 'quantity' => -1 ), array( 'quantity' => 11 ), array( 'quantity' => '1.5' ), array( 'quantity' => array() ),
 	array( 'start' => '2030-02-30T10:00' ), array( 'start' => '2030-03-10T02:30' ), array( 'end' => $changes['start'] ), array( 'end' => '2030-07-19T10:00' ), array( 'end' => array() ),
@@ -107,10 +107,11 @@ bad( $admin->dispatch( $valid_post ), 'current selected product must still be a 
 $replacement->update_meta_data( Packages::ENABLED, 'yes' ); $replacement->update_meta_data( Packages::ACTIVE, 'yes' ); $replacement->save();
 
 wp_set_current_user( $manager_id );
-$manager_saved = good( $admin->dispatch( form_data( 'reservation_update', $edit_id, array_replace( $changes, array( 'quantity' => 5, 'status' => 'completed', 'issue_code' => 'Manager correction', 'revision' => 4 ) ) ) ), 'authorized real shop manager saves reservation edit' );
+$manager_saved = good( $admin->dispatch( form_data( 'reservation_update', $edit_id, array_replace( $changes, array( 'quantity' => 5, 'status' => 'cancelled', 'issue_code' => 'Manager correction', 'revision' => 4 ) ) ) ), 'authorized real shop manager saves reservation edit' );
 wp_set_current_user( 1 );
 foreach ( Reservations::STATUSES as $status ) {
-	$manager_saved = good( Reservations::update( $edit_id, array_replace( $changes, array( 'quantity' => 5, 'status' => $status, 'issue_code' => 'Manager correction' ) ), $manager_saved['revision'] ), 'admin correction supports existing status: ' . $status );
+	$status_schedule = in_array( $status, array( 'active', 'completed' ), true ) ? array( 'start' => '2020-07-20T10:00', 'end' => '2020-07-22T10:00' ) : array();
+	$manager_saved = good( Reservations::update( $edit_id, array_replace( $changes, $status_schedule, array( 'quantity' => 5, 'status' => $status, 'issue_code' => 'Manager correction' ) ), $manager_saved['revision'] ), 'admin correction supports existing status with valid timing: ' . $status );
 }
 $cleared = good( Reservations::update( $edit_id, array_replace( $changes, array( 'quantity' => 5, 'status' => 'expired', 'issue_code' => '' ) ), $manager_saved['revision'] ), 'issue code can be cleared on expired reservation' );
 verify( null === $cleared['issue_code'], 'empty issue code stored as NULL' );

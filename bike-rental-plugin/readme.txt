@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.5.0
+Stable tag: 0.5.1
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -25,7 +25,10 @@ All inventory changes lock the same permanent InnoDB fleet capacity row before v
 Holds expire after 15 minutes; duplicate request keys reuse their existing result.
 Five-minute WP-Cron cleanup marks at most 100 expired holds per run. Availability ignores
 expired timestamps even before cleanup. Deactivation removes the recurring schedule.
-Active rentals remain allocated until completion; actual-return turnaround uses dated blocks.
+Active rentals use their scheduled occupied interval until its end has passed; only then
+do they block indefinitely until completion. Activation before the rental start is rejected.
+Completed means ended or actually returned; an Active rental may be returned early.
+Actual-return turnaround uses dated blocks.
 Bike Rentals > Availability test displays capacity, peak usage, available quantity, and fit.
 
 The public form stops at a temporary hold and a development-only next-step message.
@@ -61,6 +64,12 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.5.1 =
+* Bound in-progress Active rentals to their occupied interval; extend only overdue rentals.
+* Reject early activation across creation, admin edits, and status helpers.
+* Validate completion timing while allowing actual early returns from Active.
+* Preserve shared locks, revisions, return turnaround, and schema 1.
 
 = 0.5.0 =
 * Add public booking shortcode, scoped mobile layout, loading/error states, and hold summary.

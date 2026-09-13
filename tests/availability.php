@@ -36,7 +36,7 @@ verify( 10 === capacity_at()['peak_existing_usage'], 'nested and partially overl
 bad( Reservations::create( booking( 1 ) ), 'overlapping manual create cannot exceed fleet' );
 good( Reservations::cancel( $nested['id'], 1 ), 'cancellation releases allocation' );
 verify( 4 === capacity_at()['available_quantity'], 'cancelled row is ignored without deleting it' );
-$complete = good( Reservations::create( booking( 10, '2035-06-15T09:00', '2035-06-15T13:00', 'completed' ) ), 'completed fixture does not allocate inventory' );
+$complete = good( Reservations::create( booking( 10, '2020-06-15T09:00', '2020-06-15T13:00', 'completed' ) ), 'ended completed fixture does not allocate inventory' );
 verify( 4 === capacity_at()['available_quantity'], 'completed status ignored' );
 $block = good( Fleet::save_block( maintenance( 2 ) ), 'maintenance shares same pool' );
 verify( 2 === capacity_at()['available_quantity'], 'active block contributes quantity' );

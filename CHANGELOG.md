@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1 — Active reservation timing correction
+
+- Limit in-progress Active reservations to their scheduled occupied interval. Only after the occupied end (including turnaround) has passed do they become open-ended until staff records completion. Use the same locked database UTC clock for availability reads and proposed allocations.
+- Reject Active creation, status changes, and schedule edits before the scheduled rental start with a clear validation message. Preparation time does not permit early activation.
+- Reject premature Completed records; Active to Completed records an actual return, including early returns. Preserve actual-return turnaround blocks and no-op/revision protection.
+- Explain statuses in administration and document handling of legacy future Active records and overdue conflicts with existing bookings. No automatic record migration, schema change, or Milestone 6 work.
+- Pass 744 automated checks, including 54 new Active timing checks and all 45 real multiprocess concurrency checks; all 32 PHP files pass syntax validation. Test-site browser/Divi verification remains pending deployment.
+
 ## 0.5.0 — Public rental selection and temporary guest holds
 
 - Add `[bike_rental_booking]` with scoped native controls, loading/error announcements, live quantity limits, calculated pickup, and temporary-hold receipt/countdown/refresh recovery.

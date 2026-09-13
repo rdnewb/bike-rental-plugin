@@ -99,7 +99,7 @@ For reproduction, use the strict disposable environment guards documented in [M4
 
 ## Known limits and handoff
 
-No local automated failures remain. The host/version matrix and visual/Divi acceptance above are pending. JavaScript and first-party cookies are required; storage improves refresh recovery. Public cancellation/replacement of a live hold is deferred; wait for expiry before starting another. Prices are per-bike stored selling values formatted by WooCommerce, with no checkout tax/deposit computation. Package/settings data are staged on the server before allocation; catalog changes do not rewrite saved snapshots. Legacy NULL-expiry holds and conservative active-until-return behavior remain unchanged.
+No local automated failures remained for 0.5.0. The host/version matrix and visual/Divi acceptance above are pending. JavaScript and first-party cookies are required; storage improves refresh recovery. Public cancellation/replacement of a live hold is deferred; wait for expiry before starting another. Prices are per-bike stored selling values formatted by WooCommerce, with no checkout tax/deposit computation. Package/settings data are staged on the server before allocation; catalog changes do not rewrite saved snapshots. Legacy NULL-expiry holds remain unchanged. The 0.5.0 Active policy is superseded by [0.5.1 timing rules and verification](active-reservations-verification.md).
 
 New runtime files: `src/BookingSchedule.php`, `src/GuestSession.php`, `src/PublicBooking.php`, `src/booking-form.php`, `assets/js/booking.js`, `assets/css/booking.css`.
 

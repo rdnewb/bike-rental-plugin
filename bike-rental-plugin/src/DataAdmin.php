@@ -101,6 +101,7 @@ final class DataAdmin {
 		echo '<p><label>' . esc_html__( 'Status', 'bike-rental-plugin' ) . '<br><select name="status">';
 		foreach ( $allowed as $status ) { echo '<option value="' . esc_attr( $status ) . '"'; selected( $value, $status ); echo '>' . esc_html( $status ) . '</option>'; }
 		echo '</select></label></p>';
+		echo '<p class="description">' . esc_html__( 'Hold: temporary pre-booking. Confirmed: booked, not started. Active: bikes picked up, allowed only at or after the scheduled start. Completed: rental ended or bikes actually returned; choosing Completed for an Active rental records the return, including an early return. Cancelled / Expired: no inventory claim.', 'bike-rental-plugin' ) . '</p>';
 	}
 	private function end_form( $label ) { submit_button( $label ); echo '</form>'; }
 	private function pagination( $listing, $page ) {
@@ -135,7 +136,7 @@ final class DataAdmin {
 
 	public function availability() {
 		if ( ! $this->begin( __( 'Availability test', 'bike-rental-plugin' ) ) ) { return; }
-		echo '<p>' . esc_html__( 'Enter the occupied interval, including preparation and turnaround. This result is a point-in-time check; saving a reservation rechecks under the inventory lock. Active rentals remain allocated until completed. Completed returns with turnaround create a temporary block.', 'bike-rental-plugin' ) . '</p>';
+		echo '<p>' . esc_html__( 'Enter the occupied interval, including preparation and turnaround. This result is a point-in-time check; saving a reservation rechecks under the inventory lock. Active rentals use their scheduled occupied interval until its end has passed, then block indefinitely until completed. Completed returns with turnaround create a temporary block.', 'bike-rental-plugin' ) . '</p>';
 		$this->form( 'availability_test' );
 		$this->field( 'start', __( 'Occupied start (local)', 'bike-rental-plugin' ), '', 'datetime-local' );
 		$this->field( 'end', __( 'Occupied end (local)', 'bike-rental-plugin' ), '', 'datetime-local' );

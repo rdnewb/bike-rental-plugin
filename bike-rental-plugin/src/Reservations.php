@@ -16,6 +16,22 @@ final class Reservations {
 	public static function reference() { return 'BRP-' . gmdate( 'Ymd' ) . '-' . strtoupper( bin2hex( random_bytes( 8 ) ) ); }
 	public static function read( $id ) { return Database::read( 'reservations', $id ); }
 
+	/** Validate the proposed schedule under the lock, including administrative corrections. */
+	private static function validate_status_time( $state, $previous = null ) {
+		if ( 'active' === $state['status'] && $state['start_utc'] > Database::now() ) {
+			return Database::error( 'active_start', 'This reservation cannot be marked Active before its scheduled start time.' );
+		}
+		if ( 'completed' === $state['status'] ) {
+			// Active -> completed records staff confirmation of return, including early return.
+			$returned = $previous && 'active' === $previous['status'];
+			$retained_return = $previous && 'completed' === $previous['status'] && $state['start_utc'] === $previous['start_utc'] && $state['end_utc'] === $previous['end_utc'];
+			if ( $state['start_utc'] > Database::now() || ( $state['end_utc'] > Database::now() && ! $returned && ! $retained_return ) ) {
+				return Database::error( 'completed_time', 'This reservation cannot be marked Completed before it has ended or an Active rental has been returned.' );
+			}
+		}
+		return true;
+	}
+
 	private static function package( $id, $require_active = true ) {
 		if ( ! Database::positive( $id ) ) { return Database::error( 'package', 'Select a valid rental package.' ); }
 		if ( ! function_exists( 'wc_get_product' ) || ! class_exists( Packages::class ) ) { return Database::error( 'woocommerce', 'Activate WooCommerce to create or edit reservation packages. Existing rental data remains available.' ); }
@@ -118,6 +134,8 @@ final class Reservations {
 				if ( $other ) { return Database::error( 'existing_hold', 'You already have a temporary reservation. Wait for it to expire before starting another.' ); }
 			}
 			if ( $data['quantity'] > $capacity ) { return Database::error( 'quantity', 'Reservation quantity must be at least 1 and no greater than total fleet.' ); }
+			$status_time = self::validate_status_time( $data );
+			if ( is_wp_error( $status_time ) ) { return $status_time; }
 			$available = Availability::allocation( $capacity, $data );
 			if ( is_wp_error( $available ) ) { return $available; }
 			$data['created_at'] = Database::now(); $data['updated_at'] = Database::now();
@@ -180,13 +198,15 @@ final class Reservations {
 	private static function write_revision( $row, $data, $expected_revision, $snapshot, $capacity ) {
 		global $wpdb;
 		if ( ! Database::positive( $expected_revision ) || (int) $expected_revision !== (int) $row['revision'] ) { return Database::error( 'revision', 'The reservation was changed elsewhere. Reload the detail page before saving again.' ); }
+		$state = array_replace( $row, $data );
+		$status_time = self::validate_status_time( $state, $row );
+		if ( is_wp_error( $status_time ) ) { return $status_time; }
 		$changed = false;
 		foreach ( $data as $key => $value ) { if ( (string) $row[ $key ] !== (string) $value ) { $changed = true; } }
 		if ( ! $changed ) { return $row; }
 		// Refresh only the current agreed state. No client-supplied JSON or order writes.
 		$snapshot = $snapshot ?? json_decode( $row['snapshot'], true );
 		if ( ! is_array( $snapshot ) ) { return Database::error( 'snapshot', 'The stored package snapshot needs review before editing.' ); }
-		$state = array_replace( $row, $data );
 		if ( $state['quantity'] > $capacity && ! in_array( $state['status'], array( 'cancelled', 'expired', 'completed' ), true ) ) { return Database::error( 'quantity', 'Reservation quantity exceeds total fleet.' ); }
 		if ( 'hold' === $state['status'] && 'hold' !== $row['status'] ) {
 			$data['hold_expires_at'] = RentalTime::shift( Database::now(), self::HOLD_MINUTES );

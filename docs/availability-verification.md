@@ -1,5 +1,7 @@
 # Milestone 4 verification — 0.4.0
 
+Historical release report: its indefinite Active policy is superseded by [0.5.1 Active timing rules and verification](active-reservations-verification.md).
+
 Release: **0.4.0**. Database schema: **1**, unchanged. Work is on **main**. The user confirmed Milestones 1–3 on the dedicated WordPress test site; this report covers local 0.4.0 implementation and verification. No remote deployment or browser acceptance is claimed. Milestone 5 has not started.
 
 ## Availability contract

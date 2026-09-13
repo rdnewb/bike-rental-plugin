@@ -6,6 +6,11 @@ defined( 'ABSPATH' ) || exit;
 final class Availability {
 	const FOREVER = '9999-12-31 23:59:59';
 
+	/** Use the same locked database clock for reads and proposed allocations. */
+	private static function reservation_end( $row ) {
+		return 'active' === $row['status'] && $row['occupied_end_utc'] < Database::now() ? self::FOREVER : $row['occupied_end_utc'];
+	}
+
 	public static function valid_utc( $value ) {
 		if ( ! is_string( $value ) || ! preg_match( '/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/D', $value ) || (int) substr( $value, 0, 4 ) < 1000 ) { return false; }
 		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d H:i:s', $value, new \DateTimeZone( 'UTC' ) );
@@ -27,8 +32,8 @@ final class Availability {
 		if ( ! self::valid_utc( $start ) || ! self::valid_utc( $end ) || $end <= $start ) { return Database::error( 'interval', 'Enter a valid UTC interval with end after start.' ); }
 		if ( ! Database::positive( $quantity ) || ( null !== $reservation_id && ! Database::positive( $reservation_id ) ) || ( null !== $block_id && ! Database::positive( $block_id ) ) ) { return Database::error( 'quantity', 'Invalid quantity or exclusion ID.' ); }
 		$reservations = $wpdb->get_results( $wpdb->prepare(
-			'SELECT id,quantity,occupied_start_utc,occupied_end_utc,status FROM %i WHERE id <> %d AND occupied_start_utc < %s AND (status = %s OR occupied_end_utc > %s) AND (status IN (%s,%s) OR (status = %s AND hold_expires_at > %s)) FOR UPDATE',
-			Database::table( 'reservations' ), $reservation_id ?? 0, $end, 'active', $start, 'confirmed', 'active', 'hold', Database::now()
+			'SELECT id,quantity,occupied_start_utc,occupied_end_utc,status FROM %i WHERE id <> %d AND occupied_start_utc < %s AND ((status = %s AND occupied_end_utc < %s) OR occupied_end_utc > %s) AND (status IN (%s,%s) OR (status = %s AND hold_expires_at > %s)) FOR UPDATE',
+			Database::table( 'reservations' ), $reservation_id ?? 0, $end, 'active', Database::now(), $start, 'confirmed', 'active', 'hold', Database::now()
 		), ARRAY_A );
 		if ( ! is_array( $reservations ) || $wpdb->last_error ) { return Database::retry_error(); }
 		$blocks = $wpdb->get_results( $wpdb->prepare(
@@ -37,7 +42,7 @@ final class Availability {
 		), ARRAY_A );
 		if ( ! is_array( $blocks ) || $wpdb->last_error ) { return Database::retry_error(); }
 		$intervals = array();
-		foreach ( $reservations as $row ) { $intervals[] = array( $row['occupied_start_utc'], 'active' === $row['status'] ? self::FOREVER : $row['occupied_end_utc'], $row['quantity'] ); }
+		foreach ( $reservations as $row ) { $intervals[] = array( $row['occupied_start_utc'], self::reservation_end( $row ), $row['quantity'] ); }
 		foreach ( $blocks as $row ) { $intervals[] = array( $row['start_utc'], $row['end_utc'] ?? self::FOREVER, $row['quantity'] ); }
 		$events = array();
 		foreach ( $intervals as $interval ) {
@@ -55,7 +60,7 @@ final class Availability {
 
 	public static function allocation( $capacity, $row, $exclude = null ) {
 		if ( ! in_array( $row['status'], array( 'confirmed', 'active' ), true ) && ! ( 'hold' === $row['status'] && ( $row['hold_expires_at'] ?? '' ) > Database::now() ) ) { return true; }
-		$result = self::evaluate( $capacity, $row['occupied_start_utc'], 'active' === $row['status'] ? null : $row['occupied_end_utc'], $row['quantity'], $exclude );
+		$result = self::evaluate( $capacity, $row['occupied_start_utc'], self::reservation_end( $row ), $row['quantity'], $exclude );
 		return is_wp_error( $result ) ? $result : ( $result['fits'] ? true : self::conflict( $result ) );
 	}
 
