@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.5.1
+Stable tag: 0.5.2
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -12,6 +12,10 @@ Reusable bicycle-rental settings, packages, reservations, and shared fleet avail
 Milestone 4 adds authoritative shared fleet availability and double-booking protection.
 Milestone 5 adds [bike_rental_booking] for public package/date/time/quantity selection,
 calculated pickup, current availability, and protected guest holds with expiry display.
+Calendar-day rentals end on start date + (days - 1), at the configured local pickup time.
+Only start and final days must be open; intermediate days may be closed.
+Empty start-time results explain schedule failures, and settings warn about pickup times
+outside final-day operating hours. Detailed diagnostics are restricted to authorized PHP callers.
 Configure shared fleet quantity, add/edit/disable unavailability blocks, and create
 manual test reservations with current package snapshots and revision checks.
 Full reservation editing supports package, quantity, start/end, status,
@@ -64,6 +68,12 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.5.2 =
+* Preserve scheduling rejection messages instead of reporting every empty time list as unavailable inventory.
+* Add protected candidate diagnostics, including final-day pickup and buffer-only conflicts.
+* Warn administrators about calendar pickup times outside operating hours; clarify inclusive dates and AM/PM.
+* Verify real calendar package metadata, 3/5-day endpoints, full start-day candidates, closed intermediate days, timezone changes, and occupied buffers. Keep schema 1 and Milestone 6 deferred.
 
 = 0.5.1 =
 * Bound in-progress Active rentals to their occupied interval; extend only overdue rentals.

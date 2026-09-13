@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.2 — Calendar-day rejection diagnostics and settings guidance
+
+- Fix the public start-time endpoint discarding all scheduling errors and presenting configuration failures as generic unavailable inventory. Preserve safe final-day/notice/horizon explanations when no candidate has a valid schedule.
+- Add a capability-protected PHP diagnostic method with candidate rejection reasons and separate buffer-only capacity diagnostics. No public debug parameter, new REST route, or automatic noisy logging.
+- Warn administrators when the configured calendar-day pickup time falls outside an open day's operating hours, and explain final included day and AM/PM entry. Reject unknown duration metadata explicitly in the scheduling helper.
+- Preserve the already-correct start + (days - 1) calculation, final-day-only pickup validation, open endpoints, closed intermediate days, and separate occupied buffers. No hourly scheduling policy change or schema change.
+- Reproduce 20 valid calendar starts at 17:00 pickup versus zero at 05:00 pickup with 08:00–18:00 hours; exact deployed-site settings remain unconfirmed. See the calendar verification report before attributing the live issue to that configuration.
+- Pass 809 automated checks, including 65 new calendar checks and all 744 prior checks. All 33 PHP files pass syntax validation. No Milestone 6 work or remote deployment.
+
 ## 0.5.1 — Active reservation timing correction
 
 - Limit in-progress Active reservations to their scheduled occupied interval. Only after the occupied end (including turnaround) has passed do they become open-ended until staff records completion. Use the same locked database UTC clock for availability reads and proposed allocations.

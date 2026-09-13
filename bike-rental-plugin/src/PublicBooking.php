@@ -81,29 +81,59 @@ final class PublicBooking {
 		$today = new \DateTimeImmutable( 'today', wp_timezone() );
 		return array( 'valid' => true, 'packages' => $items, 'min_date' => $today->format( 'Y-m-d' ), 'max_date' => $today->modify( '+' . $settings['booking_horizon'] . ' days' )->format( 'Y-m-d' ), 'timezone' => wp_timezone_string() );
 	}
-	private static function times( $input ) {
+	/** Protected PHP/test diagnostic entry point. Deliberately not a REST route or flag. */
+	public static function diagnose_times( $input ) {
+		if ( ! Settings::can_manage() ) { return Database::error( 'permission', 'You do not have permission to diagnose rental availability.' ); }
+		return self::times( $input, true );
+	}
+	private static function times( $input, $diagnose = false ) {
 		$package = BookingSchedule::package( $input['package_id'] ?? null ); $settings = BookingSchedule::settings();
 		if ( is_wp_error( $package ) ) { return $package; }
 		if ( is_wp_error( $settings ) ) { return $settings; }
-		return Database::locked( static function ( $capacity ) use ( $package, $settings, $input ) {
+		return Database::locked( static function ( $capacity ) use ( $package, $settings, $input, $diagnose ) {
 			$date = $input['date'] ?? null;
 			$noon = RentalTime::from_local( is_string( $date ) ? $date . 'T12:00' : null );
-			if ( is_wp_error( $noon ) ) { return BookingSchedule::error( 'Please select a valid date.' ); }
+			if ( is_wp_error( $noon ) ) { return BookingSchedule::error( 'Please select a valid date.', 'invalid_start_time' ); }
 			$day = strtolower( ( new \DateTimeImmutable( $date . ' 12:00', wp_timezone() ) )->format( 'l' ) );
 			$hours = $settings['weekly_hours'][ $day ];
-			if ( ! $hours['open'] ) { return BookingSchedule::error( 'Please choose an open start day.' ); }
+			if ( ! $hours['open'] ) { return BookingSchedule::error( 'Please choose an open start day.', 'closed_start_day' ); }
 			$minutes = static fn( $value ) => (int) substr( $value, 0, 2 ) * 60 + (int) substr( $value, 3, 2 );
-			$times = array();
+			$times = array(); $schedule_errors = array(); $evaluated = 0; $candidates = array();
 			for ( $minute = $minutes( $hours['start'] ); $minute < $minutes( $hours['end'] ); $minute += $settings['time_increment'] ) {
 				$time = sprintf( '%02d:%02d', intdiv( $minute, 60 ), $minute % 60 );
 				// calculate() also checks the opening-relative increment and both endpoints.
 				$schedule = BookingSchedule::calculate( $package, $input['date'] ?? null, $time, $settings, Database::now() );
-				if ( is_wp_error( $schedule ) ) { continue; }
+				if ( is_wp_error( $schedule ) ) {
+					$reason = $schedule->get_error_data()['reason'] ?? 'invalid_schedule';
+					$schedule_errors[ $reason ] = $schedule;
+					if ( $diagnose ) { $candidates[] = array( 'time' => $time, 'reason' => $reason, 'message' => $schedule->get_error_message() ); }
+					continue;
+				}
+				++$evaluated;
 				$usage = Availability::evaluate( $capacity, $schedule['occupied_start_utc'], $schedule['occupied_end_utc'] );
 				if ( is_wp_error( $usage ) ) { return $usage; }
 				if ( $usage['fits'] ) { $times[] = array( 'time' => $time, 'available_quantity' => $usage['available_quantity'] ); }
+				if ( $diagnose ) {
+					$reason = $usage['fits'] ? 'available' : 'availability';
+					if ( ! $usage['fits'] && ( $settings['preparation_buffer'] || $settings['turnaround_buffer'] ) ) {
+						$unbuffered = Availability::evaluate( $capacity, $schedule['start_utc'], $schedule['end_utc'] );
+						if ( is_wp_error( $unbuffered ) ) { return $unbuffered; }
+						if ( $unbuffered['fits'] ) { $reason = 'buffer_conflict'; }
+					}
+					$candidates[] = array( 'time' => $time, 'reason' => $reason, 'schedule' => $schedule, 'available_quantity' => $usage['available_quantity'] );
+				}
 			}
-			return array( 'valid' => true, 'times' => $times, 'message' => $times ? 'Choose a start time.' : 'No available start times for this date. Choose another date.' );
+			$message = $times ? 'Choose a start time.' : 'No available start times for this date. Choose another date.';
+			// Configuration/scheduling failures must not masquerade as sold-out inventory.
+			if ( ! $times && ! $evaluated && $schedule_errors ) {
+				$failure = $schedule_errors['closed_final_day'] ?? $schedule_errors['pickup_outside_final_hours'] ?? reset( $schedule_errors );
+				$message = $failure->get_error_message();
+			}
+			$result = array( 'valid' => true, 'times' => $times, 'message' => $message );
+			if ( $diagnose ) {
+				$result['diagnostics'] = array( 'date' => $date, 'duration_type' => $package['duration_type'], 'duration_amount' => $package['duration_amount'], 'pickup_time' => $settings['pickup_time'], 'timezone' => wp_timezone_string(), 'database_utc' => Database::now(), 'candidates' => $candidates );
+			}
+			return $result;
 		} );
 	}
 	private static function availability( $input ) {

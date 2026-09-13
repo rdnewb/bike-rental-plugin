@@ -2,7 +2,7 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current release: 0.5.1 — Milestone 5 corrective update for Active reservation timing.**
+**Current release: 0.5.2 — Milestone 5 corrective update for calendar-day rejection reporting.**
 
 Develop and validate test releases on the separate WordPress test site. Production installation follows approval of the completed plugin; no site URLs or credentials belong in source control.
 
@@ -107,7 +107,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` remains **1**, separate from plugin version **0.5.1**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.5.2**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.
@@ -129,6 +129,8 @@ The single sweep clips relevant occupied intervals to the request, sorts quantit
 Active is allowed only at or after the scheduled rental start, including on direct creation, status helpers, and administrative schedule edits. Preparation does not allow early activation. Completed may record an ended rental, or an actual return from Active before scheduled end. Staff selecting Completed for an Active rental attests that the bikes were returned. Premature Completed creation/corrections are rejected; early-return completion retries preserve the saved result. At actual completion, captured turnaround minutes become a dated block starting at database UTC now; zero buffer releases immediately. Completed rows themselves are ignored. These controls do not establish payment/waiver readiness.
 
 Pre-upgrade future Active records are retained and treated as bounded scheduled claims; correct their status to Confirmed in administration. No automatic migration or historical/order rewrite occurs. See the [0.5.1 verification and manual checklist](docs/active-reservations-verification.md).
+
+Calendar-day packages use the final included day: Monday + 3 calendar days ends Wednesday at the configured pickup time. Start candidates come from the start day's hours; only the start and final days must be open. Empty time lists now explain schedule failures instead of hiding them as inventory shortages. Settings warn when pickup time is outside an open day's hours. A protected PHP diagnostic helper reports per-candidate reasons, including buffer-only conflicts, without exposing debug details through REST. See [calendar-day investigation, diagnostics, and browser checklist](docs/calendar-booking-verification.md). No automatic operating-hours or pickup-time changes are made.
 
 `Reservations::create_hold($input, $request_key, $session_hash)` uses the same local package/quantity/start/end input as manual creation. The server computes the intent hash. Same key, intent, and session return the existing result without renewing expiry; changed intent/session is rejected. Manual forms use a stable request key and hashed administrator ID. Public requests use `create_booking_hold()` after guest-session validation and server endpoint calculation; payment integration remains deferred.
 
@@ -212,7 +214,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Package/foundation checks failed' }
 git diff --check
 ```
 
-Version 0.5.1 verification covers **744 checks**: 208 foundation/package, 159 storage, 96 editing, 98 availability, 54 Active timing policy, 45 multiprocess concurrency (including anonymous REST holds), 74 public-booking integration, and 10 missing-WooCommerce checks. All 32 PHP files pass syntax validation. See [current verification and test-site checklist](docs/active-reservations-verification.md). No live deployment or browser/Divi acceptance is claimed for this correction. Historical reports retain their original counts and limitations: [0.5.0 public booking](docs/public-booking-verification.md), [0.4.0](docs/availability-verification.md), [0.3.1](docs/reservation-editing-verification.md), [0.3.0](docs/reservations-verification.md), [0.2.0](docs/packages-verification.md), [foundation](docs/verification.md).
+Version 0.5.2 verification covers **809 checks**: 208 foundation/package, 159 storage, 96 editing, 98 availability, 54 Active timing policy, 45 multiprocess concurrency (including anonymous REST holds), 74 public-booking integration, 65 calendar-booking checks, and 10 missing-WooCommerce checks. All 33 PHP files pass syntax validation. See [current investigation, verification, and test-site checklist](docs/calendar-booking-verification.md). The deployed site's specific calendar rejection trigger still requires its actual configuration; no live deployment or browser/Divi acceptance is claimed. Historical reports retain their original counts and limitations: [0.5.1 Active policy](docs/active-reservations-verification.md), [0.5.0 public booking](docs/public-booking-verification.md), [0.4.0](docs/availability-verification.md), [0.3.1](docs/reservation-editing-verification.md), [0.3.0](docs/reservations-verification.md), [0.2.0](docs/packages-verification.md), [foundation](docs/verification.md).
 
 ## SFTP update and rollback checklist
 
