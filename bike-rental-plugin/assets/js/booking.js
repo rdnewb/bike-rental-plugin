@@ -47,6 +47,10 @@
             const p = document.createElement('p'); p.append(document.createTextNode('Price per bike: '));
             const span = document.createElement('span'); span.innerHTML = item.price_html; p.append(span); target.append(p);
         };
+        const timeLabel = (value) => {
+            const [hour, minute] = value.split(':');
+            return `${Number(hour) % 12 || 12}:${minute} ${Number(hour) < 12 ? 'AM' : 'PM'}`;
+        };
         const dateLabel = (value) => value.replace('T', ' ');
         const resetSelection = () => {
             generation++; selection = null; submit.disabled = true; fields.quantity.disabled = true;
@@ -83,7 +87,7 @@
                 const data = await api('times', { package_id: fields.package_id.value, date: fields.date.value });
                 if (current !== generation) return;
                 fields.time.replaceChildren(new Option('Select a start time', ''));
-                data.times.forEach((item) => fields.time.add(new Option(item.time, item.time)));
+                data.times.forEach((item) => fields.time.add(new Option(timeLabel(item.time), item.time)));
                 fields.time.disabled = !data.times.length; message(data.message);
             } catch (error) { if (current === generation) message(error.message); }
             finally { if (current === generation) root.removeAttribute('aria-busy'); }

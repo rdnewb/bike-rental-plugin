@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.5.3
+Stable tag: 0.5.4
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -70,6 +70,10 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.5.4 =
+* Show public start-time dropdown labels in 12-hour AM/PM format, retaining original booking values.
+* Refresh the booking asset version. No scheduling or schema changes.
 
 = 0.5.3 =
 * Apply delivery/start-hour validation only to the start of calendar-day rentals.

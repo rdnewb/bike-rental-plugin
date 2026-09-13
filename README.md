@@ -2,7 +2,7 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current release: 0.5.3 — Generic calendar-day duration and independent business pickup.**
+**Current release: 0.5.4 — 12-hour start-time dropdown.**
 
 Develop and validate test releases on the separate WordPress test site. Production installation follows approval of the completed plugin; no site URLs or credentials belong in source control.
 
@@ -32,6 +32,8 @@ Develop and validate test releases on the separate WordPress test site. Producti
 ## Public booking form
 
 Insert `[bike_rental_booking]` into a normal WordPress page or a Divi shortcode-capable area. Configure open hours first; all-closed defaults offer no start times. JavaScript and first-party cookies are required. No custom Divi module or calendar library is used. Assets are scoped to `.brp-booking` and load only when the shortcode renders, including late-rendered styles.
+
+Start-time dropdown labels use 12-hour AM/PM display (for example, `1:30 PM`); option values remain `HH:MM` for existing booking validation.
 
 Public packages and holds use the **current WooCommerce selling price**, formatted by `wc_price()` and labeled per bike. The existing internal package reader and manual creation retain their regular-price contract. No checkout tax or deposit calculation occurs. The hold preserves the selected price, package metadata, quantity, local endpoints, timezone, and occupied buffers.
 
@@ -107,7 +109,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` remains **1**, separate from plugin version **0.5.3**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.5.4**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.

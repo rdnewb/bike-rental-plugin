@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.4 — 12-hour start-time dropdown
+
+- Display public start-time options as 12-hour labels with AM/PM, including correct midnight/noon labels. Keep the submitted `HH:MM` values and scheduling behavior unchanged.
+- Bump the asset version to refresh the booking script after deployment. Schema remains 1; no Milestone 6 work.
+- Verify JavaScript syntax and seven actual option-label/value cases, including midnight/noon; all 208 foundation/package checks pass. After SFTP update, select a package/date and confirm AM/PM labels in the browser. Full inventory suites were not rerun for this display-only change.
+
 ## 0.5.3 — Generic calendar duration and independent pickup
 
 - Apply final-day operating-hour checks only to hourly packages. Calendar-day pickup uses the configured business pickup time regardless of whether that day is open for new deliveries or that time falls within delivery hours.
