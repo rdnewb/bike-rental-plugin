@@ -62,25 +62,25 @@ $closed = $settings; $closed['weekly_hours']['tuesday']['open'] = 0;
 calendar_check( 20 === count( calendar_times( $input, $closed )['times'] ), 'calendar rental may cross closed intermediate Tuesday' );
 $closed['weekly_hours']['wednesday']['open'] = 0;
 $rejected = calendar_times( $input, $closed );
-calendar_check( array() === $rejected['times'] && 'closed_final_day' === $rejected['diagnostics']['candidates'][0]['reason'], 'closed final Wednesday rejects without extending to Thursday' );
-calendar_check( str_contains( calendar_request( 'times', $input )->get_data()['message'], 'closed day' ), 'public empty-time response preserves safe closed-final-day explanation' );
+calendar_check( 20 === count( $rejected['times'] ) && $end_date . 'T17:00' === $rejected['diagnostics']['candidates'][0]['schedule']['local_end'], 'closed final Wednesday allows business pickup without extending to Thursday' );
+calendar_check( 20 === count( calendar_request( 'times', $input )->get_data()['times'] ), 'public starts remain offered when final day is closed for deliveries' );
 $closed = $settings; $closed['weekly_hours']['monday']['open'] = 0;
 calendar_reason( calendar_times( $input, $closed ), 'closed_start_day', 'closed start day diagnostic' );
 foreach ( array( '07:30', '18:30', '05:00' ) as $pickup ) {
 	$bad = $settings; $bad['pickup_time'] = $pickup;
 	$rejected = calendar_times( $input, $bad );
-	calendar_check( array() === $rejected['times'] && array( 'pickup_outside_final_hours' ) === array_values( array_unique( array_column( $rejected['diagnostics']['candidates'], 'reason' ) ) ), 'every candidate explains pickup outside final-day hours: ' . $pickup );
-	calendar_check( str_contains( calendar_request( 'times', $input )->get_data()['message'], 'outside pickup hours' ), 'public failure no longer silently looks sold out: ' . $pickup );
+	calendar_check( 20 === count( $rejected['times'] ) && array( 'available' ) === array_values( array_unique( array_column( $rejected['diagnostics']['candidates'], 'reason' ) ) ), 'business pickup outside final-day delivery hours is valid: ' . $pickup );
+	calendar_check( 20 === count( calendar_request( 'times', $input )->get_data()['times'] ), 'public starts remain offered with independent pickup: ' . $pickup );
 }
 ob_start(); ( new Settings() )->render(); $settings_html = ob_get_clean();
-calendar_check( str_contains( $settings_html, 'Calendar-day pickup time is outside operating hours on:' ) && str_contains( $settings_html, 'Wednesday' ), 'admin settings visibly warn about pickup-hours mismatch' );
+calendar_check( ! str_contains( $settings_html, 'Calendar-day pickup time is outside operating hours on:' ) && str_contains( $settings_html, 'independently of final-day delivery/start hours' ), 'admin explains independent pickup without incorrect closed-hours warning' );
 calendar_check( str_contains( $settings_html, 'Check AM/PM' ) && ! str_contains( $settings_html, 'Public booking is not available' ), 'pickup field explains inclusive final day and AM/PM' );
 for ( $offset = 0; $offset < 7; ++$offset ) {
 	$weekday_input = array_replace( $input, array( 'date' => ( new DateTimeImmutable( $date, wp_timezone() ) )->modify( '+' . $offset . ' days' )->format( 'Y-m-d' ) ) );
 	$bad = $settings; $bad['pickup_time'] = '05:00';
 	$rejected = calendar_times( $weekday_input, $bad );
-	calendar_check( array() === $rejected['times'] && 'pickup_outside_final_hours' === $rejected['diagnostics']['candidates'][0]['reason'], 'AM pickup mismatch reproduces zero starts for weekday offset ' . $offset );
-	calendar_check( 20 === count( calendar_times( $weekday_input, $settings )['times'] ), 'valid PM pickup restores calendar starts for weekday offset ' . $offset );
+	calendar_check( 20 === count( $rejected['times'] ) && 'available' === $rejected['diagnostics']['candidates'][0]['reason'], 'three-day AM business pickup valid for weekday offset ' . $offset );
+	calendar_check( 20 === count( calendar_times( $weekday_input, $settings )['times'] ), 'three-day PM business pickup valid for weekday offset ' . $offset );
 }
 foreach ( array( '08:00', '17:00', '18:00' ) as $pickup ) {
 	$valid = $settings; $valid['pickup_time'] = $pickup;
@@ -89,7 +89,7 @@ foreach ( array( '08:00', '17:00', '18:00' ) as $pickup ) {
 $different = $settings; $different['weekly_hours']['monday']['end'] = '12:00';
 calendar_check( 8 === count( calendar_times( $input, $different )['times'] ), 'Wednesday 17:00 pickup need not fit inside Monday closing at noon' );
 $different = $settings; $different['weekly_hours']['wednesday']['end'] = '16:00';
-calendar_check( 'pickup_outside_final_hours' === calendar_times( $input, $different )['diagnostics']['candidates'][0]['reason'], 'pickup checked against final-day hours, not start-day hours' );
+calendar_check( 20 === count( calendar_times( $input, $different )['times'] ), 'pickup after final-day delivery closing does not reject starts' );
 $different = $settings; $different['weekly_hours']['monday']['start'] = '08:10'; $different['weekly_hours']['monday']['end'] = '09:20';
 calendar_check( array( '08:10', '08:40', '09:10' ) === array_column( calendar_times( $input, $different )['times'], 'time' ), 'candidate increments are relative to start-day opening' );
 $hourly = new WC_Product_Simple(); $hourly->set_name( 'Hourly comparison fixture' ); $hourly->set_status( 'publish' ); $hourly->set_regular_price( '50' );

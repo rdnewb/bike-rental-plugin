@@ -57,10 +57,13 @@ final class BookingSchedule {
 				$end = RentalTime::from_local( $local_end );
 			}
 			if ( is_wp_error( $end ) || RentalTime::from_local( $local_end ) !== $end || $end <= $start ) { return self::error( 'This start time cannot produce a valid pickup time.', 'invalid_pickup_time' ); }
-			$end_local = ( new \DateTimeImmutable( $end, $utc ) )->setTimezone( $zone );
-			$end_hours = $settings['weekly_hours'][ strtolower( $end_local->format( 'l' ) ) ];
-			if ( ! $end_hours['open'] ) { return self::error( 'This rental would end on a closed day. Please choose another start date.', 'closed_final_day' ); }
-			if ( $end_local->format( 'H:i' ) < $end_hours['start'] || $end_local->format( 'H:i' ) > $end_hours['end'] ) { return self::error( 'This rental would end outside pickup hours. Please choose another date or contact the rental shop.', 'pickup_outside_final_hours' ); }
+			// Calendar pickup is business-controlled, independent of customer start/delivery hours.
+			if ( 'hours' === $package['duration_type'] ) {
+				$end_local = ( new \DateTimeImmutable( $end, $utc ) )->setTimezone( $zone );
+				$end_hours = $settings['weekly_hours'][ strtolower( $end_local->format( 'l' ) ) ];
+				if ( ! $end_hours['open'] ) { return self::error( 'This rental would end on a closed day. Please choose another start date.', 'closed_final_day' ); }
+				if ( $end_local->format( 'H:i' ) < $end_hours['start'] || $end_local->format( 'H:i' ) > $end_hours['end'] ) { return self::error( 'This rental would end outside pickup hours. Please choose another date or contact the rental shop.', 'pickup_outside_final_hours' ); }
+			}
 			return array( 'start_utc' => $start, 'end_utc' => $end, 'local_start' => $date . 'T' . $time, 'local_end' => $local_end, 'timezone' => $zone->getName(), 'occupied_start_utc' => RentalTime::shift( $start, -$settings['preparation_buffer'] ), 'occupied_end_utc' => RentalTime::shift( $end, $settings['turnaround_buffer'] ) );
 		} catch ( \Exception $error ) { return self::error( 'Online rental selection is temporarily unavailable.', 'invalid_schedule' ); }
 	}

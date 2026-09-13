@@ -68,7 +68,7 @@ $closed = $settings; $closed['weekly_hours']['tuesday']['open'] = 0;
 $calendar = BookingSchedule::calculate( $days, '2030-06-17', '09:00', $closed, $clock );
 public_check( ! is_wp_error( $calendar ) && '2030-06-19T17:00' === $calendar['local_end'], 'three calendar days end on day three and may pass through closed days' );
 $closed['weekly_hours']['wednesday']['open'] = 0;
-public_check( is_wp_error( BookingSchedule::calculate( $days, '2030-06-17', '09:00', $closed, $clock ) ), 'closed calendar endpoint rejected without extension' );
+public_check( '2030-06-19T17:00' === BookingSchedule::calculate( $days, '2030-06-17', '09:00', $closed, $clock )['local_end'], 'calendar pickup on closed delivery day succeeds without extension' );
 $days['duration_amount'] = 1;
 public_check( is_wp_error( BookingSchedule::calculate( $days, '2030-06-17', '17:00', $settings, $clock ) ), 'one-day package requires positive interval before pickup' );
 $dst_settings = $settings; foreach ( $dst_settings['weekly_hours'] as &$h ) { $h = array( 'open' => 1, 'start' => '00:00', 'end' => '23:59' ); } unset( $h );

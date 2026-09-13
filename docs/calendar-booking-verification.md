@@ -1,5 +1,7 @@
 # Calendar-day investigation — 0.5.2
 
+Historical report: the later approved [0.5.3 generic calendar policy](generic-calendar-verification.md) permits pickup independently of final-day delivery hours and supersedes this report's final-day restrictions and warning behavior.
+
 Corrective Milestone 5 release on **main**, version **0.5.2**, schema **1** unchanged. Milestone 6 has not started. No remote deployment or live-site browser verification is claimed.
 
 ## Root cause and limits of the finding

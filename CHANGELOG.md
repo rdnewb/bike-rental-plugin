@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.3 — Generic calendar duration and independent pickup
+
+- Apply final-day operating-hour checks only to hourly packages. Calendar-day pickup uses the configured business pickup time regardless of whether that day is open for new deliveries or that time falls within delivery hours.
+- Keep one inclusive `start date + (duration amount - 1)` calculation for every valid configured calendar duration. No package/day-specific scheduling branches; the existing package editor supports 1–365 days.
+- Preserve Day 1 hours, increment, notice, horizon, valid local-time/positive-interval checks, and authoritative buffered inventory allocation. Remove the now-incorrect calendar pickup-hours warning and update settings guidance.
+- Add a 49-case matrix covering every weekday and durations 1–7 with closed other weekdays, pickup outside delivery hours, UTC/buffers, real holds, capacity, and rejected starts. Also test 8/14/30/90/365 days, invalid durations, one-day edge cases, and unchanged hourly endpoint rules.
+- This approved policy supersedes the calendar final-day restrictions tested in 0.5.2; existing snapshots/settings and schema 1 are retained. Milestone 6 has not started.
+- Pass 1,411 automated checks, including 602 new matrix checks, and syntax validation for all 34 PHP files. Browser/Divi verification remains pending test-site deployment.
+
 ## 0.5.2 — Calendar-day rejection diagnostics and settings guidance
 
 - Fix the public start-time endpoint discarding all scheduling errors and presenting configuration failures as generic unavailable inventory. Preserve safe final-day/notice/horizon explanations when no candidate has a valid schedule.

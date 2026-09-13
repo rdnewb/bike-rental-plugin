@@ -17,15 +17,6 @@ defined( 'ABSPATH' ) || exit;
 	<?php if ( $result['errors'] ) : ?>
 		<div class="notice notice-warning inline"><p><?php esc_html_e( 'Stored settings need repair. Defaults are displayed but have not replaced your saved data. Review all fields and save to repair the configuration.', 'bike-rental-plugin' ); ?></p></div>
 	<?php endif; ?>
-	<?php
-	$pickup_conflicts = array();
-	foreach ( Settings::days() as $day => $label ) {
-		$hours = $values['weekly_hours'][ $day ];
-		if ( $hours['open'] && ( $values['pickup_time'] < $hours['start'] || $values['pickup_time'] > $hours['end'] ) ) { $pickup_conflicts[] = $label; }
-	}
-	if ( $pickup_conflicts ) : ?>
-		<div class="notice notice-warning inline"><p><?php echo esc_html( sprintf( __( 'Calendar-day pickup time is outside operating hours on: %s. Calendar-day rentals ending on these days cannot be booked. Review Calendar-day pickup time and the final day operating hours below.', 'bike-rental-plugin' ), implode( ', ', $pickup_conflicts ) ) ); ?></p></div>
-	<?php endif; ?>
 	<p><strong><?php esc_html_e( 'WordPress timezone:', 'bike-rental-plugin' ); ?></strong> <?php echo esc_html( wp_timezone_string() ); ?></p>
 	<?php
 	$timezone = get_option( 'timezone_string', '' );
@@ -74,7 +65,7 @@ defined( 'ABSPATH' ) || exit;
 					<?php endforeach; ?>
 				</select></td></tr>
 			<tr><th scope="row"><label for="brp-pickup-time"><?php esc_html_e( 'Calendar-day pickup time', 'bike-rental-plugin' ); ?></label></th>
-				<td><input type="time" required step="60" id="brp-pickup-time" name="brp_settings[pickup_time]" value="<?php echo esc_attr( $values['pickup_time'] ); ?>"><p class="description"><?php esc_html_e( 'Local time in the WordPress timezone on the final included rental day. A 3-day Monday rental ends Wednesday at this time. The final day must be open and this time must fall within its hours; intermediate days may be closed. Check AM/PM when entering the time.', 'bike-rental-plugin' ); ?></p></td></tr>
+				<td><input type="time" required step="60" id="brp-pickup-time" name="brp_settings[pickup_time]" value="<?php echo esc_attr( $values['pickup_time'] ); ?>"><p class="description"><?php esc_html_e( 'Business-controlled local pickup time in the WordPress timezone. Calendar rentals end on start date + (duration - 1) days at this time, independently of final-day delivery/start hours. Intermediate and final days may be closed for new starts. A one-day rental must start before pickup. Check AM/PM when entering the time.', 'bike-rental-plugin' ); ?></p></td></tr>
 		</table>
 		<h2><?php esc_html_e( 'Weekly operating hours', 'bike-rental-plugin' ); ?></h2>
 		<p><?php esc_html_e( 'All days start closed. Opening and closing times are retained for closed days but do not make those days open. Open days must close later on the same day.', 'bike-rental-plugin' ); ?></p>

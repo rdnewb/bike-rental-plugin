@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.5.2
+Stable tag: 0.5.3
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -13,9 +13,10 @@ Milestone 4 adds authoritative shared fleet availability and double-booking prot
 Milestone 5 adds [bike_rental_booking] for public package/date/time/quantity selection,
 calculated pickup, current availability, and protected guest holds with expiry display.
 Calendar-day rentals end on start date + (days - 1), at the configured local pickup time.
-Only start and final days must be open; intermediate days may be closed.
-Empty start-time results explain schedule failures, and settings warn about pickup times
-outside final-day operating hours. Detailed diagnostics are restricted to authorized PHP callers.
+Only the start day must be open for a calendar-day rental. Intermediate and final days
+may be closed for new starts; business pickup is independent of delivery/start hours.
+Any weekday and valid configured duration use the same calculation; one-day pickup must
+be after start. Detailed diagnostics are restricted to authorized PHP callers.
 Configure shared fleet quantity, add/edit/disable unavailability blocks, and create
 manual test reservations with current package snapshots and revision checks.
 Full reservation editing supports package, quantity, start/end, status,
@@ -60,14 +61,22 @@ Existing fleet and reservation data remain available without WooCommerce.
 12. Insert [bike_rental_booking] into a WordPress/Divi test page. Test mobile and keyboard use.
 13. Public holds use selling prices, signed HttpOnly cookies, session-bound request tokens,
     and the existing inventory lock. JavaScript is required.
-14. Public start/end rules enforce hours, notice, increments, horizon, and calendar-day pickup.
-    Three days end on day three. Interior closed days are allowed; closed endpoints are not.
+14. Public starts enforce hours, notice, increments, and horizon. Calendar-day packages use
+    start + (N - 1) days at business pickup time, regardless of final-day delivery hours.
+    Hourly endpoints must still fit operating hours. Occupied buffers protect inventory.
 
 No server-side build tools, Composer, Node.js, WP-CLI, or SSH are required.
 Settings, package metadata, fleet, blocks, and reservations are retained on updates,
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.5.3 =
+* Apply delivery/start-hour validation only to the start of calendar-day rentals.
+* Allow business pickup on any final weekday, including closed delivery days and outside delivery hours.
+* Retain generic start + (N - 1) arithmetic and the valid positive-duration requirement.
+* Test durations 1-7 on every weekday plus longer packages, occupied buffers, holds, and start validation.
+* Remove the obsolete calendar pickup-hours warning. Keep hourly rules, schema 1, and Milestone 6 deferred.
 
 = 0.5.2 =
 * Preserve scheduling rejection messages instead of reporting every empty time list as unavailable inventory.

@@ -1,5 +1,7 @@
 # Milestone 5 — public booking selection, version 0.5.0
 
+Historical report: [0.5.3 calendar rules](generic-calendar-verification.md) supersede the original calendar final-day operating-hour restrictions. Hourly endpoint checks remain unchanged.
+
 Work is on **main**. Plugin version **0.5.0**, schema **1**, with no table/index changes. The user confirmed M1–4 on the dedicated development site. This report covers local M5 implementation and verification. No SFTP deployment, remote site modification, or visual/Divi acceptance is claimed. Milestone 6 has not started.
 
 ## Components and flow
