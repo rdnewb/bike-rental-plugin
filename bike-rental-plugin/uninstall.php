@@ -8,4 +8,4 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-// No deletion of options, files, or future rental data.
+// No deletion of options, package metadata, files, reservations, or availability tables.

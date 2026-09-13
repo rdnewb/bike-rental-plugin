@@ -66,7 +66,7 @@ if ( true ) {
 	function get_woocommerce_currency() { return 'USD'; }
 	function wp_unslash( $value ) { return is_array( $value ) ? array_map( 'wp_unslash', $value ) : ( is_string( $value ) ? stripslashes( $value ) : $value ); }
 	function wp_verify_nonce( $nonce, $action ) { $GLOBALS['nonce_action'] = $action; return 'valid-' . $action === $nonce; }
-	function wp_nonce_field( $action, $name ) { echo '<input name="' . esc_attr( $name ) . '" value="valid-' . esc_attr( $action ) . '">'; }
+	function wp_nonce_field( $action, $name = '_wpnonce' ) { echo '<input name="' . esc_attr( $name ) . '" value="valid-' . esc_attr( $action ) . '">'; }
 	function checked( $value ) { if ( $value ) { echo 'checked="checked"'; } }
 	function wp_kses_post( $html ) { return strip_tags( $html, '<span><bdi>' ); }
 	function wc_price( $price ) { return '<span>' . esc_html( $price ) . '</span>'; }
@@ -286,5 +286,5 @@ foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $runtim
 }
 check( ! preg_match( '/manatee|\bmbr\b|anna maria island/i', $source ), 'generic runtime branding' );
 check( ! preg_match( '/set_(?:regular_price|sale_price|price|stock_quantity)\s*\(|\b(?:49\.00|79\.00|158\.00|229\.00)\b/', $source ), 'no hard-coded selling price or stock mutations' );
-check( ! preg_match( '/add_shortcode\s*\(|register_rest_route\s*\(|\$wpdb|woocommerce_checkout|wp_remote_/', $source ), 'no public booking, checkout, raw SQL, or remote integration' );
+check( ! preg_match( '/add_shortcode\s*\(|register_rest_route\s*\(|woocommerce_checkout|wp_remote_/', $source ), 'no public booking, checkout, or remote integration' );
 echo PHP_EOL . ( $checks - $foundation_checks ) . ' package checks + ' . $foundation_checks . ' foundation checks = ' . $checks . ' passed. API doubles only; test-site verification remains required.' . PHP_EOL;

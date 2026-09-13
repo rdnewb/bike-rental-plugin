@@ -2,7 +2,7 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current release: 0.2.0 — Milestone 2, rental package management.**
+**Current release: 0.3.0 — Milestone 3, reservation storage and fleet capacity foundation.**
 
 Develop and validate test releases on the separate WordPress test site. Production installation follows approval of the completed plugin; no site URLs or credentials belong in source control.
 
@@ -19,8 +19,11 @@ Develop and validate test releases on the separate WordPress test site. Producti
 - **Rental Settings** in the standard WooCommerce Simple product editor: package identification, duration, promotional label, and rental-active flag.
 - **Bike Rentals > Packages**: paginated read-only overview with product-editor links, regular prices, status, and WooCommerce display order.
 - A reusable PHP package reader for later milestones; no public endpoint.
+- **Bike Rentals > Fleet**: persistent shared fleet quantity, dated or indefinite quantity blocks, editing, and disabling.
+- **Bike Rentals > Reservations**: paginated list, historical detail, manual test creation, schedule edits, and revision-protected lifecycle changes.
+- Two InnoDB tables, verified versioned schema installation on normal initialization, and immutable package snapshots.
 
-**No public rental booking, inventory quantities, custom tables, reservations, checkout changes, payment processing, waiver forms, calendar, or inventory synchronization exist yet.**
+**No public rental booking, overlap/remaining-capacity calculations, checkout changes, payment processing, waiver forms, customer emails, calendar, or inventory synchronization exist yet. Manual reservations are administration test records and do not establish fulfillment readiness.**
 
 ## Installation for testing
 
@@ -31,10 +34,11 @@ Develop and validate test releases on the separate WordPress test site. Producti
 5. Activate **Bike Rental Plugin** through WordPress Plugins.
 6. Open **Bike Rentals > Settings**, configure the business and hours, and save.
 7. Activate WooCommerce for package management. Create a Simple product and configure **Product data > Rental Settings**. No products are created by activation.
+8. On the next normal request, schema version **1** installs the two rental tables and a single fleet capacity row (initial quantity 10). Open **Fleet** to configure it, then **Reservations** for storage testing.
 
 Do not upload the repository root, `.git`, `tests`, editor configuration, logs, or credentials. No compilation, Composer, Node.js, SSH, WP-CLI, or production build commands are required. One small JavaScript file controls rental-field visibility in the product editor; no custom CSS or public script is loaded.
 
-WooCommerce is required for package management but is not a hard activation dependency. If absent, administrators can still configure the foundation and see an actionable notice. Square, WPForms, and a deposit extension are not required for this milestone.
+WooCommerce is required for package management and new manual reservations but is not a hard activation dependency. If absent, administrators can still configure settings/fleet and read or update existing reservation records and snapshots. Square, WPForms, and a deposit extension are not required for this milestone.
 
 ## Rental packages
 
@@ -64,7 +68,7 @@ Invalid submissions retain all previous rental metadata and show WooCommerce adm
 | `_brp_promotional_label` | Sanitized plain text |
 | `_brp_rental_active` | `yes` or `no` |
 
-WooCommerce stores these through product CRUD. No custom tables, duplicate price fields, or duplicate order fields are introduced. Deactivation, uninstall, and SFTP replacement preserve package metadata.
+WooCommerce stores these through product CRUD. Package configuration stays on products; the separate reservation table captures historical package details and nullable future order references. Deactivation, uninstall, and SFTP replacement preserve package metadata.
 
 After `woocommerce_init`, later PHP code can use `BikeRentalPlugin\Packages`:
 
@@ -79,11 +83,24 @@ The array includes `product_id`, `name`, `price`, `currency`, `duration_type`, `
 
 The active catalog is small and reads all matching package products through `wc_get_products()`. The administration overview paginates 25 products at a time. A narrow, documented WooCommerce product-query extension adds the rental marker constraint; no direct SQL or direct product-table access is used. The query adapter targets WooCommerce's current standard product data store, independently of HPOS order storage.
 
-These APIs return current product data, not historical reservation values. A later reservation milestone must snapshot the returned data when booking; snapshots are not implemented here.
+These APIs return current product data. `Reservations::create()` captures an immutable historical snapshot for each manual test reservation; later price, duration, label, or product changes do not rewrite it.
+
+## Fleet and reservation storage
+
+See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
+
+- Schema option `brp_db_version` is **1**, separate from plugin version **0.3.0**. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
+- Blocks reserve a quantity against a local start and optional end; a reason is required. Each block must fit the fleet. Active current/upcoming blocks prevent lowering the fleet below that individual block's quantity. Combined block/reservation overlaps are deferred.
+- Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.
+- New test reservations use active, published, valid packages and an explicit start/end. Quantity must fit total fleet. Package duration, business hours, notice, horizon, and aggregate availability are not yet enforced.
+- Occupied intervals include preparation/turnaround buffers captured at creation. Subsequent schedule edits reuse those captured buffers. The original package/local-time snapshot stays unchanged; current schedule fields are displayed separately.
+- Status transitions: `hold → confirmed / cancelled / expired`, `confirmed → active / cancelled`, `active → completed`. Completed/cancelled/expired records remain stored and terminal. Creation permits any of the six statuses for test fixtures. A manual `hold` has no automatic expiration yet.
+- Schedule/quantity edits are limited to hold/confirmed records. Successful changes increment revision; stale edits fail with a reload instruction. Same-value saves are no-ops. Cancellation is persistent, with no delete action.
 
 ## Settings contract
 
-Options: `brp_settings` (configuration) and `brp_plugin_version` (installed code version marker). No schema version or custom tables are needed yet.
+Options: `brp_settings` (configuration), `brp_plugin_version` (code version), `brp_db_version` (verified schema version), and `brp_db_error` (actionable installation error, present only when needed). Fleet capacity is stored in the availability table, not duplicated in settings.
 
 | Setting | Unit / allowed values | Initial value |
 |---|---|---|
@@ -118,16 +135,20 @@ The intended later integrations are WooCommerce Square, a compatible deposit ext
 
 ## Architecture
 
-- `bike-rental-plugin.php`: headers, direct-access guard, explicit loading of two classes, activation and deferred bootstrap.
+- `bike-rental-plugin.php`: headers, direct-access guard, explicit class loading, activation and deferred bootstrap.
 - `src/Plugin.php`: lifecycle, text domain, version marker, dependency visibility, conditional package loading after WooCommerce initializes.
 - `src/Settings.php`: capabilities, native settings registration, strict validation, and configuration status.
 - `src/settings-page.php`: native WordPress administration HTML, separate from validation logic.
 - `src/Packages.php`: rental metadata validation, product-editor save hooks, package reads, and overview query.
 - `src/package-fields.php` and `src/packages-page.php`: product tab and read-only overview.
+- `src/Database.php`: two-table definitions, verified idempotent schema install, prepared reads, and short capacity-row transactions.
+- `src/RentalTime.php`: strict WordPress-local input, UTC conversion, occupied-time shifts, and local display.
+- `src/Fleet.php` and `src/Reservations.php`: validated persistent records and reservation revisions/snapshots.
+- `src/DataAdmin.php`, `src/fleet-page.php`, and `src/reservations-page.php`: capability/nonce-protected administration test tools.
 - `assets/js/package-admin.js`: field visibility on product-edit screens only; PHP validates all submissions.
 - `uninstall.php`: explicit data-preserving uninstall behavior.
 
-There is no autoload framework or runtime dependency manager. All runtime PHP has direct-access protection. WordPress core handles foundation settings CSRF verification. Package saves additionally verify a product-bound nonce and both `edit_products` and object-level `edit_post` capabilities. Rental metadata is staged before WooCommerce's normal CRUD save, without recursive saves. Inputs are allowlisted. No SQL, secrets, remote calls, cron jobs, or public endpoints are registered.
+There is no autoload framework or runtime dependency manager. All runtime PHP has direct-access protection. WordPress core handles foundation settings CSRF verification. Package saves additionally verify a product-bound nonce and both `edit_products` and object-level `edit_post` capabilities. Rental metadata is staged before WooCommerce's normal CRUD save, without recursive saves. Fleet/reservation mutations require management capabilities and operation/record-bound nonces. Inputs are allowlisted; dynamic SQL uses prepared identifiers/values or WordPress insert/update APIs. WooCommerce orders are accessed only through WooCommerce APIs. No secrets, remote calls, cron jobs, or public endpoints are registered.
 
 ## Development and Git
 
@@ -148,16 +169,16 @@ if ($LASTEXITCODE -ne 0) { throw 'Package/foundation checks failed' }
 git diff --check
 ```
 
-The dependency-free package test script also runs all foundation checks. It uses small WordPress/WooCommerce API doubles, including a fake nonce verifier to exercise the package save gate. It does **not** run real WordPress nonce cryptography, WooCommerce persistence, a database, or a browser. The user confirmed Milestone 1's listed foundation functions in WordPress; Milestone 2 still requires dedicated test-site verification. See [Milestone 2 verification](docs/packages-verification.md) and the [foundation record](docs/verification.md).
+The dependency-free package test script runs all **208** foundation/package checks using API doubles. The user confirmed Milestones 1 and 2 on the dedicated WordPress test site. Milestone 3 adds separate real WordPress/WooCommerce/MariaDB scripts covering storage, real nonce verification, migration recovery, and missing-WooCommerce operation. See [Milestone 3 verification](docs/reservations-verification.md) for **169** integration checks, setup, limitations, and the pending dedicated-site checklist. Prior records: [Milestone 2](docs/packages-verification.md), [foundation](docs/verification.md).
 
 ## SFTP update and rollback checklist
 
 - Record the commit and plugin version; retain the prior plugin directory and a verified database backup.
 - Use a test environment first. Upload only the inner production-ready plugin directory.
 - Use a hosting-supported maintenance window so requests cannot execute a mixture of old and new PHP files. Stage a complete directory and replace it when supported; do not assume SFTP performs an atomic live update.
-- After replacement, visit administration and confirm the version and saved settings. Reactivation is not required to detect a code version change.
+- After replacement, visit administration and confirm both plugin/schema versions and saved settings. Reactivation is not required: normal `init` installs/upgrades the schema, verifies columns/indexes/InnoDB, and initializes only a missing capacity row. Resolve any database notice before entering test data. Database CREATE/ALTER/INDEX permissions and MySQL named locks are required for installation.
 - Check page rendering, permissions, validation, timezone and dependency visibility. No cache clearing is normally needed; if the host serves stale PHP, use its supported cache reset.
-- If necessary, restore the previous compatible plugin directory. Do not restore an old database over later business changes. No database migration exists in this milestone.
+- If necessary, restore the previous compatible plugin directory. Do not restore an old database over later business changes. Version 0.2.0 ignores the new tables and does not delete them; a later return to 0.3.0 preserves them. Future newer schema versions are rejected by 0.3.0 rather than downgraded automatically.
 - Keep backups, settings, evidence, and secrets outside the replaceable plugin directory.
 
 ## References used during implementation
@@ -169,4 +190,4 @@ The dependency-free package test script also runs all foundation checks. It uses
 - [WooCommerce custom product queries](https://developer.woocommerce.com/docs/features/products/wc-get-products/)
 - [WooCommerce product data save hook](https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/admin/meta-boxes/class-wc-meta-box-product-data.php)
 
-Milestone 3 requires separate authorization.
+Milestone 4 has not started and requires separate authorization.

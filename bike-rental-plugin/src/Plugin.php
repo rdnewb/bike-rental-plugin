@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 
-	const VERSION = '0.2.0';
+	const VERSION = '0.3.0';
 
 	/** Initialize defaults once; never replace existing configuration. */
 	public static function activate() {
@@ -28,10 +28,14 @@ final class Plugin {
 		}
 		$booted = true;
 		add_action( 'init', array( self::class, 'load_textdomain' ) );
+		add_action( 'init', array( Database::class, 'install' ), 20 );
 		add_action( 'woocommerce_init', array( self::class, 'load_packages' ) );
 		if ( is_admin() ) {
 			$settings = new Settings();
 			$settings->register_hooks();
+			$data_admin = new DataAdmin();
+			$data_admin->register_hooks();
+			add_action( 'admin_notices', array( Database::class, 'notice' ) );
 			add_action( 'admin_init', array( self::class, 'record_version' ) );
 			add_action( 'admin_notices', array( self::class, 'packages_dependency_notice' ) );
 		}
@@ -63,7 +67,7 @@ final class Plugin {
 		load_plugin_textdomain( 'bike-rental-plugin', false, dirname( plugin_basename( dirname( __DIR__ ) . '/bike-rental-plugin.php' ) ) . '/languages' );
 	}
 
-	/** Detect SFTP updates without requiring reactivation; no schema exists yet. */
+	/** Code version marker is independent from the verified database schema version. */
 	public static function record_version() {
 		if ( ! Settings::can_manage() ) {
 			return;

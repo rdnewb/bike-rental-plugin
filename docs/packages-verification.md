@@ -1,5 +1,7 @@
 # Verification — version 0.2.0
 
+Historical Milestone 2 record. The user subsequently confirmed this milestone on the dedicated WordPress test site. Current work and pending deployment checks are in [Milestone 3 verification](reservations-verification.md).
+
 Milestone 2: rental package management. All commits remain on `main`.
 
 ## Foundation status
@@ -61,4 +63,4 @@ Record actual WordPress, WooCommerce, PHP, and browser versions with the results
 18. Verify keyboard labels, checkbox visibility, and error rendering in a narrow browser window. If JavaScript is unavailable, server validation and safe enable/disable saves must still work.
 19. Confirm no public rental shortcode, date selector, availability/calendar, reservation, checkout hold, payment, waiver, or Square stock synchronization has been introduced.
 
-Milestone 3 has not started. Test products must not be treated as production rentals while reservation/checkout enforcement is absent.
+At the time of this historical record, Milestone 3 had not started; see the current verification record linked above. Test products must not be treated as production rentals while reservation/checkout enforcement is absent.

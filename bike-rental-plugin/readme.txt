@@ -1,22 +1,25 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
-Reusable bicycle-rental settings and package management for WordPress and WooCommerce.
+Reusable bicycle-rental settings, packages, fleet records, and reservation storage.
 
 == Description ==
 
-Milestone 2 adds Rental Settings to the standard WooCommerce Simple product editor
-and a read-only Bike Rentals > Packages overview. Configure duration, promotional
-text, and rental activation; WooCommerce owns the title, regular price, tax and ordering.
-All foundation scheduling settings, timezone visibility, and dependency detection remain.
+Milestone 3 adds Bike Rentals > Fleet and Bike Rentals > Reservations admin test tools.
+Configure shared fleet quantity, add/edit/disable unavailability blocks, and create
+manual test reservations with historical package snapshots and revision checks.
+Schema version 1 creates exactly two prefixed InnoDB tables during normal initialization.
+Existing settings, rental packages, timezone visibility, and dependency detection remain.
 
-There is no public rental booking, inventory, reservation, payment, or waiver processing.
+There is no public rental booking, overlap calculation, checkout, payment, or waiver processing.
+Manual test records do not establish availability or fulfillment readiness.
 Available dependencies have NOT been integration tested by this plugin.
-WooCommerce is required for package management, not foundation activation.
+WooCommerce is required for package management and new reservations, not foundation activation.
+Existing fleet and reservation data remain available without WooCommerce.
 
 == Installation ==
 
@@ -27,11 +30,21 @@ WooCommerce is required for package management, not foundation activation.
 5. With WooCommerce active, create a Simple product and open Product data > Rental Settings.
 6. Set the regular price using WooCommerce and the duration using Rental Settings.
 7. Use Advanced > Menu order for display order. No packages are created automatically.
+8. Open Fleet to set total quantity and manage blocks; the initial setup quantity is 10.
+9. Open Reservations to test persistent records. Enter times in the WordPress timezone.
+10. Resolve any database installation notice before using the test tools. SFTP updates
+    trigger schema checks without requiring reactivation. InnoDB and named locks are required.
 
 No server-side build tools, Composer, Node.js, WP-CLI, or SSH are required.
-Settings are retained on updates, deactivation, and uninstall.
+Settings, package metadata, fleet, blocks, and reservations are retained on updates,
+deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.3.0 =
+* Add two-table reservation/fleet storage with verified schema version 1 installation.
+* Add Fleet and Reservations administration, immutable snapshots, UTC times, and revisions.
+* Preserve all previous settings/packages. Public availability and booking remain deferred.
 
 = 0.2.0 =
 * Add validated rental metadata on WooCommerce Simple products and a package reader.
