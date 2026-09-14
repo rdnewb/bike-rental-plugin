@@ -12,6 +12,7 @@
         const submit = root.querySelector('.brp-submit');
         const result = root.querySelector('.brp-result');
         const restart = root.querySelector('.brp-restart');
+        const checkout = root.querySelector('.brp-checkout');
         const storageKey = 'brp-booking:' + root.dataset.api + location.pathname;
         let packages = [], selection = null, generation = 0, requestKey = '', timer = null;
         const message = (text) => { status.textContent = text; };
@@ -59,6 +60,7 @@
         };
         const selectionInput = () => ({ package_id: fields.package_id.value, date: fields.date.value, time: fields.time.value });
         const showHold = (hold) => {
+            checkout.hidden = !hold.reserved;
             clearInterval(timer); form.hidden = true; result.hidden = false; restart.hidden = hold.reserved;
             const receipt = root.querySelector('.brp-receipt'); receipt.replaceChildren();
             line(receipt, 'Reference', hold.reference); line(receipt, 'Package', hold.package.name);
@@ -70,15 +72,32 @@
             const began = performance.now(); const expiry = root.querySelector('.brp-expiry');
             expiry.setAttribute('aria-live', 'off');
             const tick = () => {
+                if (['confirmed', 'active', 'completed'].includes(hold.reservation_status)) {
+                    clearInterval(timer); expiry.textContent = 'Reservation status: ' + hold.reservation_status; return;
+                }
                 const seconds = Math.max(0, Math.ceil((remaining - (performance.now() - began)) / 1000));
                 if (!hold.reserved || !seconds) {
                     clearInterval(timer); restart.hidden = false;
+                    checkout.hidden = true;
                     expiry.textContent = 'Your temporary reservation has expired or is no longer held.';
                     message('Bikes are no longer reserved by this form. Start over to check availability.');
                 } else expiry.textContent = 'Temporary hold remaining: ' + Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
             };
             timer = setInterval(tick, 1000); tick(); result.focus();
         };
+        const goCheckout = async () => {
+            if (checkout.disabled) return;
+            checkout.disabled = true; message('Preparing checkout…');
+            try {
+                const identity = await session();
+                const data = await api('checkout', { request_key: requestKey }, true, identity.token);
+                const target = new URL(data.checkout_url, location.href);
+                if (target.origin !== location.origin) throw new Error('Unable to open checkout. Please contact the shop.');
+                location.assign(target.href);
+            } catch (error) { message(error.message); }
+            finally { checkout.disabled = false; }
+        };
+        checkout.addEventListener('click', goCheckout);
         const loadTimes = async () => {
             resetSelection(); fields.time.disabled = true; fields.time.replaceChildren(new Option('Choose a date first', ''));
             if (!fields.package_id.value || !fields.date.value || !fields.date.checkValidity()) return;
@@ -120,7 +139,7 @@
             if (!requestKey) { const bytes = crypto.getRandomValues(new Uint8Array(24)); requestKey = Array.from(bytes, (v) => v.toString(16).padStart(2, '0')).join(''); }
             const input = { ...selectionInput(), quantity: fields.quantity.value, request_key: requestKey };
             store(requestKey); submit.disabled = true; fields[0].disabled = true; message('Reserving your bikes…');
-            try { const identity = await session(); showHold(await api('holds', input, true, identity.token)); }
+            try { const identity = await session(); const hold = await api('holds', input, true, identity.token); showHold(hold); if (hold.reserved) await goCheckout(); }
             catch (error) { message(error.message); }
             finally { fields[0].disabled = false; submit.disabled = false; }
         });

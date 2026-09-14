@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 
-	const VERSION = '0.5.4';
+	const VERSION = '0.6.0';
 
 	/** Initialize defaults once; never replace existing configuration. */
 	public static function activate() {
@@ -31,6 +31,7 @@ final class Plugin {
 		add_action( 'init', array( Database::class, 'install' ), 20 );
 		HoldCleanup::register_hooks();
 		PublicBooking::register_hooks();
+		add_action( 'admin_notices', array( PaymentMode::class, 'admin_notice' ) );
 		add_action( 'woocommerce_init', array( self::class, 'load_packages' ) );
 		if ( is_admin() ) {
 			$settings = new Settings();
@@ -52,6 +53,8 @@ final class Plugin {
 		require_once __DIR__ . '/Packages.php';
 		$packages = new Packages();
 		$packages->register_hooks();
+		Checkout::register_hooks();
+		Payments::register_hooks();
 	}
 
 	public static function packages_dependency_notice() {

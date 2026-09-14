@@ -17,6 +17,7 @@ if ( $row ) :
 	);
 ?>
 <h2><?php echo esc_html( $row['reference'] ); ?></h2>
+<?php Payments::reservation_admin( $row ); ?>
 <div class="notice notice-info inline"><p><?php esc_html_e( 'Availability conflict checking is enforced under the shared inventory lock. These admin tools do not verify payments or authorize fulfillment.', 'bike-rental-plugin' ); ?></p></div>
 <h3><?php esc_html_e( 'Edit reservation', 'bike-rental-plugin' ); ?></h3>
 <?php if ( function_exists( 'wc_get_product' ) && class_exists( Packages::class ) ) :

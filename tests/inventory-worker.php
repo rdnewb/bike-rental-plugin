@@ -22,6 +22,8 @@ $result = match ( $job['operation'] ) {
 	'capacity' => \BikeRentalPlugin\Fleet::set_capacity( $job['quantity'] ),
 	'block' => \BikeRentalPlugin\Fleet::save_block( $job['input'] ),
 	'public_hold' => public_worker_hold( $job ),
+	'payment' => \BikeRentalPlugin\CheckoutReservation::outcome( $job['id'], $job['order_id'], $job['fingerprint'], true ),
+	'checkout_begin' => \BikeRentalPlugin\CheckoutReservation::begin_payment( $job['id'], hash( 'sha256', 'concurrent-session' ), $job['order_id'], $job['item_id'], $job['fingerprint'] ),
 	default => throw new RuntimeException( 'Unknown test job.' ),
 };
 file_put_contents( $job['result'], wp_json_encode( array( 'connection' => $connection, 'success' => ! is_wp_error( $result ), 'code' => is_wp_error( $result ) ? $result->get_error_code() : '', 'value' => is_wp_error( $result ) ? $result->get_error_message() : $result ) ) );

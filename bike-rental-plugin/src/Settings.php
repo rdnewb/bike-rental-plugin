@@ -48,6 +48,7 @@ final class Settings {
 			$hours[ $day ] = array( 'open' => 0, 'start' => '09:00', 'end' => '17:00' );
 		}
 		return array(
+			'payment_mode'        => 'full',
 			'business_name'       => '',
 			'booking_horizon'     => 90,
 			'minimum_notice'      => 0,
@@ -116,6 +117,9 @@ final class Settings {
 			return array( 'values' => array(), 'errors' => array( __( 'Settings must be submitted as a complete form.', 'bike-rental-plugin' ) ) );
 		}
 		$name = $input['business_name'] ?? null;
+		$mode = $input['payment_mode'] ?? 'full'; // Existing installations have no payment field yet.
+		if ( ! in_array( $mode, array( 'full', 'deposit' ), true ) ) { $errors[] = __( 'Select Full Payment or Deposit payment mode.', 'bike-rental-plugin' ); }
+		else { $values['payment_mode'] = $mode; }
 		if ( ! is_string( $name ) ) {
 			$errors[] = __( 'Business name must be plain text.', 'bike-rental-plugin' );
 		} else {
@@ -170,6 +174,7 @@ final class Settings {
 			add_settings_error( self::OPTION, 'brp_permission', __( 'You do not have permission to change rental settings.', 'bike-rental-plugin' ) );
 			return self::get();
 		}
+		if ( is_array( $input ) && ! array_key_exists( 'payment_mode', $input ) ) { $input['payment_mode'] = self::get()['payment_mode'] ?? 'full'; }
 		$result = self::validate( $input );
 		if ( $result['errors'] ) {
 			foreach ( $result['errors'] as $index => $error ) {

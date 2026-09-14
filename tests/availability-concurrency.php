@@ -101,4 +101,28 @@ $results = run_race( array( array( 'operation' => 'public_hold', 'input' => $pub
 race_check( count( array_filter( array_column( $results, 'success' ) ) ) === 1, 'exactly one public hold succeeds' );
 race_check( in_array( 'brp_public_409', array_column( $results, 'code' ), true ), 'losing public request gets safe capacity conflict' );
 race_check( Database::listing( 'reservations' )['total'] === 1, 'public REST race stores exactly one allocation' );
+// Milestone 6A: the same row lock serializes late money, new bookings and duplicate payment callbacks.
+foreach ( array( false, true ) as $reverse ) {
+	reset_race( 1 );
+	$late = Reservations::create_hold( $input, 'late-payment-race', hash( 'sha256', 'concurrent-session' ) );
+	$wpdb->update( Database::table( 'reservations' ), array( 'status' => 'expired', 'hold_expires_at' => '2000-01-01 00:00:00', 'order_id' => 900001, 'order_item_id' => 900002 ), array( 'id' => $late['id'] ) );
+	$late = Reservations::read( $late['id'] );
+	$jobs = array( array( 'operation' => 'payment', 'id' => $late['id'], 'order_id' => 900001, 'fingerprint' => \BikeRentalPlugin\CheckoutReservation::fingerprint( $late ) ), array( 'operation' => 'create', 'input' => $input ) );
+	$results = run_race( $reverse ? array_reverse( $jobs ) : $jobs, 'Late payment versus new reservation ' . (int) $reverse );
+	$usage = Availability::check( $late['occupied_start_utc'], $late['occupied_end_utc'] );
+	race_check( $usage['peak_existing_usage'] === 1, 'late payment and new booking never overbook the last bike' );
+	$after = Reservations::read( $late['id'] );
+	race_check( $after['status'] === 'confirmed' || ( $after['status'] === 'expired' && $after['issue_code'] === 'payment_inventory_conflict' ), 'late payment either confirms or records staff exception' );
+}
+reset_race( 1 );
+$hold = Reservations::create_hold( $input, 'checkout-claim-race', hash( 'sha256', 'concurrent-session' ) );
+$fingerprint = \BikeRentalPlugin\CheckoutReservation::fingerprint( $hold );
+$jobs = array( array( 'operation' => 'checkout_begin', 'id' => $hold['id'], 'order_id' => 900001, 'item_id' => 900002, 'fingerprint' => $fingerprint ), array( 'operation' => 'checkout_begin', 'id' => $hold['id'], 'order_id' => 900003, 'item_id' => 900004, 'fingerprint' => $fingerprint ) );
+$results = run_race( $jobs, 'Two checkout orders claim the same hold' );
+race_check( count( array_filter( array_column( $results, 'success' ) ) ) === 1, 'only one primary order wins checkout claim' );
+$linked = Reservations::read( $hold['id'] );
+$job = array( 'operation' => 'payment', 'id' => $linked['id'], 'order_id' => (int) $linked['order_id'], 'fingerprint' => \BikeRentalPlugin\CheckoutReservation::fingerprint( $linked ) );
+$results = run_race( array( $job, $job ), 'Simultaneous duplicate payment callbacks' );
+$after = Reservations::read( $linked['id'] );
+race_check( $results[0]['success'] && $results[1]['success'] && $after['status'] === 'confirmed' && (int) $after['revision'] === (int) $linked['revision'] + 1, 'duplicate payment callbacks confirm and increment revision only once' );
 echo PHP_EOL . $checks . ' real multiprocess concurrency checks passed.' . PHP_EOL;

@@ -22,6 +22,7 @@ defined( 'ABSPATH' ) || exit;
 <section class="brp-result" hidden tabindex="-1" aria-label="Temporary reservation">
 <h3>Temporary reservation</h3><div class="brp-receipt"></div>
 <p class="brp-expiry" role="status" aria-live="polite"></p>
+<button class="brp-checkout" type="button" hidden>Continue to checkout</button>
 <button class="brp-restart" type="button" hidden>Start over</button>
 </section>
 <noscript>Please enable JavaScript to check rental times and reserve bikes.</noscript>

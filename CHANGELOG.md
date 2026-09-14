@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 — Milestone 6A Full Payment checkout
+
+- Replace the hold placeholder with a protected WooCommerce Checkout Block transfer. Reuse the existing reservation, lock its quantity, and reject direct/stale/forged rental purchases, coupons, and mixed rental carts.
+- Add generic `payment_mode` settings: Full Payment by default; Deposit is guarded with no silent fallback or required deposit extension. Snapshot the mode at checkout transfer and preserve it on later global/package changes.
+- Link one primary Woo order under the inventory lock. Payment submission may extend expiry to original creation plus 30 minutes; refresh and retries cannot renew beyond that deadline.
+- Verify persisted WooCommerce/Square capture evidence before confirmation. Recheck capacity for delayed success and retain a prominent staff exception on conflicts. Keep refunds and Woo financial statuses separate from rental return/cancellation.
+- Use WooCommerce price/tax/address/order APIs, preserve normal-product checkout, declare CPT/HPOS-compatible order handling, and add bounded reconciliation plus admin payment crosslinks/summaries.
+- Keep schema 1. No deposit processor, custom gateway, Square API client, or waiver workflow. Real dedicated-site Square sandbox acceptance remains pending; see `docs/milestone-6a-verification.md` for evidence and limitations.
+
 ## 0.5.4 — 12-hour start-time dropdown
 
 - Display public start-time options as 12-hour labels with AM/PM, including correct midnight/noon labels. Keep the submitted `HH:MM` values and scheduling behavior unchanged.

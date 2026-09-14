@@ -293,7 +293,7 @@ $source = '';
 foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ) . '/bike-rental-plugin', FilesystemIterator::SKIP_DOTS ) ) as $file ) {
 	if ( in_array( $file->getExtension(), array( 'php', 'js' ), true ) ) { $source .= file_get_contents( $file->getPathname() ); }
 }
-verify( ! preg_match( '/woocommerce_checkout|wp_remote_|wc_create_order|add_to_cart\s*\(|set_stock_quantity\s*\(/', $source ), 'no checkout, orders, remote integration, or stock sync introduced' );
+verify( ! preg_match( '/wp_remote_|wc_create_order|wpforms_process|set_stock_quantity\s*\(/', $source ), 'no custom order creation, remote integration, waiver processing, or stock sync introduced' );
 verify( ! preg_match( '/manatee|anna maria island|\bmbr\b/i', $source ), 'generic runtime branding' );
 verify( ! str_contains( file_get_contents( dirname( __DIR__ ) . '/bike-rental-plugin/src/Packages.php' ), '$wpdb' ), 'existing package service still uses WooCommerce APIs only' );
 echo PHP_EOL . $checks . ' real WordPress/WooCommerce/MariaDB integration checks passed.' . PHP_EOL;

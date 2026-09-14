@@ -1,5 +1,5 @@
 <?php
-/** Shortcode and deliberately small public REST boundary. No checkout integration. */
+/** Shortcode and deliberately small public REST boundary. */
 namespace BikeRentalPlugin;
 defined( 'ABSPATH' ) || exit;
 
@@ -10,7 +10,7 @@ final class PublicBooking {
 		add_action( 'rest_api_init', array( self::class, 'routes' ) );
 	}
 	public static function routes() {
-		foreach ( array( 'packages', 'times', 'availability', 'session', 'holds', 'hold-status' ) as $route ) {
+		foreach ( array( 'packages', 'times', 'availability', 'session', 'holds', 'hold-status', 'checkout' ) as $route ) {
 			$public = in_array( $route, array( 'packages', 'times', 'availability' ), true );
 			register_rest_route( self::API, '/' . $route, array(
 				'methods' => $public ? 'GET' : 'POST',
@@ -28,14 +28,14 @@ final class PublicBooking {
 	}
 	private static function dispatch( $request ) {
 		$route = basename( $request->get_route() );
-		$private = in_array( $route, array( 'session', 'holds', 'hold-status' ), true );
+		$private = in_array( $route, array( 'session', 'holds', 'hold-status', 'checkout' ), true );
 		if ( $private ) {
 			$permission = GuestSession::permission( $request, 'session' !== $route );
 			if ( is_wp_error( $permission ) ) { return self::reply( $permission ); }
 		}
 		$limit = GuestSession::limit( 'holds' === $route );
 		if ( is_wp_error( $limit ) ) { return self::reply( $limit ); }
-		$allowed = match ( $route ) { 'packages', 'session' => array(), 'times' => array( 'package_id', 'date' ), 'availability' => array( 'package_id', 'date', 'time' ), 'holds' => array( 'package_id', 'date', 'time', 'quantity', 'request_key' ), 'hold-status' => array( 'request_key' ), default => array() };
+		$allowed = match ( $route ) { 'packages', 'session' => array(), 'times' => array( 'package_id', 'date' ), 'availability' => array( 'package_id', 'date', 'time' ), 'holds' => array( 'package_id', 'date', 'time', 'quantity', 'request_key' ), 'hold-status', 'checkout' => array( 'request_key' ), default => array() };
 		$input = $request->get_params();
 		unset( $input['rest_route'] );
 		if ( array_diff( array_keys( $input ), $allowed ) || array_diff( $allowed, array_keys( $input ) ) ) { return self::reply( BookingSchedule::error( 'Please complete the requested booking fields.' ) ); }
@@ -48,6 +48,7 @@ final class PublicBooking {
 					'session' => self::session(),
 					'holds' => self::hold( $input ),
 					'hold-status' => self::status( $input ),
+					'checkout' => Checkout::transfer( $input['request_key'] ),
 					default => BookingSchedule::error( 'Please use the booking form.' ),
 				};
 			} );
@@ -60,7 +61,7 @@ final class PublicBooking {
 			$code = $result->get_error_code();
 			$message = 'Online rental selection is temporarily unavailable. Please try again.';
 			$status = 503;
-			if ( in_array( $code, array( 'brp_selection', 'brp_session', 'brp_existing_hold', 'brp_idempotency', 'brp_rate' ), true ) ) { $message = $result->get_error_message(); $status = $result->get_error_data()['status'] ?? 400; }
+			if ( in_array( $code, array( 'brp_selection', 'brp_session', 'brp_existing_hold', 'brp_idempotency', 'brp_rate', 'brp_checkout' ), true ) ) { $message = $result->get_error_message(); $status = $result->get_error_data()['status'] ?? 400; }
 			if ( 'brp_conflict' === $code ) { $message = sprintf( 'Only %d bikes are available. Please choose another time or quantity.', max( 0, $result->get_error_data()['available_quantity'] ?? 0 ) ); $status = 409; }
 			if ( in_array( $code, array( 'brp_quantity', 'brp_request' ), true ) ) { $message = 'Please check your bike quantity and rental selection.'; $status = 400; }
 			$result = array( 'valid' => false, 'message' => $message );
@@ -168,9 +169,11 @@ final class PublicBooking {
 		$s = json_decode( $row['snapshot'], true );
 		$now = Database::now() ?? gmdate( 'Y-m-d H:i:s' );
 		$live = 'hold' === $row['status'] && $row['hold_expires_at'] > $now;
-		return array( 'valid' => true, 'reserved' => $live, 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z', 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $live ? self::next_step_message() : 'Your temporary reservation has expired or is no longer held. Bikes are not reserved by this form.' );
+		$message = $live ? self::next_step_message() : 'Your temporary reservation has expired or is no longer held. Bikes are not reserved by this form.';
+		if ( in_array( $row['status'], array( 'confirmed', 'active', 'completed' ), true ) ) { $message = 'Reservation status: ' . $row['status'] . '. Check your order confirmation or contact the shop for details.'; }
+		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z', 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
 	}
-	public static function next_step_message() { return __( 'Your bikes are temporarily reserved. Checkout integration will be added in the next development milestone.', 'bike-rental-plugin' ); }
+	public static function next_step_message() { return __( 'Your bikes are temporarily reserved. Continue to checkout to complete payment.', 'bike-rental-plugin' ); }
 	public static function shortcode() {
 		$file = dirname( __DIR__ ) . '/bike-rental-plugin.php';
 		wp_enqueue_style( 'brp-booking', plugins_url( 'assets/css/booking.css', $file ), array(), Plugin::VERSION );

@@ -173,7 +173,9 @@ final class Reservations {
 			$product = wc_get_product( (int) $package_id );
 			$price = $product ? $product->get_price( 'edit' ) : null;
 			if ( ! is_string( $price ) || ! preg_match( '/\A[0-9]+(?:\.[0-9]+)?\z/', $price ) ) { return Database::error( 'price', 'The replacement package must have a valid WooCommerce selling price.' ); }
+			$payment_mode = $snapshot['payment_mode'] ?? null;
 			$snapshot = array_intersect_key( $package, array_flip( array( 'product_id', 'name', 'price', 'currency', 'duration_type', 'duration_amount', 'promotional_label' ) ) );
+			if ( null !== $payment_mode ) { $snapshot['payment_mode'] = $payment_mode; }
 			$snapshot['price'] = $price;
 			$snapshot['buffers'] = $buffers;
 		}

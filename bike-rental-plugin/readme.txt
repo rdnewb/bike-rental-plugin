@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.5.4
+Stable tag: 0.6.0
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -36,10 +36,19 @@ Completed means ended or actually returned; an Active rental may be returned ear
 Actual-return turnaround uses dated blocks.
 Bike Rentals > Availability test displays capacity, peak usage, available quantity, and fit.
 
-The public form stops at a temporary hold and a development-only next-step message.
-There is no cart/order creation, checkout, payment, deposit, or waiver processing.
-Manual test records enforce availability but do not establish fulfillment readiness.
-Available dependencies have NOT been integration tested by this plugin.
+Milestone 6A transfers the existing hold to WooCommerce Checkout Block for Full Payment
+through WooCommerce Square. Payment mode defaults to Full Payment. Deposit can be selected
+but blocks new rental checkout until a compatible provider is selected. No deposit plugin
+is required; deactivate unsupported deposit extensions before Full Payment checkout.
+Quantity is locked, direct rental add-to-cart is blocked, and rental coupons/mixed carts
+are unsupported. WooCommerce owns price, tax, order, address, email, and payment records.
+Payment submission extends the hold only to original creation plus 30 minutes. Refresh
+does not extend it. Verified captured payment confirms the same linked reservation.
+Late payment rechecks capacity; conflicts need staff resolution. Refunds and Woo Completed
+do not automatically cancel, release, or complete a rental. Payment mode is snapshotted.
+Reconciliation checks up to 50 reservations and 50 Woo orders per five-minute pass.
+Waiver and deposit processing are not implemented. Real Square sandbox acceptance remains
+pending; local tests use real WooCommerce/Store API with simulated payment evidence.
 WooCommerce is required for package management, new reservations, and full reservation editing,
 not foundation activation.
 Existing fleet and reservation data remain available without WooCommerce.
@@ -70,6 +79,15 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.6.0 =
+* Add Full Payment checkout through WooCommerce Square and a guarded generic Deposit mode.
+* Link one existing reservation to one primary Woo order, with historical payment mode.
+* Enforce guest ownership, cart quantity, snapshots, bounded holds, and late-payment capacity.
+* Add staff payment summaries, crosslinks, exceptions, and bounded reconciliation.
+* Preserve rental status on financial refunds and Woo Completed. Support CPT and HPOS CRUD.
+* Keep schema 1. Deposit processing and Milestone 7 waivers are not implemented.
+* Square sandbox and dedicated-site deployment validation remain required.
 
 = 0.5.4 =
 * Show public start-time dropdown labels in 12-hour AM/PM format, retaining original booking values.

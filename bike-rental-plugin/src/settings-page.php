@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 <div class="wrap">
 	<h1><?php esc_html_e( 'Bike Rental Plugin', 'bike-rental-plugin' ); ?></h1>
 	<p><?php esc_html_e( 'Version', 'bike-rental-plugin' ); ?> <?php echo esc_html( Plugin::VERSION ); ?> &mdash; <?php echo esc_html( $status ); ?></p>
-	<p><?php esc_html_e( 'These settings control public rental scheduling. Checkout and payment integration are not available in this milestone.', 'bike-rental-plugin' ); ?></p>
+	<p><?php esc_html_e( 'These settings control rental scheduling and payment mode. Full Payment uses WooCommerce Square. Deposit checkout is unavailable until a compatible provider is selected.', 'bike-rental-plugin' ); ?></p>
 	<?php settings_errors(); ?>
 	<?php if ( $result['errors'] ) : ?>
 		<div class="notice notice-warning inline"><p><?php esc_html_e( 'Stored settings need repair. Defaults are displayed but have not replaced your saved data. Review all fields and save to repair the configuration.', 'bike-rental-plugin' ); ?></p></div>
@@ -52,6 +52,7 @@ defined( 'ABSPATH' ) || exit;
 		<?php settings_fields( Settings::GROUP ); ?>
 		<h2><?php esc_html_e( 'General and rental scheduling', 'bike-rental-plugin' ); ?></h2>
 		<table class="form-table" role="presentation">
+			<tr><th scope="row"><label for="brp-payment-mode">Payment Mode</label></th><td><select id="brp-payment-mode" name="brp_settings[payment_mode]"><option value="full" <?php selected( $values['payment_mode'], 'full' ); ?>>Full Payment</option><option value="deposit" <?php selected( $values['payment_mode'], 'deposit' ); ?>>Deposit</option></select><p class="description">Deposit mode blocks new rental checkout until a compatible provider is configured. Existing checkout payment-mode snapshots are retained.</p></td></tr>
 			<tr><th scope="row"><label for="brp-business-name"><?php esc_html_e( 'Business name', 'bike-rental-plugin' ); ?></label></th>
 				<td><input class="regular-text" type="text" id="brp-business-name" name="brp_settings[business_name]" value="<?php echo esc_attr( $values['business_name'] ); ?>" placeholder="<?php esc_attr_e( 'Your rental business', 'bike-rental-plugin' ); ?>"><p class="description"><?php esc_html_e( 'Plain text. Leave blank while setting up.', 'bike-rental-plugin' ); ?></p></td></tr>
 			<?php foreach ( Settings::number_fields() as $key => $field ) : ?>

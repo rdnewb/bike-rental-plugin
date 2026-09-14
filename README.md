@@ -2,7 +2,9 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current release: 0.5.4 — 12-hour start-time dropdown.**
+**Current version: 0.6.0 — Milestone 6A Full Payment checkout. Dedicated-site Square sandbox acceptance is pending.**
+
+Milestone 6A supersedes the deposit-dependent Milestone 6 plan. Full Payment requires no deposit extension. Deposit mode is configurable but blocks new rental checkout until a compatible provider is selected. See [Milestone 6A architecture and verification](docs/milestone-6a-verification.md); the earlier [Acowebs compatibility findings](docs/milestone-6-compatibility.md) remain an archived preflight record.
 
 Develop and validate test releases on the separate WordPress test site. Production installation follows approval of the completed plugin; no site URLs or credentials belong in source control.
 
@@ -27,7 +29,9 @@ Develop and validate test releases on the separate WordPress test site. Producti
 
 - **[bike_rental_booking]** shortcode: package/date/time/quantity selection, calculated pickup, availability, and protected guest hold with expiry display and refresh recovery.
 
-**The public form stops at a temporary hold and development-only next-step message. It does not create carts/orders, redirect to checkout, process payments/deposits, collect waivers, send customer emails, or establish fulfillment readiness.**
+**The public form transfers its existing hold to WooCommerce Checkout Block. Full Payment uses WooCommerce Square; verified captured payment confirms that reservation. Deposit processing and waivers are not implemented. WooCommerce handles order emails and financial records.**
+
+Configure **Bike Rentals > Settings > Payment Mode > Full Payment**. Deactivate unsupported deposit extensions before rental checkout (including the previously tested Acowebs installation). Configure Square, guest checkout, and WooCommerce delivery zones/rates. Rental products require WooCommerce shipping/delivery fields; no custom shipping-rate calculation is added. Rental carts contain one reservation, with a locked quantity and no coupons or other products. Normal non-rental carts retain standard WooCommerce behavior.
 
 ## Public booking form
 
@@ -35,7 +39,7 @@ Insert `[bike_rental_booking]` into a normal WordPress page or a Divi shortcode-
 
 Start-time dropdown labels use 12-hour AM/PM display (for example, `1:30 PM`); option values remain `HH:MM` for existing booking validation.
 
-Public packages and holds use the **current WooCommerce selling price**, formatted by `wc_price()` and labeled per bike. The existing internal package reader and manual creation retain their regular-price contract. No checkout tax or deposit calculation occurs. The hold preserves the selected price, package metadata, quantity, local endpoints, timezone, and occupied buffers.
+Public packages and holds use the **current WooCommerce selling price**, formatted by `wc_price()` and labeled per bike. WooCommerce calculates checkout totals and taxes. A catalog price change during a hold requires a fresh selection. The existing internal package reader and manual creation retain their regular-price contract. The hold preserves price, package metadata, quantity, local endpoints, timezone, and occupied buffers.
 
 The start-date horizon is inclusive in the WordPress timezone. Start times follow increments measured from opening, before closing, and respect elapsed minimum notice. Hourly packages use elapsed UTC duration and require both endpoints in open periods; hourly pickup at closing is allowed. Calendar-day packages use `start date + (N - 1)` for any valid configured duration and apply the business-controlled pickup time to that date. Any weekday can be a start when its operating hours permit. Calendar pickup is independent of delivery/start hours; intermediate and final days may be closed for new starts. End must still be after start, including for one-day rentals. Ambiguous/nonexistent DST endpoints are rejected without extension. Buffers affect capacity, not customer-displayed times. The horizon constrains the start date.
 
@@ -58,7 +62,7 @@ See [M5 API, verification, and test-site acceptance](docs/public-booking-verific
 
 Do not upload the repository root, `.git`, `tests`, editor configuration, logs, or credentials. No compilation, Composer, Node.js, SSH, WP-CLI, or production build commands are required. Product-editor JavaScript and shortcode-scoped public JavaScript/CSS ship ready to upload.
 
-WooCommerce is required for package management, new manual reservations, and the full reservation edit form, which validates the selected package. It is not a hard activation dependency. If absent, administrators can still configure settings/fleet and read existing reservation records and snapshots; internal lifecycle helpers remain available. Square, WPForms, and a deposit extension are not required for this milestone.
+WooCommerce is required for package management, reservation package validation, and checkout. It is not a hard activation dependency: settings, fleet, and stored reservations remain accessible without it. Square is required for real rental payment. WPForms and deposit extensions are not required for Milestone 6A.
 
 ## Rental packages
 
@@ -76,7 +80,7 @@ Invalid submissions retain all previous rental metadata and show WooCommerce adm
 
 **Price contract:** the package reader uses `get_regular_price('edit')` and returns a non-negative decimal string, or `null` when unset/invalid. An explicitly entered zero is distinct from an unset price. Sale prices are not used by the rental package reader. The plugin does not change normal WooCommerce sale pricing or purchasing behavior in this milestone. Prices are returned as stored; WooCommerce tax display/calculation is not performed by this reader.
 
-**Test-site behavior:** published WooCommerce products can still have ordinary product pages/purchase buttons. Rental Active is not a storefront-purchase restriction. Keep test products/site access appropriate for testing; rental checkout enforcement belongs to a later milestone.
+Direct rental add-to-cart is blocked, including product buttons, URLs, and the Store API. The protected booking transfer is required. Stale holds, mismatched quantities/products, changed snapshots, and wrong guest sessions cannot proceed to payment.
 
 ### Metadata and package API
 
@@ -109,7 +113,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` remains **1**, separate from plugin version **0.5.4**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.6.0**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.
@@ -118,7 +122,7 @@ See [schema and service contracts](docs/reservation-storage.md) for every field/
 - The **View / edit** detail page edits package, quantity, local start/end, any of the six valid statuses, and an optional issue code/short note (64 UTF-8 bytes). The current selection must still be a valid rental package; an existing inactive/unpublished package can retain its agreed terms, while a replacement must be published, active, and priced.
 - Reference, created time, order relationships, IDs, hashes, and raw snapshot JSON cannot be edited. One successful multi-field save increments revision once and records the current UTC modification time. Stale revisions fail with a reload instruction; no-op saves leave the row and snapshot unchanged. Timestamps have one-second precision; revision distinguishes saves within one second.
 - Administrative corrections are available for all six statuses, including completed/cancelled/expired records. Existing lifecycle helpers retain their ordinary transitions: `hold → confirmed / cancelled / expired`, `confirmed → active / cancelled`, `active → completed`. The explicit hold-confirmation helper also allows an expired result after a fresh availability check. Cancellation is persistent, with no delete action.
-- Edits never rewrite WooCommerce orders or other reservations. Completing an active rental creates a dated quantity block when its captured turnaround buffer is positive. There is no audit-history table or automatic retention of previous snapshot revisions; future audit/history functionality may retain them. The edit page confirms availability enforcement and explains that payment/fulfillment checks remain deferred.
+- Edits never rewrite WooCommerce orders or other reservations. Payment mode is retained when changing packages. Changed rental details after checkout trigger a reconciliation exception. Completing an active rental creates a dated quantity block when its captured turnaround buffer is positive. Prior revisions are not retained yet. Manual status changes do not verify payment or waiver readiness.
 
 ## Availability, holds, and transactions
 
@@ -134,7 +138,7 @@ Pre-upgrade future Active records are retained and treated as bounded scheduled 
 
 Calendar-day packages use one generic duration calculation with no package-specific or weekday-specific branches. The existing administrator package range is 1–365 days. Weekly hours restrict new starts, not calendar-day collections; pickup uses the configured time even outside final-day delivery hours. The obsolete pickup-hours warning has been removed. Empty time lists still explain applicable schedule failures, and protected PHP diagnostics retain per-candidate and buffer-conflict reasons. See [generic duration rules, test matrix, and browser checklist](docs/generic-calendar-verification.md). Existing settings and saved reservation schedules are not rewritten.
 
-`Reservations::create_hold($input, $request_key, $session_hash)` uses the same local package/quantity/start/end input as manual creation. The server computes the intent hash. Same key, intent, and session return the existing result without renewing expiry; changed intent/session is rejected. Manual forms use a stable request key and hashed administrator ID. Public requests use `create_booking_hold()` after guest-session validation and server endpoint calculation; payment integration remains deferred.
+`Reservations::create_hold($input, $request_key, $session_hash)` uses the same local package/quantity/start/end input as manual creation. Same key, intent, and session reuse the existing hold without renewing expiry. Public requests use `create_booking_hold()` after guest-session validation. Checkout transfer snapshots payment mode; payment submission claims one primary Woo order and sets the deadline to original creation plus 30 minutes. Loads/refreshes do not renew it. Failed/pending attempts stay bounded. Late payment rechecks locked capacity; a conflict needs staff resolution.
 
 Holds last **15 minutes** from the database time after acquiring the lock (`Reservations::HOLD_MINUTES`). Expired timestamps cease consuming immediately. WP-Cron runs `brp_expire_holds` every **five minutes**, processing at most **100** expired rows per invocation and incrementing their revision/current snapshot status. Repeated scheduling is guarded by a database registration lock and a fresh schedule check. Deactivation removes the scheduled hook; reactivation schedules it on initialization. Delayed cron affects housekeeping only. Legacy holds with NULL expiry remain unallocated and are not silently renewed; explicit confirmation rechecks capacity. Moving a non-hold back to hold through administration starts a new 15-minute hold under the allocation lock.
 
@@ -173,9 +177,14 @@ Detection uses loaded runtime identifiers and installed plugin headers, not pres
 
 Available only means active presence was detected. Every component still displays **Not yet integration tested**. Header detection does not prove successful initialization, credentials, licenses, or compatible versions. WPForms Lite is identified as installed WPForms but does not satisfy the later paid signature workflow. A deposit-like WooCommerce plugin is only a candidate until verified.
 
-The intended later integrations are WooCommerce Square, a compatible deposit extension, and WPForms Elite with Signature Addon. This milestone neither reads their credentials nor changes their settings. Unknown products must be inspected before adding detection identifiers.
+WooCommerce Square processes Full Payment through WooCommerce. Compatible deposit-provider selection and WPForms waiver integration remain future work. This plugin does not read credentials or configure external payment plugins. Detection is not proof of successful sandbox validation.
 
 ## Architecture
+
+- `src/PaymentMode.php`: generic payment-mode policy, guarded deposit mode, Woo financial summary, and captured-payment evidence reader.
+- `src/CheckoutReservation.php`: locked ownership/allocation validation, historical mode snapshot, primary-order claim, bounded extension, and late-payment recovery.
+- `src/Checkout.php`: Checkout Block transfer/validation, locked cart quantity, safe order metadata, and Square gateway selection.
+- `src/Payments.php`: payment observation, two-way reconciliation, staff exceptions, and order/reservation crosslinks.
 
 - `bike-rental-plugin.php`: headers, direct-access guard, explicit class loading, activation and deferred bootstrap.
 - `src/Plugin.php`: lifecycle, text domain, version marker, dependency visibility, conditional package loading after WooCommerce initializes.
