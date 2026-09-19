@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1 — Milestone 6A product-selection UX
+
+- Replace the public rental dropdown with server-rendered responsive product cards, using WooCommerce featured thumbnails, safe short descriptions, formatted prices, and existing duration/promotion metadata.
+- Add keyboard-accessible selection, visible and programmatic selected states, image fallbacks, and progressive booking controls. Keep the hidden package ID synchronized with the existing availability/hold/checkout requests.
+- Scope neutral styling to the shortcode; support three/two/one columns according to container space and contain long descriptions without losing keyboard access.
+- Add real WordPress/WooCommerce card-rendering checks and local Chromium interaction/layout tests. Payment, deposit, reservation, Square, and schema logic are unchanged; real test-site/Divi checks remain pending.
+
 ## 0.6.0 — Milestone 6A Full Payment checkout
 
 - Replace the hold placeholder with a protected WooCommerce Checkout Block transfer. Reuse the existing reservation, lock its quantity, and reject direct/stale/forged rental purchases, coupons, and mixed rental carts.

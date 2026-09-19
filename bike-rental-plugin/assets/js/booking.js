@@ -13,6 +13,16 @@
         const result = root.querySelector('.brp-result');
         const restart = root.querySelector('.brp-restart');
         const checkout = root.querySelector('.brp-checkout');
+        const cards = Array.from(root.querySelectorAll('.brp-card'));
+        const details = root.querySelector('.brp-details');
+        const updateCards = () => cards.forEach((card) => {
+            const selected = card.dataset.packageId === fields.package_id.value;
+            card.classList.toggle('brp-selected', selected);
+            const button = card.querySelector('.brp-select');
+            button.setAttribute('aria-pressed', String(selected));
+            button.textContent = selected ? '✓ Selected' : 'Select Rental';
+            button.setAttribute('aria-label', (selected ? 'Selected: ' : 'Select Rental: ') + button.dataset.packageName);
+        });
         const storageKey = 'brp-booking:' + root.dataset.api + location.pathname;
         let packages = [], selection = null, generation = 0, requestKey = '', timer = null;
         const message = (text) => { status.textContent = text; };
@@ -111,12 +121,15 @@
             } catch (error) { if (current === generation) message(error.message); }
             finally { if (current === generation) root.removeAttribute('aria-busy'); }
         };
-        fields.package_id.addEventListener('change', () => {
-            const target = root.querySelector('.brp-package'); target.replaceChildren();
-            const item = packages.find((p) => String(p.product_id) === fields.package_id.value);
-            if (item) { line(target, 'Duration', item.duration_amount + (item.duration_type === 'hours' ? ' hours' : ' calendar days')); price(target, item); if (item.promotional_label) line(target, 'Offer', item.promotional_label); }
-            fields.date.disabled = !item; loadTimes();
-        });
+        cards.forEach((card) => card.querySelector('.brp-select').addEventListener('click', () => {
+            const id = card.dataset.packageId;
+            if (card.querySelector('.brp-select').disabled || id === fields.package_id.value || !packages.some((p) => String(p.product_id) === id)) return;
+            fields.package_id.value = id; updateCards();
+            details.hidden = false; fields.date.disabled = false;
+            loadTimes();
+            if (!fields.date.value) message('Rental selected. Choose your start date and time.');
+            fields.date.focus();
+        }));
         fields.date.addEventListener('change', loadTimes);
         fields.time.addEventListener('change', async () => {
             resetSelection(); if (!fields.time.value) return;
@@ -145,16 +158,22 @@
         });
         restart.addEventListener('click', () => {
             clearInterval(timer); result.hidden = true; form.hidden = false; resetSelection(); form.reset();
-            fields.time.disabled = true; fields.date.disabled = true; fields.package_id.focus();
-            root.querySelector('.brp-package').replaceChildren(); message('Choose a package to check availability again.');
+            fields.package_id.value = ''; updateCards(); details.hidden = true;
+            fields.time.disabled = true; fields.date.disabled = true;
+            cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
+            message('Choose a package to check availability again.');
         });
         (async () => {
             try {
                 const data = await api('packages'); packages = data.packages;
-                fields.package_id.replaceChildren(new Option(packages.length ? 'Select a rental package' : 'No rental packages available', ''));
-                packages.forEach((item) => fields.package_id.add(new Option(item.name, item.product_id)));
-                fields.package_id.disabled = !packages.length; fields.date.min = data.min_date; fields.date.max = data.max_date;
-                message(packages.length ? 'Choose a package to get started.' : 'No rental packages are currently available.');
+                cards.forEach((card) => {
+                    const available = packages.some((item) => String(item.product_id) === card.dataset.packageId);
+                    card.hidden = !available; card.querySelector('.brp-select').disabled = !available;
+                });
+                const visible = cards.some((card) => !card.hidden);
+                root.querySelector('.brp-empty').hidden = visible;
+                fields.date.min = data.min_date; fields.date.max = data.max_date;
+                message(visible ? 'Choose a rental to get started.' : packages.length ? 'Rental options have changed. Refresh this page to see the latest packages.' : 'No rental packages are currently available. Please check back soon or contact us.');
                 let previous = ''; try { previous = sessionStorage.getItem(storageKey) || ''; } catch (_) { /* Optional reload recovery. */ }
                 if (previous) { requestKey = previous; const identity = await session(); showHold(await api('hold-status', { request_key: previous }, true, identity.token)); }
             } catch (error) { message(error.message); }

@@ -2,7 +2,7 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current version: 0.6.0 — Milestone 6A Full Payment checkout. Dedicated-site Square sandbox acceptance is pending.**
+**Current version: 0.6.1 — responsive rental product grid. Dedicated-site Square sandbox acceptance is pending.**
 
 Milestone 6A supersedes the deposit-dependent Milestone 6 plan. Full Payment requires no deposit extension. Deposit mode is configurable but blocks new rental checkout until a compatible provider is selected. See [Milestone 6A architecture and verification](docs/milestone-6a-verification.md); the earlier [Acowebs compatibility findings](docs/milestone-6-compatibility.md) remain an archived preflight record.
 
@@ -38,6 +38,10 @@ Configure **Bike Rentals > Settings > Payment Mode > Full Payment**. Deactivate 
 Insert `[bike_rental_booking]` into a normal WordPress page or a Divi shortcode-capable area. Configure open hours first; all-closed defaults offer no start times. JavaScript and first-party cookies are required. No custom Divi module or calendar library is used. Assets are scoped to `.brp-booking` and load only when the shortcode renders, including late-rendered styles.
 
 Start-time dropdown labels use 12-hour AM/PM display (for example, `1:30 PM`); option values remain `HH:MM` for existing booking validation.
+
+Rental packages render as semantic product cards before JavaScript loads. Cards use WooCommerce featured thumbnail images (responsive `srcset`/`sizes` and attachment alt text), short descriptions with restricted basic formatting, and WooCommerce formatted prices; duration and optional promotion come from rental metadata. Missing images have an aligned fallback. Long descriptions are contained in keyboard-scrollable regions.
+
+The grid fits up to three columns in its 72rem container, two in medium spaces, and one on narrow screens. Native Select Rental buttons support Enter/Space, visible focus, and `aria-pressed`; selected text/checkmark and borders make selection clear without relying on color. Selecting a card synchronizes a hidden package ID and reveals the existing date/time, quantity, and review controls. The existing catalog request refreshes eligibility and date limits before buttons enable; the server still validates all booking requests. Clear cached booking pages after updating products or deploying. See [0.6.1 verification and deployment](docs/product-grid-verification.md).
 
 Public packages and holds use the **current WooCommerce selling price**, formatted by `wc_price()` and labeled per bike. WooCommerce calculates checkout totals and taxes. A catalog price change during a hold requires a fresh selection. The existing internal package reader and manual creation retain their regular-price contract. The hold preserves price, package metadata, quantity, local endpoints, timezone, and occupied buffers.
 
@@ -113,7 +117,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` remains **1**, separate from plugin version **0.6.0**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.6.1**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.

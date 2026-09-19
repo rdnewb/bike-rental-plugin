@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.6.0
+Stable tag: 0.6.1
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -79,6 +79,11 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.6.1 =
+* Responsive server-rendered rental cards replace the package dropdown, using WooCommerce images, short descriptions, formatted prices, duration, and optional promotions.
+* Accessible keyboard selection reveals the existing booking controls. Scoped styles adapt to desktop, tablet, and mobile with image fallbacks and contained descriptions.
+* No changes to payment, deposit, reservation, Square, or schema logic. Test-site/Divi browser acceptance remains pending.
 
 = 0.6.0 =
 * Add Full Payment checkout through WooCommerce Square and a guarded generic Deposit mode.

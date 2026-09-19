@@ -182,6 +182,14 @@ final class PublicBooking {
 		// Also supports shortcodes rendered after the theme has printed its head styles.
 		wp_print_styles( 'brp-booking' );
 		$uid = wp_unique_id( 'brp-booking-' );
+		// Crawlable presentation only. REST handlers still validate every booking selection.
+		$cards = array();
+		if ( class_exists( Packages::class ) ) {
+			foreach ( Packages::get_active_packages() as $candidate ) {
+				$package = BookingSchedule::package( $candidate['product_id'] );
+				if ( ! is_wp_error( $package ) ) { $cards[] = $package; }
+			}
+		}
 		require __DIR__ . '/booking-form.php';
 		return ob_get_clean();
 	}
