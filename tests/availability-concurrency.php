@@ -125,4 +125,25 @@ $job = array( 'operation' => 'payment', 'id' => $linked['id'], 'order_id' => (in
 $results = run_race( array( $job, $job ), 'Simultaneous duplicate payment callbacks' );
 $after = Reservations::read( $linked['id'] );
 race_check( $results[0]['success'] && $results[1]['success'] && $after['status'] === 'confirmed' && (int) $after['revision'] === (int) $linked['revision'] + 1, 'duplicate payment callbacks confirm and increment revision only once' );
+// Cart cancellation uses that same lock; payment-first preserves confirmation, removal-first needs review.
+foreach ( array( false, true ) as $reverse ) {
+	reset_race( 1 );
+	$hold = Reservations::create_hold( $input, 'cart-payment-race', hash( 'sha256', 'concurrent-session' ) );
+	$order = wc_create_order(); $order->update_meta_data( '_brp_reservation_id', $hold['id'] ); $order->save();
+	try {
+		$wpdb->update( Database::table( 'reservations' ), array( 'order_id' => $order->get_id(), 'order_item_id' => 900002 ), array( 'id' => $hold['id'] ) );
+		$fp = \BikeRentalPlugin\CheckoutReservation::fingerprint( $hold );
+		$jobs = array( array( 'operation' => 'cart_release', 'id' => $hold['id'], 'product_id' => $pid, 'fingerprint' => $fp ), array( 'operation' => 'payment', 'id' => $hold['id'], 'order_id' => $order->get_id(), 'fingerprint' => $fp ) );
+		$results = run_race( $reverse ? array_reverse( $jobs ) : $jobs, 'Cart removal versus payment ' . (int) $reverse );
+		$after = Reservations::read( $hold['id'] );
+		race_check( $after['status'] === 'confirmed' || ( $after['status'] === 'cancelled' && $after['issue_code'] === 'payment_staff_review' ), 'race either retains confirmed rental or flags cancelled payment for staff' );
+		race_check( Availability::check( $hold['occupied_start_utc'], $hold['occupied_end_utc'] )['peak_existing_usage'] <= 1, 'cart/payment race never overallocates' );
+	} finally { $order->delete( true ); }
+}
+reset_race( 1 );
+$hold = Reservations::create_hold( $input, 'duplicate-cart-remove', hash( 'sha256', 'concurrent-session' ) );
+$job = array( 'operation' => 'cart_release', 'id' => $hold['id'], 'product_id' => $pid, 'fingerprint' => \BikeRentalPlugin\CheckoutReservation::fingerprint( $hold ) );
+$results = run_race( array( $job, $job ), 'Duplicate cart removal' );
+$after = Reservations::read( $hold['id'] );
+race_check( $results[0]['success'] && $results[1]['success'] && $after['status'] === 'cancelled' && (int) $after['revision'] === (int) $hold['revision'] + 1, 'simultaneous removals cancel and increment revision only once' );
 echo PHP_EOL . $checks . ' real multiprocess concurrency checks passed.' . PHP_EOL;

@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.6.1
+Stable tag: 0.6.2
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -79,6 +79,11 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.6.2 =
+* Release matching temporary holds on rental cart removal, cart emptying, and cart restoration/reset, using locked cancellation and retaining audit records.
+* Clear matching rental session pointers and show a fresh booking grid after cancellation, including browser Back/Forward cache recovery.
+* Preserve finalized reservations, payment/authorization states, unrelated cart/customer data, and normal timeout for navigation away. Schema remains 1; deposit behavior is unchanged.
 
 = 0.6.1 =
 * Responsive server-rendered rental cards replace the package dropdown, using WooCommerce images, short descriptions, formatted prices, duration, and optional promotions.

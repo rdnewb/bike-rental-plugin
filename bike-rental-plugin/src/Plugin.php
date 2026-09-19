@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 
-	const VERSION = '0.6.1';
+	const VERSION = '0.6.2';
 
 	/** Initialize defaults once; never replace existing configuration. */
 	public static function activate() {
@@ -54,6 +54,7 @@ final class Plugin {
 		$packages = new Packages();
 		$packages->register_hooks();
 		Checkout::register_hooks();
+		CartHolds::register_hooks();
 		Payments::register_hooks();
 	}
 

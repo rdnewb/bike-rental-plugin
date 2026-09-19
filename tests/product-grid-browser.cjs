@@ -18,7 +18,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
     try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
         const calls = [], errors = [];
-        let catalog = fixture.packages, catalogFailure = false, slowTimes = false;
+        let catalog = fixture.packages, catalogFailure = false, slowTimes = false, restoredStatus = 'expired';
         page.on('pageerror', (error) => errors.push(error.message));
         await page.route('**/*', async (route) => {
             const request = route.request(), url = new URL(request.url());
@@ -38,7 +38,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
                 if (name === 'availability') data = { available_quantity: 3, rental_start: '2032-09-20T09:00', rental_end: '2032-09-22T17:00', timezone: 'America/New_York', package: catalog.find((p) => String(p.product_id) === input.package_id), message: '3 bikes are available.' };
                 if (name === 'session') data = { token: 'fixture-csrf' };
                 if (name === 'holds') data = { reserved: true, reservation_status: 'hold', reference: 'BRP-FIXTURE', package: catalog.find((p) => String(p.product_id) === input.package_id), quantity: input.quantity, rental_start: '2032-09-20T09:00', rental_end: '2032-09-22T17:00', timezone: 'America/New_York', expires_at: new Date(Date.now() + 900000).toISOString(), server_time: new Date().toISOString(), message: 'Your bikes are temporarily reserved.' };
-                if (name === 'hold-status') data = { reserved: false, reservation_status: 'expired', reference: 'BRP-EXPIRED', package: fixture.packages[0], quantity: 1, rental_start: '2032-09-20T09:00', rental_end: '2032-09-20T13:00', timezone: 'America/New_York', expires_at: new Date(Date.now() - 1000).toISOString(), server_time: new Date().toISOString(), message: 'Your temporary reservation has expired.' };
+                if (name === 'hold-status') data = { reserved: restoredStatus === 'hold', reservation_status: restoredStatus, reference: 'BRP-RESTORED', package: fixture.packages[0], quantity: 1, rental_start: '2032-09-20T09:00', rental_end: '2032-09-20T13:00', timezone: 'America/New_York', expires_at: restoredStatus === 'cancelled' ? null : new Date(Date.now() + (restoredStatus === 'hold' ? 900000 : -1000)).toISOString(), server_time: new Date().toISOString(), message: 'Restored reservation status: ' + restoredStatus };
                 if (name === 'checkout') data = { checkout_url: 'http://127.0.0.1:33319/checkout' };
                 return route.fulfill({ json: data });
             }
@@ -103,6 +103,23 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
         await page.locator('.brp-restart').click();
         check(await page.locator('.brp-form').isVisible() && await page.locator('[name=package_id]').inputValue() === '', 'start over returns to unselected grid');
         check(await page.locator('.brp-details').isHidden() && await page.locator('.brp-select[aria-pressed=true]').count() === 0, 'restart clears selected semantics and hides booking controls');
+        const setPrevious = () => page.evaluate(() => sessionStorage.setItem('brp-booking:http://127.0.0.1:33319/api//booking', 'removed-hold-fixture'));
+        restoredStatus = 'cancelled'; await setPrevious(); await load(false);
+        await page.waitForFunction(() => document.querySelector('.brp-status').textContent.includes('cancelled'));
+        check(await page.locator('.brp-form').isVisible() && await page.locator('.brp-result').isHidden(), 'removed hold returns directly to product grid without old receipt');
+        check(await page.evaluate(() => sessionStorage.getItem('brp-booking:http://127.0.0.1:33319/api//booking')) === null, 'removed hold browser pointer is cleared');
+        check(await page.locator('.brp-details').isHidden() && await page.locator('[name=package_id]').inputValue() === '', 'cancelled receipt resets selection and booking controls');
+        await button(0).click(); await page.locator('[name=date]').fill('2032-09-20'); await page.locator('[name=date]').dispatchEvent('change');
+        await page.waitForFunction(() => !document.querySelector('[name=time]').disabled); await page.locator('[name=time]').selectOption('09:00');
+        await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled); await page.locator('.brp-submit').click(); await page.waitForURL('**/checkout');
+        check(calls.filter((c) => c.name === 'holds').length === 2 && calls.filter((c) => c.name === 'checkout').length === 2, 'fresh booking and checkout work after removed hold recovery');
+        restoredStatus = 'hold'; await load(false); await page.locator('.brp-result').waitFor({ state: 'visible' });
+        check(await page.locator('.brp-form').isHidden(), 'navigation alone restores live hold normally');
+        restoredStatus = 'cancelled';
+        await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+        await page.locator('.brp-form').waitFor({ state: 'visible' });
+        check(await page.locator('.brp-result').isHidden(), 'Back/Forward-cache restoration rechecks and clears cancelled hold');
+        check(await page.evaluate(() => sessionStorage.getItem('brp-booking:http://127.0.0.1:33319/api//booking')) === null, 'Back/Forward recovery clears only stale booking pointer');
         catalog = [];
         await load();
         check(await page.locator('.brp-card:visible').count() === 0 && await page.locator('.brp-empty').isVisible(), 'fresh catalog hides stale server-rendered packages');

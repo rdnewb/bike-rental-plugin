@@ -70,6 +70,11 @@
         };
         const selectionInput = () => ({ package_id: fields.package_id.value, date: fields.date.value, time: fields.time.value });
         const showHold = (hold) => {
+            if (hold.reservation_status === 'cancelled') {
+                resetBooking(false);
+                message('Your previous reservation was cancelled. Choose a rental to start again.');
+                return;
+            }
             checkout.hidden = !hold.reserved;
             clearInterval(timer); form.hidden = true; result.hidden = false; restart.hidden = hold.reserved;
             const receipt = root.querySelector('.brp-receipt'); receipt.replaceChildren();
@@ -156,12 +161,25 @@
             catch (error) { message(error.message); }
             finally { fields[0].disabled = false; submit.disabled = false; }
         });
-        restart.addEventListener('click', () => {
+        const resetBooking = (focus = true) => {
             clearInterval(timer); result.hidden = true; form.hidden = false; resetSelection(); form.reset();
             fields.package_id.value = ''; updateCards(); details.hidden = true;
             fields.time.disabled = true; fields.date.disabled = true;
-            cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
+            if (focus) cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
             message('Choose a package to check availability again.');
+        };
+        restart.addEventListener('click', () => resetBooking());
+        const restoreHold = async () => {
+            let previous = ''; try { previous = sessionStorage.getItem(storageKey) || ''; } catch (_) { /* Optional reload recovery. */ }
+            if (!previous) return;
+            requestKey = previous;
+            const identity = await session();
+            const hold = await api('hold-status', { request_key: previous }, true, identity.token);
+            if (requestKey === previous) showHold(hold);
+        };
+        // Back/Forward cache can restore the old receipt without rerunning this script.
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) restoreHold().catch((error) => message(error.message));
         });
         (async () => {
             try {
@@ -174,8 +192,7 @@
                 root.querySelector('.brp-empty').hidden = visible;
                 fields.date.min = data.min_date; fields.date.max = data.max_date;
                 message(visible ? 'Choose a rental to get started.' : packages.length ? 'Rental options have changed. Refresh this page to see the latest packages.' : 'No rental packages are currently available. Please check back soon or contact us.');
-                let previous = ''; try { previous = sessionStorage.getItem(storageKey) || ''; } catch (_) { /* Optional reload recovery. */ }
-                if (previous) { requestKey = previous; const identity = await session(); showHold(await api('hold-status', { request_key: previous }, true, identity.token)); }
+                await restoreHold();
             } catch (error) { message(error.message); }
         })();
     });

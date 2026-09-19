@@ -47,8 +47,8 @@ final class Checkout {
 		if ( ! $identity || ! is_string( $key ) || ! preg_match( '/\A[a-zA-Z0-9_-]{1,64}\z/', $key ) || ! function_exists( 'wc_load_cart' ) ) { return CheckoutReservation::error(); }
 		$id = $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM %i WHERE request_key = %s AND session_hash = %s', Database::table( 'reservations' ), strtolower( $key ), $identity['hash'] ) );
 		if ( $wpdb->last_error || ! $id ) { return CheckoutReservation::error(); }
+		wc_load_cart(); WC()->cart->get_cart(); // Woo loads serialized contents lazily in REST requests.
 		$row = CheckoutReservation::prepare( $id, $identity['hash'] ); if ( is_wp_error( $row ) ) { return $row; }
-		wc_load_cart();
 		$existing = false;
 		foreach ( WC()->cart->get_cart() as $item ) {
 			if ( (int) ( $item['brp']['id'] ?? 0 ) !== (int) $id ) { return Database::error( 'checkout', 'Please finish or empty your existing cart before continuing this rental checkout.' ); }
@@ -61,6 +61,7 @@ final class Checkout {
 			if ( ! $added ) { return Database::error( 'checkout', 'The rental could not be added to checkout. Please contact the shop.' ); }
 		}
 		if ( $row['order_id'] ) { WC()->session->set( 'store_api_draft_order', (int) $row['order_id'] ); }
+		CartHolds::remember_cart();
 		WC()->session->set_customer_session_cookie( true ); WC()->cart->calculate_totals(); WC()->session->save_data();
 		return array( 'valid' => true, 'checkout_url' => wc_get_checkout_url() );
 	}

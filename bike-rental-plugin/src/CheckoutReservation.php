@@ -61,6 +61,21 @@ final class CheckoutReservation {
 			return self::write( $row, array( 'order_id' => $order_id, 'order_item_id' => $item_id, 'hold_expires_at' => RentalTime::shift( $row['created_at'], 30 ) ) );
 		} ) );
 	}
+	/** Release only the authenticated cart's unchanged temporary hold, under the shared lock. */
+	public static function release_cart_hold( $id, $owner, $product_id, $fingerprint ) {
+		return Database::public_booking( static fn() => Database::locked( static function () use ( $id, $owner, $product_id, $fingerprint ) {
+			$row = Reservations::read( $id ); if ( is_wp_error( $row ) ) { return $row; }
+			if ( ! is_string( $owner ) || strlen( $owner ) !== 64 || ! hash_equals( (string) $row['session_hash'], $owner ) || (int) $product_id !== (int) $row['package_product_id'] || ! is_string( $fingerprint ) || ! hash_equals( self::fingerprint( $row ), $fingerprint ) ) { return self::error(); }
+			if ( 'hold' !== $row['status'] ) { return $row; }
+			if ( $row['order_id'] ) {
+				// Square also empties carts after payment/authorization. Do not treat that as abandonment.
+				// Woo reads only: no order writes, financial changes, or network inside this transaction.
+				$order = wc_get_order( $row['order_id'] );
+				if ( ! $order || (int) $order->get_meta( '_brp_reservation_id' ) !== (int) $id || $order->is_paid() || $order->get_date_paid() || $order->get_transaction_id() || $order->has_status( 'on-hold' ) ) { return $row; }
+			}
+			return self::write( $row, array( 'status' => 'cancelled', 'hold_expires_at' => null, 'issue_code' => 'cart_removed' ) );
+		} ) );
+	}
 	/** Server-only outcome handler. Late success never overrides capacity or staff cancellation. */
 	public static function outcome( $id, $order_id, $fingerprint, $paid, $refunded = false ) {
 		return Database::public_booking( static fn() => Database::locked( static function ( $capacity ) use ( $id, $order_id, $fingerprint, $paid, $refunded ) {

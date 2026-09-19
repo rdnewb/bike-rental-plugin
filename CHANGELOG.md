@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2 — Release removed rental cart holds
+
+- Cancel only an owned, unchanged temporary hold when its rental cart item is removed, the cart is emptied, or a recorded binding disappears during cart restoration. Use the existing shared inventory lock and revision writer; retain the reservation, order relationship, and audit identifiers.
+- Clear only matching rental cart/checkout pointers. Preserve unrelated customer/session data and finalized reservations. Protect paid/authorized or ambiguous linked orders from payment-driven cart emptying; existing payment reconciliation remains unchanged.
+- Restore a fresh booking grid for cancelled receipts, including browser Back/Forward cache visits. Retain normal expiration for navigation away and untransferred holds. Disable Undo for removed rental items so rebooking uses current availability.
+- Add real Woo cart/Store API/restoration tests, duplicate-removal and payment/removal races, and browser recovery checks. Keep schema 1; no deposit or waiver work.
+
 ## 0.6.1 — Milestone 6A product-selection UX
 
 - Replace the public rental dropdown with server-rendered responsive product cards, using WooCommerce featured thumbnails, safe short descriptions, formatted prices, and existing duration/promotion metadata.

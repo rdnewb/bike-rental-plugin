@@ -158,6 +158,8 @@ final class PublicBooking {
 		global $wpdb;
 		$key = $input['request_key'] ?? null;
 		if ( ! is_string( $key ) || ! preg_match( '/\A[a-zA-Z0-9_-]{1,64}\z/', $key ) ) { return BookingSchedule::error( 'Please check your temporary reservation.' ); }
+		// Reconcile removed/restored Woo cart bindings before restoring a browser receipt.
+		if ( function_exists( 'wc_load_cart' ) ) { wc_load_cart(); WC()->cart->get_cart(); }
 		return Database::locked( static function () use ( $key ) {
 			global $wpdb;
 			$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE request_key = %s AND session_hash = %s FOR UPDATE', Database::table( 'reservations' ), strtolower( $key ), GuestSession::identity()['hash'] ), ARRAY_A );
@@ -171,7 +173,7 @@ final class PublicBooking {
 		$live = 'hold' === $row['status'] && $row['hold_expires_at'] > $now;
 		$message = $live ? self::next_step_message() : 'Your temporary reservation has expired or is no longer held. Bikes are not reserved by this form.';
 		if ( in_array( $row['status'], array( 'confirmed', 'active', 'completed' ), true ) ) { $message = 'Reservation status: ' . $row['status'] . '. Check your order confirmation or contact the shop for details.'; }
-		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z', 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
+		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => $row['hold_expires_at'] ? str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z' : null, 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
 	}
 	public static function next_step_message() { return __( 'Your bikes are temporarily reserved. Continue to checkout to complete payment.', 'bike-rental-plugin' ); }
 	public static function shortcode() {
