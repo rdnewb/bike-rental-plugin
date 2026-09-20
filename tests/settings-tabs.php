@@ -28,7 +28,7 @@ try {
 		$dom = tabs_dom( $html );
 		tabs_check( 1 === $dom->query( '//h1' )->length && 'Bike Rentals Settings' === $dom->query( '//h1' )->item( 0 )->textContent, "$tab has one page heading" );
 		tabs_check( 1 === $dom->query( '//h1/following-sibling::*[1][self::nav]' )->length, "$tab navigation immediately follows heading" );
-		tabs_check( 2 === $dom->query( '//nav/a[contains(@class,"nav-tab")]' )->length, "$tab has two normal tab links" );
+		tabs_check( 3 === $dom->query( '//nav/a[contains(@class,"nav-tab")]' )->length, "$tab has three normal tab links" );
 		foreach ( Settings::tabs() as $key => $label ) { tabs_check( $label === $dom->query( '//nav/a[@href="' . Settings::tab_url( $key ) . '"]' )->item( 0 )->textContent, "$tab links to $key" ); }
 		tabs_check( str_contains( $dom->query( '//nav/a[@aria-current="page"]' )->item( 0 )->getAttribute( 'href' ), 'tab=' . $tab ), "$tab is active" );
 		tabs_check( 1 === $dom->query( '//form[@method="post"]' )->length && str_ends_with( $dom->query( '//form' )->item( 0 )->getAttribute( 'action' ), '/wp-admin/options.php' ), "$tab uses core Settings API POST endpoint" );
@@ -108,7 +108,7 @@ try {
 		$native_expected = $native_after; $native_expected['branding'] = Branding::defaults();
 		tabs_check( $native_expected === Settings::get(), 'registered Settings API callback resets Branding without losing General' );
 	} finally { unregister_setting( Settings::GROUP, Settings::OPTION ); }
-	tabs_check( '1' === Database::VERSION, 'schema remains 1' );
+	tabs_check( '2' === Database::VERSION, 'schema is 2' );
 	if ( $dir = getenv( 'BRP_TABS_FIXTURE_DIR' ) ) { if ( ! is_dir( $dir ) ) { mkdir( $dir, 0777, true ); } file_put_contents( $dir . '/tabs-general.html', $general ); file_put_contents( $dir . '/tabs-branding.html', $branding ); }
 } finally {
 	wp_set_current_user( 1 ); $_POST = array(); update_option( Settings::OPTION, $saved ); $_POST = $post; $_GET = $get; $_REQUEST = $request; $_SERVER['REQUEST_URI'] = $uri;

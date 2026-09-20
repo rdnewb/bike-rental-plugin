@@ -99,12 +99,12 @@
             line(receipt, 'Bikes', hold.quantity); line(receipt, 'Start', dateLabel(hold.rental_start));
             line(receipt, 'Pickup / end', dateLabel(hold.rental_end)); line(receipt, 'Timezone', hold.timezone); price(receipt, hold.package);
             line(receipt, 'Hold expires', new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(hold.expires_at)) + ' (your device time)');
-            message(hold.message);
+            message(hold.message + (hold.waiver_notice ? ' ' + hold.waiver_notice : ''));
             const remaining = new Date(hold.expires_at).getTime() - new Date(hold.server_time).getTime();
             const began = performance.now(); const expiry = root.querySelector('.brp-expiry');
             expiry.setAttribute('aria-live', 'off');
             const tick = () => {
-                if (['confirmed', 'active', 'completed'].includes(hold.reservation_status)) {
+                if (['pending_waivers', 'confirmed', 'active', 'completed'].includes(hold.reservation_status)) {
                     clearInterval(timer); expiry.textContent = 'Reservation status: ' + hold.reservation_status; return;
                 }
                 const seconds = Math.max(0, Math.ceil((remaining - (performance.now() - began)) / 1000));

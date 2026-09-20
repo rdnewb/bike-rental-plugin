@@ -57,6 +57,7 @@ try {
 	// Fixture records directly model all lifecycle states; normal writes have their own regression suites.
 	$hour = m7row( 'BRP-HOURLY', 'confirmed', '2032-03-08 14:00:00', '2032-03-08 18:00:00', 3, array( 'occupied_start_utc' => '2032-03-08 13:30:00', 'occupied_end_utc' => '2032-03-08 18:30:00' ) );
 	$multi = m7row( 'BRP-MULTI', 'confirmed', '2032-03-08 15:00:00', '2032-03-10 22:00:00', 2 );
+	m7row( 'BRP-WAIVERS', 'pending_waivers', '2032-03-12 14:00:00', '2032-03-12 18:00:00', 1 );
 	m7row( 'BRP-NONOVERLAP', 'confirmed', '2032-03-08 23:00:00', '2032-03-09 01:00:00', 4 );
 	$expiry = gmdate( 'Y-m-d H:i:s', time() + 3600 );
 	m7row( 'BRP-HOLD', 'hold', '2032-03-08 14:00:00', '2032-03-08 16:00:00', 1, array( 'hold_expires_at' => $expiry ) );
@@ -72,7 +73,7 @@ try {
 		$wpdb->insert( Database::table( 'availability' ), array( 'record_type' => 'block', 'quantity' => 2, 'start_utc' => $b[1], 'end_utc' => $b[2], 'reason' => $b[0], 'active' => $b[3], 'created_at' => gmdate( 'Y-m-d H:i:s' ), 'updated_at' => gmdate( 'Y-m-d H:i:s' ) ) );
 	}
 	$data = AdminCalendar::load( '2032-03-08' ); m7check( ! is_wp_error( $data ), 'authorized administrator loads calendar' );
-	m7check( 9 === count( $data['rows'] ), 'only intersecting records and overdue active rows loaded' );
+	m7check( 10 === count( $data['rows'] ), 'only intersecting records and overdue active rows loaded' );
 	m7check( 2 === count( $data['blocks'] ), 'only active intersecting / indefinite blocks loaded' );
 	m7check( 17 === $data['capacity'], 'fleet capacity is configured, not hard-coded' );
 	m7check( 9 === $data['usage'][0]['peak_existing_usage'], 'overlapping peak includes buffers, hold, active and block; excludes completed/cancelled/expired/stale holds' );
@@ -111,7 +112,7 @@ try {
 	m7check( is_wp_error( AdminCalendar::load( '2032-03-08' ) ), 'subscriber denied' );
 	wp_set_current_user( 1 ); require_once ABSPATH . 'wp-admin/includes/user.php'; wp_delete_user( $manager );
 	update_option( 'timezone_string', 'Europe/London' ); m7check( str_contains( AdminCalendar::time( '2032-03-08 14:00:00' ), '2:00 PM GMT' ), 'timezone is configurable, not hard-coded' );
-	m7check( Database::VERSION === '1', 'schema unchanged' );
+	m7check( Database::VERSION === '2', 'schema is 2' );
 } finally {
 	wp_set_current_user( 1 ); $_GET = $saved_get; update_option( 'timezone_string', $saved_zone ); update_option( 'start_of_week', $saved_week );
 	foreach ( $products as $p ) { $p->delete( true ); } if ( $order ) { $order->delete( true ); }

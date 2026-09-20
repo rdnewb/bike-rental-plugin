@@ -151,7 +151,7 @@ try {
 	wp_set_current_user( 1 ); $held = cread( $hold['id'] ); Reservations::confirm_hold( $held['id'], $held['revision'] );
 	Payments::observe( $order->get_id() ); ccheck( cread( $hold['id'] )['issue_code'] === 'payment_unverified', 'confirmed reservation with unpaid order is flagged' );
 	$order->delete_meta_data( '_brp_reservation_id' ); $order->save(); update_option( 'brp_payment_reservation_cursor', 0 ); Payments::reconcile(); ccheck( cread( $hold['id'] )['issue_code'] === 'payment_order_link', 'reconciliation detects missing order-side link' );
-	ccheck( '1' === Database::VERSION && '1' === get_option( Database::OPTION ), 'schema remains 1' );
+	ccheck( '2' === Database::VERSION && '2' === get_option( Database::OPTION ), 'schema is 2' );
 	creset(); csession(); $failed_hold = chold( 3 ); cok( Checkout::transfer( $failed_hold['request_key'] ), 'failed-expiry fixture transfers' ); $failed_order = corder(); $failed_order->update_status( 'failed' );
 	$wpdb->update( Database::table( 'reservations' ), array( 'hold_expires_at' => '2000-01-01 00:00:00' ), array( 'id' => $failed_hold['id'] ) );
 	Reservations::expire_holds(); ccheck( cread( $failed_hold['id'] )['status'] === 'expired', 'failed initial payment hold expires normally' );

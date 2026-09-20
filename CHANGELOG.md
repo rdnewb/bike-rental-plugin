@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 - Generic rider waivers and WPForms adapter
+
+- Add the optional Waivers settings tab (default No), generic provider registry, frozen form mapping and legal text/version policies.
+- Add schema 2 InnoDB rider/waiver tables without changing old reservation policies. One rider per bike; adults 18+ self-sign and guardians sign individually for minors.
+- Collect riders after payment, send 256-bit hashed-token invitations, rotate links on rate-limited resend, and verify persisted provider entries/signature references. Preserve accepted text, version, identity, actor/reason exemptions and timestamps.
+- Keep paid inventory allocated as Pending Waivers; require verified payment and complete roster/waivers before confirmation or activation. Completion is idempotent.
+- Add customer receipt/order/roster progress plus reservation list/detail, calendar and Woo order summaries.
+- Add integration/browser checks and setup documentation. Real WPForms Signature signing and invitation delivery remain test-site acceptance items; no Square processing, totals or deposit architecture changes.
+
 ## 0.7.3 — Rental-card content and images
 
 - Keep WooCommerce `get_short_description()` as the server-rendered card description source; retain safe paragraphs, emphasis, lists and line breaks below the title and above price. Remove script/style/embed contents as well as unsafe markup. Empty descriptions omit the wrapper, with no long-description fallback or extra requests.

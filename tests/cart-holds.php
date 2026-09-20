@@ -130,7 +130,7 @@ try {
 	hreset(); $row = hhold(); $order = horder( $row ); $order->update_meta_data( '_wc_square_credit_card_charge_captured', 'yes' ); $order->update_meta_data( '_wc_square_credit_card_authorization_amount', $order->get_total() ); $order->save(); $order->payment_complete( 'captured-fixture' );
 	$before = hrow( $row['id'] ); WC()->cart->empty_cart();
 	hcheck( $before['status'] === 'confirmed' && hrow( $row['id'] ) === $before, 'Full Payment confirmation survives normal Square-style cart empty' );
-	hcheck( Database::VERSION === '1', 'schema stays 1' );
+	hcheck( Database::VERSION === '2', 'schema is 2' );
 } finally {
 	wp_set_current_user( 1 ); WC()->cart->empty_cart(); WC()->session->__unset( CartHolds::SESSION );
 	foreach ( $orders as $id ) { $order = wc_get_order( $id ); if ( $order ) { $order->delete( true ); } }

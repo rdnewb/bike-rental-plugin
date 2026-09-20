@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Bike Rental Plugin
  * Description: Rental packages, fleet records, and reservation storage for a reusable WooCommerce bicycle rental extension.
- * Version: 0.7.3
+ * Version: 0.8.0
  * Requires at least: 6.6
  * Requires PHP: 8.3
  * Text Domain: bike-rental-plugin
@@ -18,6 +18,11 @@ defined( 'ABSPATH' ) || exit;
 
 require_once __DIR__ . '/src/Settings.php';
 require_once __DIR__ . '/src/Branding.php';
+require_once __DIR__ . '/src/WaiverProvider.php';
+require_once __DIR__ . '/src/Waivers.php';
+require_once __DIR__ . '/src/WaiverSettings.php';
+require_once __DIR__ . '/src/WPFormsWaiverProvider.php';
+require_once __DIR__ . '/src/WaiverUI.php';
 require_once __DIR__ . '/src/Database.php';
 require_once __DIR__ . '/src/RentalTime.php';
 require_once __DIR__ . '/src/Availability.php';

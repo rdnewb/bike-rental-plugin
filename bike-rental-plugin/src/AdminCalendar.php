@@ -34,7 +34,7 @@ final class AdminCalendar {
 			$start = self::utc( $days[0] ); $end = self::utc( $days[7] );
 			// Indexed status/occupied interval predicates. Overdue active intervals are open-ended.
 			$rows = $wpdb->get_results( $wpdb->prepare(
-				'SELECT id,reference,order_id,quantity,start_utc,end_utc,occupied_start_utc,occupied_end_utc,status,hold_expires_at,snapshot,issue_code FROM %i WHERE status IN (%s,%s,%s,%s,%s,%s) AND occupied_start_utc < %s AND (occupied_end_utc > %s OR (status = %s AND occupied_end_utc < %s))',
+				'SELECT id,reference,order_id,quantity,start_utc,end_utc,occupied_start_utc,occupied_end_utc,status,hold_expires_at,snapshot,issue_code FROM %i WHERE status IN (%s,%s,%s,%s,%s,%s,%s) AND occupied_start_utc < %s AND (occupied_end_utc > %s OR (status = %s AND occupied_end_utc < %s))',
 				Database::table( 'reservations' ), ...array_merge( Reservations::STATUSES, array( $end, $start, 'active', Database::now() ) )
 			) . ( 'all' !== $status ? $wpdb->prepare( ' AND status = %s', $status ) : '' ) . ' ORDER BY occupied_start_utc,id FOR UPDATE', ARRAY_A );
 			if ( ! is_array( $rows ) || $wpdb->last_error ) { return Database::retry_error(); }

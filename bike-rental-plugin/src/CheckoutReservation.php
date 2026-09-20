@@ -23,6 +23,7 @@ final class CheckoutReservation {
 		} ) );
 	}
 	private static function validate( $row, $owner, $capacity ) {
+		$waivers = WaiverSettings::ready( Waivers::policy( $row ) ); if ( is_wp_error( $waivers ) ) { return Database::error( 'checkout', 'Online rental checkout is unavailable while rider waiver setup needs attention. Please contact the shop.' ); }
 		if ( ! is_string( $owner ) || strlen( $owner ) !== 64 || ! hash_equals( (string) $row['session_hash'], $owner ) || 'hold' !== $row['status'] || empty( $row['hold_expires_at'] ) || $row['hold_expires_at'] <= Database::now() ) { return self::error(); }
 		$s = json_decode( $row['snapshot'], true ); $p = Packages::get_package( $row['package_product_id'] );
 		$product = wc_get_product( $row['package_product_id'] );
@@ -83,7 +84,12 @@ final class CheckoutReservation {
 			if ( (int) $row['order_id'] !== (int) $order_id ) { return self::write( $row, array( 'issue_code' => 'payment_order_link' ) ); }
 			if ( ! hash_equals( self::fingerprint( $row ), (string) $fingerprint ) ) { return self::write( $row, array( 'issue_code' => 'payment_booking_changed' ) ); }
 			if ( ! $paid ) {
-				return in_array( $row['status'], array( 'confirmed', 'active' ), true ) ? self::write( $row, array( 'issue_code' => 'payment_unverified' ) ) : $row;
+				return in_array( $row['status'], array( 'confirmed', 'active', 'pending_waivers' ), true ) ? self::write( $row, array( 'issue_code' => 'payment_unverified' ) ) : $row;
+			}
+			if ( 'pending_waivers' === $row['status'] ) {
+				if ( $refunded ) { return self::write( $row, array( 'issue_code' => 'payment_staff_review' ) ); }
+				if ( 'payment_unverified' === $row['issue_code'] && Waivers::payment_satisfied( $row ) ) { $row = self::write( $row, array( 'issue_code' => null ) ); if ( is_wp_error( $row ) ) { return $row; } }
+				return Waivers::confirm_locked( $row );
 			}
 			if ( in_array( $row['status'], array( 'confirmed', 'active', 'completed' ), true ) ) { return 'payment_unverified' === $row['issue_code'] ? self::write( $row, array( 'issue_code' => null ) ) : $row; }
 			if ( 'payment_inventory_conflict' === $row['issue_code'] ) { return $row; } // A definitive conflict requires staff resolution, not repeated allocation attempts.
@@ -92,7 +98,7 @@ final class CheckoutReservation {
 			if ( is_wp_error( $fit ) ) {
 				return 'brp_conflict' === $fit->get_error_code() ? self::write( $row, array( 'status' => 'expired', 'issue_code' => 'payment_inventory_conflict' ) ) : $fit;
 			}
-			return self::write( $row, array( 'status' => 'confirmed', 'issue_code' => null ) );
+			return self::write( $row, array( 'status' => Waivers::required( $row ) && ! Waivers::progress( $row )['complete'] ? 'pending_waivers' : 'confirmed', 'issue_code' => null ) );
 		} ) );
 	}
 	public static function flag( $id, $issue ) {

@@ -130,6 +130,6 @@ ob_start(); $admin->reservations(); $html = ob_get_clean();
 verify( str_contains( $html, 'notice-error' ) && str_contains( $html, 'changed elsewhere' ), 'validation/conflict notice rendered after redirect' );
 
 // True simultaneous allocation/edit races now live in tests/availability-concurrency.php.
-verify( '1' === Database::VERSION && '1' === get_option( Database::OPTION ), 'corrective update leaves schema version unchanged' );
+verify( '2' === Database::VERSION && '2' === get_option( Database::OPTION ), 'current schema version is recorded' );
 update_option( 'brp_m3_verification_count', Database::listing( 'reservations' )['total'] );
 echo PHP_EOL . ( $checks - $storage_checks ) . ' editing checks + ' . $storage_checks . ' storage checks = ' . $checks . ' real integration checks passed.' . PHP_EOL;

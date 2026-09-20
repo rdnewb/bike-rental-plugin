@@ -32,8 +32,8 @@ final class Availability {
 		if ( ! self::valid_utc( $start ) || ! self::valid_utc( $end ) || $end <= $start ) { return Database::error( 'interval', 'Enter a valid UTC interval with end after start.' ); }
 		if ( ! Database::positive( $quantity ) || ( null !== $reservation_id && ! Database::positive( $reservation_id ) ) || ( null !== $block_id && ! Database::positive( $block_id ) ) ) { return Database::error( 'quantity', 'Invalid quantity or exclusion ID.' ); }
 		$reservations = $wpdb->get_results( $wpdb->prepare(
-			'SELECT id,quantity,occupied_start_utc,occupied_end_utc,status FROM %i WHERE id <> %d AND occupied_start_utc < %s AND ((status = %s AND occupied_end_utc < %s) OR occupied_end_utc > %s) AND (status IN (%s,%s) OR (status = %s AND hold_expires_at > %s)) FOR UPDATE',
-			Database::table( 'reservations' ), $reservation_id ?? 0, $end, 'active', Database::now(), $start, 'confirmed', 'active', 'hold', Database::now()
+			'SELECT id,quantity,occupied_start_utc,occupied_end_utc,status FROM %i WHERE id <> %d AND occupied_start_utc < %s AND ((status = %s AND occupied_end_utc < %s) OR occupied_end_utc > %s) AND (status IN (%s,%s,%s) OR (status = %s AND hold_expires_at > %s)) FOR UPDATE',
+			Database::table( 'reservations' ), $reservation_id ?? 0, $end, 'active', Database::now(), $start, 'confirmed', 'active', 'pending_waivers', 'hold', Database::now()
 		), ARRAY_A );
 		if ( ! is_array( $reservations ) || $wpdb->last_error ) { return Database::retry_error(); }
 		$blocks = $wpdb->get_results( $wpdb->prepare(
@@ -59,7 +59,7 @@ final class Availability {
 	}
 
 	public static function allocation( $capacity, $row, $exclude = null ) {
-		if ( ! in_array( $row['status'], array( 'confirmed', 'active' ), true ) && ! ( 'hold' === $row['status'] && ( $row['hold_expires_at'] ?? '' ) > Database::now() ) ) { return true; }
+		if ( ! in_array( $row['status'], array( 'confirmed', 'active', 'pending_waivers' ), true ) && ! ( 'hold' === $row['status'] && ( $row['hold_expires_at'] ?? '' ) > Database::now() ) ) { return true; }
 		$result = self::evaluate( $capacity, $row['occupied_start_utc'], self::reservation_end( $row ), $row['quantity'], $exclude );
 		return is_wp_error( $result ) ? $result : ( $result['fits'] ? true : self::conflict( $result ) );
 	}

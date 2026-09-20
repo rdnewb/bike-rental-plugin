@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 
-	const VERSION = '0.7.3';
+	const VERSION = '0.8.0';
 
 	/** Initialize defaults once; never replace existing configuration. */
 	public static function activate() {
@@ -31,6 +31,11 @@ final class Plugin {
 		add_action( 'init', array( Database::class, 'install' ), 20 );
 		HoldCleanup::register_hooks();
 		PublicBooking::register_hooks();
+		Waivers::register_provider( 'wpforms', new WPFormsWaiverProvider() );
+		do_action( 'brp_register_waiver_providers' );
+		WPFormsWaiverProvider::register_hooks();
+		WaiverUI::register_hooks();
+		add_action( 'admin_notices', array( WaiverSettings::class, 'notice' ) );
 		add_action( 'admin_notices', array( PaymentMode::class, 'admin_notice' ) );
 		add_action( 'woocommerce_init', array( self::class, 'load_packages' ) );
 		if ( is_admin() ) {

@@ -65,7 +65,7 @@ try {
 	grid_check( $xpath->query( '//div[@class="brp-details" and @hidden]' )->length === 1, 'later steps initially hidden' );
 	grid_check( $xpath->query( '//h1' )->length === 0 && $xpath->query( '//article/h1' )->length === 0, 'no page-level H1 added' );
 	grid_check( str_contains( $hour_html, '<h3' ) && ! str_contains( $hour_html, 'add-to-cart' ), 'semantic cards without direct purchase links' );
-	grid_check( '1' === Database::VERSION, 'schema remains 1' );
+	grid_check( '2' === Database::VERSION, 'schema is 2' );
 	// Export presentation fixtures only when explicitly requested by the local browser suite.
 	if ( getenv( 'BRP_GRID_FIXTURE_DIR' ) ) {
 		$dir = getenv( 'BRP_GRID_FIXTURE_DIR' ); if ( ! is_dir( $dir ) ) { mkdir( $dir, 0777, true ); }

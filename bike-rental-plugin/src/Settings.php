@@ -15,7 +15,7 @@ final class Settings {
 	const GROUP  = 'brp_settings_group';
 	const PAGE   = 'brp-settings';
 
-	public static function tabs() { return array( 'general' => __( 'General', 'bike-rental-plugin' ), 'branding' => __( 'Booking Form Branding', 'bike-rental-plugin' ) ); }
+	public static function tabs() { return array( 'general' => __( 'General', 'bike-rental-plugin' ), 'branding' => __( 'Booking Form Branding', 'bike-rental-plugin' ), 'waivers' => __( 'Waivers', 'bike-rental-plugin' ) ); }
 	public static function tab( $value ) { return is_string( $value ) && array_key_exists( $value, self::tabs() ) ? $value : 'general'; }
 	public static function tab_url( $tab ) { return admin_url( 'admin.php?page=' . self::PAGE . '&tab=' . self::tab( $tab ) ); }
 
@@ -180,6 +180,11 @@ final class Settings {
 			return self::get();
 		}
 		$previous = self::get();
+		if ( 'waivers' === ( $_POST['brp_settings_tab'] ?? null ) ) {
+			$v = WaiverSettings::validate( is_array( $input ) ? ( $input['waivers'] ?? null ) : null );
+			if ( is_wp_error( $v ) || ! is_array( $previous ) ) { add_settings_error( self::OPTION, 'brp_waivers', is_wp_error( $v ) ? $v->get_error_message() : 'Repair General settings first.' ); return $previous; }
+			return array_replace( $previous, array( 'waivers' => $v ) );
+		}
 		// Form context stays outside the persisted option. Missing marker retains legacy full-form saves.
 		$tab = $_POST['brp_settings_tab'] ?? null;
 		if ( null !== $tab && ( ! is_string( $tab ) || ! array_key_exists( $tab, self::tabs() ) ) ) {
@@ -219,6 +224,7 @@ final class Settings {
 			add_settings_error( self::OPTION, 'brp_unchanged', __( 'Nothing was saved. Your previous settings are shown below.', 'bike-rental-plugin' ) );
 			return self::get();
 		}
+		if ( is_array( $previous ) && array_key_exists( 'waivers', $previous ) ) { $result['values']['waivers'] = $previous['waivers']; }
 		return $result['values'];
 	}
 

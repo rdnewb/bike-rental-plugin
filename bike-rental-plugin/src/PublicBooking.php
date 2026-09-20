@@ -172,8 +172,8 @@ final class PublicBooking {
 		$now = Database::now() ?? gmdate( 'Y-m-d H:i:s' );
 		$live = 'hold' === $row['status'] && $row['hold_expires_at'] > $now;
 		$message = $live ? self::next_step_message() : 'Your temporary reservation has expired or is no longer held. Bikes are not reserved by this form.';
-		if ( in_array( $row['status'], array( 'confirmed', 'active', 'completed' ), true ) ) { $message = 'Reservation status: ' . $row['status'] . '. Check your order confirmation or contact the shop for details.'; }
-		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => $row['hold_expires_at'] ? str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z' : null, 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
+		if ( in_array( $row['status'], array( 'pending_waivers', 'confirmed', 'active', 'completed' ), true ) ) { $message = 'Reservation status: ' . $row['status'] . '. Check your order confirmation or contact the shop for details.'; }
+		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => $row['hold_expires_at'] ? str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z' : null, 'waiver_notice' => trim( wp_strip_all_tags( WaiverUI::notice( $row ) ) ), 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
 	}
 	public static function next_step_message() { return __( 'Your bikes are temporarily reserved. Continue to checkout to complete payment.', 'bike-rental-plugin' ); }
 	/** Resolve only against the same server-validated catalog rendered by the form. */

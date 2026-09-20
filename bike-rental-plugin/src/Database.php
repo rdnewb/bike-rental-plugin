@@ -1,11 +1,11 @@
 <?php
-/** Two-table storage and non-destructive, per-site schema installation. */
+/** Relational storage and non-destructive, per-site schema installation. */
 namespace BikeRentalPlugin;
 defined( 'ABSPATH' ) || exit;
 
 final class Database {
 
-	const VERSION = '1';
+	const VERSION = '2';
 	const OPTION = 'brp_db_version';
 	const ERROR = 'brp_db_error';
 	private static $token = null;
@@ -21,7 +21,7 @@ final class Database {
 
 	public static function table( $kind ) {
 		global $wpdb;
-		if ( ! in_array( $kind, array( 'reservations', 'availability' ), true ) ) {
+		if ( ! in_array( $kind, array( 'reservations', 'availability', 'riders', 'waivers' ), true ) ) {
 			throw new \InvalidArgumentException( 'Unknown rental table.' );
 		}
 		return $wpdb->prefix . 'brp_' . $kind;
@@ -32,6 +32,8 @@ final class Database {
 		global $wpdb;
 		$r = $wpdb->prepare( '%i', self::table( 'reservations' ) );
 		$a = $wpdb->prepare( '%i', self::table( 'availability' ) );
+		$ri = $wpdb->prepare( '%i', self::table( 'riders' ) );
+		$w = $wpdb->prepare( '%i', self::table( 'waivers' ) );
 		$collate = $wpdb->get_charset_collate();
 		return array(
 			"CREATE TABLE $r (
@@ -79,6 +81,55 @@ updated_at datetime NOT NULL,
 PRIMARY KEY  (id),
 KEY type_interval (record_type,active,start_utc,end_utc),
 KEY block_end (end_utc)
+) ENGINE=InnoDB $collate;",
+			"CREATE TABLE $ri (
+id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+reservation_id bigint(20) unsigned NOT NULL,
+sequence_number int(10) unsigned NOT NULL,
+legal_name varchar(240) NOT NULL DEFAULT '',
+age int(10) unsigned DEFAULT NULL,
+email varchar(254) NOT NULL DEFAULT '',
+rider_type varchar(10) NOT NULL DEFAULT '',
+guardian_name varchar(240) NOT NULL DEFAULT '',
+guardian_email varchar(254) NOT NULL DEFAULT '',
+guardian_relationship varchar(120) NOT NULL DEFAULT '',
+created_at datetime NOT NULL,
+updated_at datetime NOT NULL,
+PRIMARY KEY  (id),
+UNIQUE KEY reservation_sequence (reservation_id,sequence_number),
+KEY reservation_id (reservation_id),
+KEY email (email)
+) ENGINE=InnoDB $collate;",
+			"CREATE TABLE $w (
+id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+reservation_id bigint(20) unsigned NOT NULL,
+rider_id bigint(20) unsigned NOT NULL,
+provider varchar(40) NOT NULL,
+provider_config longtext NOT NULL,
+provider_submission_id varchar(100) DEFAULT NULL,
+token_hash varchar(64) DEFAULT NULL,
+token_expires_at datetime DEFAULT NULL,
+status varchar(24) NOT NULL DEFAULT 'invitation_pending',
+waiver_version varchar(100) NOT NULL,
+waiver_text longtext NOT NULL,
+text_hash varchar(64) NOT NULL,
+signer_name varchar(240) NOT NULL,
+signer_email varchar(254) NOT NULL,
+signer_role varchar(20) NOT NULL,
+completed_at datetime DEFAULT NULL,
+last_invited_at datetime DEFAULT NULL,
+invite_count int(10) unsigned NOT NULL DEFAULT 0,
+override_reason varchar(500) NOT NULL DEFAULT '',
+override_user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+created_at datetime NOT NULL,
+updated_at datetime NOT NULL,
+PRIMARY KEY  (id),
+UNIQUE KEY rider_id (rider_id),
+UNIQUE KEY token_hash (token_hash),
+UNIQUE KEY provider_submission (provider,provider_submission_id),
+KEY reservation_id (reservation_id),
+KEY status (status),
+KEY signer_email (signer_email)
 ) ENGINE=InnoDB $collate;",
 		);
 	}
@@ -136,7 +187,7 @@ KEY block_end (end_utc)
 	private static function verify_schema() {
 		global $wpdb;
 		foreach ( self::definitions() as $i => $sql ) {
-			$table = self::table( 0 === $i ? 'reservations' : 'availability' );
+			$table = self::table( array( 'reservations', 'availability', 'riders', 'waivers' )[ $i ] );
 			$engine = $wpdb->get_var( $wpdb->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $table ) );
 			if ( 'innodb' !== strtolower( (string) $engine ) ) {
 				return false;

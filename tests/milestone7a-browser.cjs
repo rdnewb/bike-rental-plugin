@@ -102,11 +102,11 @@ const check = (value, label) => { assert.ok(value, label); checks++; console.log
         }
         check(await page.locator('.brp-calendar-scroll').evaluate((e) => e.scrollWidth > e.clientWidth && getComputedStyle(e).overflowX === 'auto'), 'narrow calendar scrolls within its container');
         await page.setViewportSize({ width: 1440, height: 1000 });
-        check(await page.locator('.brp-calendar-bar').count() === 11, 'one timeline bar per reservation / block');
+        check(await page.locator('.brp-calendar-bar').count() === 12, 'one timeline bar per reservation / block');
         await page.locator('.brp-calendar-label details').first().locator('summary').focus(); await page.keyboard.press('Enter');
         check(await page.locator('.brp-calendar-label details').first().getAttribute('open') !== null, 'native details keyboard operable');
         check(await page.locator('.brp-calendar-bar').first().getAttribute('aria-label') !== '', 'timeline bars have descriptive accessible names');
-        check(await page.locator('.brp-calendar-filter [name=status] option').count() === 7, 'all status filter options present');
+        check(await page.locator('.brp-calendar-filter [name=status] option').count() === 8, 'all status filter options present');
         await page.screenshot({ path: path.join(dir, 'calendar-1440.png'), fullPage: true });
         await page.setViewportSize({ width: 768, height: 1000 });
         await page.screenshot({ path: path.join(dir, 'calendar-768.png'), fullPage: true });

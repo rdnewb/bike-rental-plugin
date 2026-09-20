@@ -14,7 +14,7 @@ final class Payments {
 		return match ( $issue ) {
 			'payment_inventory_conflict' => 'Payment received — inventory conflict requires staff resolution.',
 			'payment_booking_changed' => 'Rental details changed after checkout. Review the reservation and paid order before fulfillment.',
-			'payment_unverified' => 'Reservation is confirmed or active, but full payment could not be verified. Staff review required.',
+			'payment_unverified' => 'Full payment could not be verified for this reservation. Staff review required.',
 			'payment_staff_review' => 'Payment received for a refunded or cancelled rental. Staff review required.',
 			'payment_order_link' => 'Order/reservation association is missing or inconsistent. Staff review required.',
 			default => '',
@@ -34,6 +34,7 @@ final class Payments {
 			// Keep the order discoverable for the next cron pass; do not lose payment evidence.
 			self::order_issue( $order, 'payment_order_link' ); return;
 		}
+		if ( 'pending_waivers' === $result['status'] ) { Database::public_booking( static fn() => Waivers::invite_pending( $result ) ); }
 		self::order_issue( $order, self::issue_message( $result['issue_code'] ) ? $result['issue_code'] : '' );
 	}
 	private static function order_issue( $order, $issue ) {

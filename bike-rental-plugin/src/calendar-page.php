@@ -36,7 +36,7 @@ foreach ( $data['rows'] as $row ) {
 	if ( Availability::FOREVER === $row['effective_end'] ) { $state .= ' — overdue; blocking until returned'; }
 	$events[] = array(
 		'key' => 'reservation-' . $row['id'], 'style' => $row['status'], 'title' => $row['reference'], 'name' => $snapshot['name'] ?? 'Rental package',
-		'quantity' => $row['quantity'], 'state' => $state, 'customer' => $order['customer'] ?? '', 'order' => $order['number'] ?? '',
+		'waiver' => Waivers::progress( $row ), 'quantity' => $row['quantity'], 'state' => $state, 'customer' => $order['customer'] ?? '', 'order' => $order['number'] ?? '',
 		'url' => DataAdmin::url( DataAdmin::RESERVATIONS, $row['id'] ), 'start' => $row['occupied_start_utc'], 'end' => $row['effective_end'],
 		'rental' => AdminCalendar::time( $row['start_utc'] ) . ' – ' . AdminCalendar::time( $row['end_utc'] ), 'issue' => $row['issue_code'],
 	);
@@ -54,6 +54,7 @@ foreach ( $events as $event ) :
 <a href="<?php echo esc_url( $event['url'] ); ?>"><strong><?php echo esc_html( $event['title'] ); ?></strong></a><br>
 <?php echo esc_html( $event['name'] ); ?> · <strong><?php echo (int) $event['quantity']; ?> bikes</strong><br>
 <span class="brp-calendar-state"><?php echo esc_html( $event['state'] ); ?></span>
+<?php if ( ! empty( $event['waiver']['required'] ) ) : ?><br><span class="<?php echo $event['waiver']['complete'] ? 'brp-calendar-waiver' : 'brp-calendar-warning'; ?>">Waivers: <?php echo esc_html( $event['waiver']['label'] ); ?></span><?php endif; ?>
 <?php if ( $event['customer'] ) : ?><br><?php echo esc_html( $event['customer'] ); ?><?php endif; ?>
 <?php if ( $event['issue'] ) : ?><br><strong class="brp-calendar-warning">Exception: <?php echo esc_html( $event['issue'] ); ?></strong><?php endif; ?>
 <details><summary>Times / details</summary>
@@ -69,5 +70,5 @@ foreach ( $events as $event ) :
 <?php endforeach; ?>
 <?php if ( ! $events ) : ?><p>No reservations or active inventory blocks intersect this week for the selected filter.</p><?php endif; ?>
 </div></div>
-<p>Capacity includes unexpired holds, confirmed rentals, active rentals and active quantity blocks. Overdue active rentals continue indefinitely. Completed, cancelled and expired reservations do not consume inventory; completion turnaround blocks still count. This is current allocation state, not a historical utilization report.</p>
-<p class="brp-calendar-legend">Status key: <span class="brp-calendar-hold">Hold</span> <span class="brp-calendar-confirmed">Confirmed</span> <span class="brp-calendar-active">Active</span> <span class="brp-calendar-completed">Completed</span> <span class="brp-calendar-cancelled">Cancelled</span> <span class="brp-calendar-expired">Expired</span> <span class="brp-calendar-block">Inventory block</span> <span class="brp-calendar-exception">Exception</span></p>
+<p>Capacity includes unexpired holds, pending-waiver rentals, confirmed rentals, active rentals and active quantity blocks. Overdue active rentals continue indefinitely. Completed, cancelled and expired reservations do not consume inventory; completion turnaround blocks still count. This is current allocation state, not a historical utilization report.</p>
+<p class="brp-calendar-legend">Status key: <span class="brp-calendar-hold">Hold</span> <span class="brp-calendar-pending_waivers">Pending Waivers</span> <span class="brp-calendar-confirmed">Confirmed</span> <span class="brp-calendar-active">Active</span> <span class="brp-calendar-completed">Completed</span> <span class="brp-calendar-cancelled">Cancelled</span> <span class="brp-calendar-expired">Expired</span> <span class="brp-calendar-block">Inventory block</span> <span class="brp-calendar-exception">Exception</span></p>

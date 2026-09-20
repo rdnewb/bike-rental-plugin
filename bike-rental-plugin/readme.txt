@@ -1,13 +1,28 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.7.3
+Stable tag: 0.8.0
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
 Reusable bicycle-rental settings, packages, reservations, and shared fleet availability.
 
 == Description ==
+
+Version 0.8.0 adds generic rider waivers and a WPForms Elite/Signature adapter.
+Waivers default to No. Configure the Waivers settings tab and dedicated mapped form
+before enabling. Full Payment remains selected; deposit architecture is unchanged.
+Paid bookings with required waivers enter Pending Waivers and retain inventory until
+all individual adult/guardian waivers complete. One rider per bike; adults are 18+.
+Minors require guardian name, email and relationship, with one waiver per minor.
+Customers collect riders after payment and can reuse purchaser information for Rider 1.
+Secure invitations, admin resend/exempt actions, legal text/version retention, and
+customer/admin/calendar progress are included. Schema 2 adds InnoDB riders and waivers
+without changing existing reservation policies or duplicating signature blobs.
+Real WPForms signing/mail delivery and Square test-site validation remain required.
+See repository docs/waiver-architecture.md, wpforms-waiver-provider.md and waiver-verification.md.
+
+Earlier release behavior (superseded where noted above):
 
 Version 0.7.3 refines public rental cards: full-width centered 4:3 featured-image crops,
 safe WooCommerce short descriptions between title and price, natural description height,
@@ -58,7 +73,7 @@ Full reservation editing supports package, quantity, start/end, status,
 and issue code. System identifiers/order relationships remain read-only. Package
 changes capture current WooCommerce selling price; other edits retain agreed pricing.
 Snapshots reflect the edited current state; prior revision history is not retained yet.
-Schema version 1 creates exactly two prefixed InnoDB tables during normal initialization.
+Schema version 2 verifies four prefixed InnoDB tables during normal initialization.
 Existing settings, rental packages, timezone visibility, and dependency detection remain.
 The shared sweep uses peak simultaneous usage, half-open occupied intervals, and buffers.
 All inventory changes lock the same permanent InnoDB fleet capacity row before validation.
@@ -114,6 +129,13 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.8.0 =
+* Add optional generic rider waivers, per-rider adult/guardian invitations and WPForms adapter.
+* Preserve paid inventory as Pending Waivers until verified payment and all waivers complete.
+* Add schema 2 riders/waivers, hashed expiring links, audited exemptions and progress displays.
+* Preserve legacy reservation policies, Square processing, financial totals and deposit guards.
+* Add automated integration/browser coverage; live provider/email validation remains pending.
 
 = 0.7.3 =
 * Show safe, server-rendered short descriptions at natural height between title and price.

@@ -5,9 +5,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class Reservations {
 	const HOLD_MINUTES = 15;
-	const STATUSES = array( 'hold', 'confirmed', 'active', 'completed', 'cancelled', 'expired' );
+	const STATUSES = array( 'hold', 'confirmed', 'active', 'completed', 'cancelled', 'expired', 'pending_waivers' );
 	const TRANSITIONS = array(
-		'hold' => array( 'confirmed', 'cancelled', 'expired' ),
+		'hold' => array( 'pending_waivers', 'confirmed', 'cancelled', 'expired' ),
+		'pending_waivers' => array( 'confirmed', 'cancelled' ),
 		'confirmed' => array( 'active', 'cancelled' ),
 		'active' => array( 'completed' ),
 		'completed' => array(), 'cancelled' => array(), 'expired' => array(),
@@ -18,6 +19,7 @@ final class Reservations {
 
 	/** Validate the proposed schedule under the lock, including administrative corrections. */
 	private static function validate_status_time( $state, $previous = null ) {
+		$waiver_guard = Waivers::guard_state( $state, $previous ); if ( is_wp_error( $waiver_guard ) ) { return $waiver_guard; }
 		if ( 'active' === $state['status'] && $state['start_utc'] > Database::now() ) {
 			return Database::error( 'active_start', 'This reservation cannot be marked Active before its scheduled start time.' );
 		}
@@ -116,6 +118,7 @@ final class Reservations {
 		$snapshot['buffers'] = $buffers;
 		$snapshot['quantity'] = $data['quantity'];
 		$snapshot['status'] = $status;
+		$snapshot['waiver_policy'] = WaiverSettings::get();
 		$data += array( 'package_product_id' => $package['product_id'], 'status' => $status, 'snapshot' => wp_json_encode( $snapshot ), 'revision' => 1, 'created_at' => gmdate( 'Y-m-d H:i:s' ), 'updated_at' => gmdate( 'Y-m-d H:i:s' ) );
 		if ( false === $data['snapshot'] ) { return Database::error( 'snapshot', 'Could not encode the package snapshot.' ); }
 		return Database::locked( static function ( $capacity ) use ( $data, $identity, $booking ) {
@@ -141,7 +144,9 @@ final class Reservations {
 			$data['created_at'] = Database::now(); $data['updated_at'] = Database::now();
 			// Never retry a failed statement inside a possibly deadlock-aborted transaction.
 			$data['reference'] = self::reference();
-			return false === Database::insert( 'reservations', $data ) ? Database::retry_error() : self::read( $wpdb->insert_id );
+			if ( false === Database::insert( 'reservations', $data ) ) { return Database::retry_error(); }
+			$row = self::read( $wpdb->insert_id ); if ( is_wp_error( $row ) ) { return $row; }
+			$roster = Waivers::reconcile_locked( $row ); return is_wp_error( $roster ) ? $roster : $row;
 		} );
 	}
 
@@ -173,9 +178,10 @@ final class Reservations {
 			$product = wc_get_product( (int) $package_id );
 			$price = $product ? $product->get_price( 'edit' ) : null;
 			if ( ! is_string( $price ) || ! preg_match( '/\A[0-9]+(?:\.[0-9]+)?\z/', $price ) ) { return Database::error( 'price', 'The replacement package must have a valid WooCommerce selling price.' ); }
-			$payment_mode = $snapshot['payment_mode'] ?? null;
+			$payment_mode = $snapshot['payment_mode'] ?? null; $waiver_policy = $snapshot['waiver_policy'] ?? null;
 			$snapshot = array_intersect_key( $package, array_flip( array( 'product_id', 'name', 'price', 'currency', 'duration_type', 'duration_amount', 'promotional_label' ) ) );
 			if ( null !== $payment_mode ) { $snapshot['payment_mode'] = $payment_mode; }
+			if ( null !== $waiver_policy ) { $snapshot['waiver_policy'] = $waiver_policy; }
 			$snapshot['price'] = $price;
 			$snapshot['buffers'] = $buffers;
 		}
@@ -201,6 +207,7 @@ final class Reservations {
 		global $wpdb;
 		if ( ! Database::positive( $expected_revision ) || (int) $expected_revision !== (int) $row['revision'] ) { return Database::error( 'revision', 'The reservation was changed elsewhere. Reload the detail page before saving again.' ); }
 		$state = array_replace( $row, $data );
+		$roster = Waivers::reconcile_locked( $row, $state['quantity'] ); if ( is_wp_error( $roster ) ) { return $roster; }
 		$status_time = self::validate_status_time( $state, $row );
 		if ( is_wp_error( $status_time ) ) { return $status_time; }
 		$changed = false;

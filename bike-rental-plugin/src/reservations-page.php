@@ -45,6 +45,7 @@ endif;
 else : ?>
 <p><?php esc_html_e( 'Activate WooCommerce to validate and edit reservation packages. Stored details remain available below.', 'bike-rental-plugin' ); ?></p>
 <?php endif; ?>
+<?php WaiverUI::reservation_admin( $row ); ?>
 <h3><?php esc_html_e( 'Read-only reservation details', 'bike-rental-plugin' ); ?></h3>
 <p><?php echo esc_html( 'Request association: ' . ( empty( $row['request_key'] ) ? 'None' : 'Present' ) . '. Session association: ' . ( empty( $row['session_hash'] ) ? 'None' : 'Present (protected)' ) . '.' ); ?></p>
 <p><?php esc_html_e( 'Reservation reference:', 'bike-rental-plugin' ); ?> <strong><?php echo esc_html( $row['reference'] ); ?></strong></p>
@@ -90,11 +91,11 @@ if ( is_wp_error( $listing ) ) { $this->error( $listing ); return; }
 ?>
 <h2><?php esc_html_e( 'Stored reservations', 'bike-rental-plugin' ); ?></h2>
 <table class="widefat striped"><thead><tr>
-<?php foreach ( array( 'Reference', 'Package (snapshot)', 'Quantity', 'Start', 'End', 'Status', 'Order ID', 'Updated', 'Action' ) as $label ) : ?><th scope="col"><?php echo esc_html( $label ); ?></th><?php endforeach; ?>
+<?php foreach ( array( 'Reference', 'Package (snapshot)', 'Quantity', 'Start', 'End', 'Status', 'Waivers', 'Order ID', 'Updated', 'Action' ) as $label ) : ?><th scope="col"><?php echo esc_html( $label ); ?></th><?php endforeach; ?>
 </tr></thead><tbody>
 <?php foreach ( $listing['rows'] as $item ) : $saved = json_decode( $item['snapshot'], true ); ?>
-<tr><td><?php echo esc_html( $item['reference'] ); ?></td><td><?php echo esc_html( $saved['name'] ?? __( 'Snapshot needs review', 'bike-rental-plugin' ) ); ?></td><td><?php echo esc_html( $item['quantity'] ); ?></td><td><?php echo esc_html( RentalTime::display( $item['start_utc'] ) ); ?></td><td><?php echo esc_html( RentalTime::display( $item['end_utc'] ) ); ?></td><td><?php echo esc_html( $item['status'] ); ?></td><td><?php echo esc_html( $item['order_id'] ?? '—' ); ?></td><td><?php echo esc_html( RentalTime::display( $item['updated_at'] ) ); ?></td><td><a href="<?php echo esc_url( self::url( self::RESERVATIONS, $item['id'] ) ); ?>"><?php esc_html_e( 'View / edit', 'bike-rental-plugin' ); ?></a></td></tr>
+<tr><td><?php echo esc_html( $item['reference'] ); ?></td><td><?php echo esc_html( $saved['name'] ?? __( 'Snapshot needs review', 'bike-rental-plugin' ) ); ?></td><td><?php echo esc_html( $item['quantity'] ); ?></td><td><?php echo esc_html( RentalTime::display( $item['start_utc'] ) ); ?></td><td><?php echo esc_html( RentalTime::display( $item['end_utc'] ) ); ?></td><td><?php echo esc_html( $item['status'] ); ?></td><td><?php echo esc_html( Waivers::progress( $item )['label'] ); ?></td><td><?php echo esc_html( $item['order_id'] ?? '—' ); ?></td><td><?php echo esc_html( RentalTime::display( $item['updated_at'] ) ); ?></td><td><a href="<?php echo esc_url( self::url( self::RESERVATIONS, $item['id'] ) ); ?>"><?php esc_html_e( 'View / edit', 'bike-rental-plugin' ); ?></a></td></tr>
 <?php endforeach; ?>
-<?php if ( ! $listing['rows'] ) : ?><tr><td colspan="9"><?php esc_html_e( 'No reservations stored.', 'bike-rental-plugin' ); ?></td></tr><?php endif; ?>
+<?php if ( ! $listing['rows'] ) : ?><tr><td colspan="10"><?php esc_html_e( 'No reservations stored.', 'bike-rental-plugin' ); ?></td></tr><?php endif; ?>
 </tbody></table>
 <?php $this->pagination( $listing, self::RESERVATIONS ); ?>

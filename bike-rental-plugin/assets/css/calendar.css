@@ -30,3 +30,5 @@
 .brp-calendar-warning { color: #901255; }
 .brp-calendar-legend { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .brp-calendar-legend span { border-left: 5px solid var(--event); padding: 5px 8px; background: var(--fill); color: #1d2327; }
+
+.brp-calendar-pending_waivers { --event: #8a4b00; --fill: #fff0cb; }

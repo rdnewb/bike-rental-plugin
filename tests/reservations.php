@@ -72,7 +72,7 @@ verify( 'm3_brp_reservations' === $r && 'm3_brp_availability' === $a, 'configure
 foreach ( array( $r, $a ) as $table ) {
 	verify( 'InnoDB' === $wpdb->get_var( $wpdb->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s', $table ) ), $table . ' exists using InnoDB' );
 }
-verify( 2 === count( $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'brp_' ) . '%' ) ) ), 'exactly two plugin tables created' );
+verify( 4 === count( $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'brp_' ) . '%' ) ) ), 'exactly four plugin tables created' );
 verify( $settings === Settings::get(), 'existing settings survive schema installation' );
 verify( 'keep' === wc_get_product( $product_id )->get_meta( 'unrelated_extension' ) && 4 === Packages::get_package( $product_id )['duration_amount'], 'existing rental and unrelated product metadata survive installation' );
 good( Fleet::set_capacity( 10 ), 'fleet quantity saved' );
@@ -158,7 +158,7 @@ $completed = good( Reservations::mark_completed( $another['id'], 3 ), 'active re
 verify( 'completed' === Reservations::read( $another['id'] )['status'], 'completed reservation retained' );
 $expiring = good( Reservations::create( $input ), 'test hold created for expiry transition' );
 good( Reservations::change_status( $expiring['id'], 'expired', 1 ), 'hold can be explicitly marked expired' );
-verify( Reservations::STATUSES === array( 'hold', 'confirmed', 'active', 'completed', 'cancelled', 'expired' ), 'exact six lifecycle statuses' );
+verify( Reservations::STATUSES === array( 'hold', 'confirmed', 'active', 'completed', 'cancelled', 'expired', 'pending_waivers' ), 'seven lifecycle statuses including pending waivers' );
 
 verify( '2030-06-16T09:00' === RentalTime::display( $reservation['start_utc'], true ), 'UTC converts back to WordPress local input' );
 verify( '2030-01-16 14:00:00' === RentalTime::from_local( '2030-01-16T09:00' ), 'winter offset differs from summer' );
@@ -293,7 +293,7 @@ $source = '';
 foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ) . '/bike-rental-plugin', FilesystemIterator::SKIP_DOTS ) ) as $file ) {
 	if ( in_array( $file->getExtension(), array( 'php', 'js' ), true ) ) { $source .= file_get_contents( $file->getPathname() ); }
 }
-verify( ! preg_match( '/wp_remote_|wc_create_order|wpforms_process|set_stock_quantity\s*\(/', $source ), 'no custom order creation, remote integration, waiver processing, or stock sync introduced' );
+verify( ! preg_match( '/wp_remote_|wc_create_order|set_stock_quantity\s*\(/', $source ), 'no custom order creation, remote integration, or stock sync introduced' );
 verify( ! preg_match( '/manatee|anna maria island|\bmbr\b/i', $source ), 'generic runtime branding' );
 verify( ! str_contains( file_get_contents( dirname( __DIR__ ) . '/bike-rental-plugin/src/Packages.php' ), '$wpdb' ), 'existing package service still uses WooCommerce APIs only' );
 echo PHP_EOL . $checks . ' real WordPress/WooCommerce/MariaDB integration checks passed.' . PHP_EOL;

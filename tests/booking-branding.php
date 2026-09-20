@@ -95,7 +95,7 @@ try {
 	$result = brand_save( array( 'restore_defaults' => '1' ) );
 	brand_check( Branding::defaults() === $result['branding'], 'administrator restore resets all branding only' );
 	unset( $result['branding'] ); brand_check( $base == $result, 'branding reset leaves scheduling and payment mode intact' );
-	brand_check( Database::VERSION === '1', 'schema remains 1' );
+	brand_check( Database::VERSION === '2', 'schema is 2' );
 } finally {
 	wp_set_current_user( 1 ); update_option( Settings::OPTION, $saved ); $_GET = $get;
 	foreach ( $products as $p ) { $p->delete( true ); } if ( $attachment ) { wp_delete_attachment( $attachment, true ); }

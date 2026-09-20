@@ -161,5 +161,5 @@ verify( 0 === Database::listing( 'reservations' )['total'], 'SQL session guard p
 $reconnected = good( Reservations::create_hold( booking(), 'lost-connection-request', $session ), 'explicit retry obtains a new lock and creates hold' );
 verify( 1 === Database::listing( 'reservations' )['total'], 'reconnected retry allocates only once' );
 $wpdb->close(); $wpdb = $real_db;
-verify( Database::VERSION === '1', 'engine does not require schema change' );
+verify( Database::VERSION === '2', 'engine uses current schema' );
 echo PHP_EOL . ( $checks - $previous_checks ) . ' availability checks + ' . $previous_checks . ' preceding real regression checks = ' . $checks . ' passed.' . PHP_EOL;
