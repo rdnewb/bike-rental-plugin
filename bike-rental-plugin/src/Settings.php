@@ -18,6 +18,7 @@ final class Settings {
 	public function register_hooks() {
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_init', array( $this, 'register' ) );
+		add_action( 'admin_enqueue_scripts', array( Branding::class, 'assets' ) );
 		add_filter( 'option_page_capability_' . self::GROUP, array( self::class, 'capability' ) );
 	}
 
@@ -176,6 +177,20 @@ final class Settings {
 		}
 		if ( is_array( $input ) && ! array_key_exists( 'payment_mode', $input ) ) { $input['payment_mode'] = self::get()['payment_mode'] ?? 'full'; }
 		$result = self::validate( $input );
+		// Presentation is validated only on save, never by the scheduling/readiness validator.
+		$previous = self::get();
+		if ( is_array( $input ) && array_key_exists( 'branding', $input ) ) {
+			$branding = $input['branding'];
+			if ( is_array( $branding ) ) {
+				if ( '1' === ( $branding['restore_defaults'] ?? '' ) ) { $branding = Branding::defaults(); }
+				if ( ! current_user_can( 'manage_options' ) ) { $branding['custom_css'] = Branding::get()['custom_css']; }
+			}
+			$validated = Branding::validate( $branding );
+			$result['errors'] = array_merge( $result['errors'], $validated['errors'] );
+			$result['values']['branding'] = $validated['values'];
+		} elseif ( is_array( $previous ) && array_key_exists( 'branding', $previous ) ) {
+			$result['values']['branding'] = $previous['branding'];
+		}
 		if ( $result['errors'] ) {
 			foreach ( $result['errors'] as $index => $error ) {
 				add_settings_error( self::OPTION, 'brp_invalid_' . $index, $error );

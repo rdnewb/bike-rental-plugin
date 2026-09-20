@@ -29,6 +29,9 @@ function __( $text, $domain = '' ) { return $text; }
 function esc_html__( $text, $domain = '' ) { return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $text ) { return esc_html( $text ); }
+function esc_textarea( $text ) { return esc_html( $text ); }
+function wp_kses( $text, $allowed ) { return strip_tags( $text, '<' . implode( '><', array_keys( $allowed ) ) . '>' ); }
+function sanitize_hex_color( $text ) { return preg_match( '/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/iD', $text ) ? $text : null; }
 function esc_url( $text ) { return esc_html( $text ); }
 function esc_html_e( $text, $domain = '' ) { echo esc_html( $text ); }
 function esc_attr_e( $text, $domain = '' ) { echo esc_attr( $text ); }
@@ -77,7 +80,7 @@ function check( $condition, $label ) {
 
 $settings = new Settings();
 $defaults = Settings::defaults();
-check( '0.7.0' === Plugin::VERSION, 'version constant' );
+check( '0.7.1' === Plugin::VERSION, 'version constant' );
 check( isset( $hooks['plugins_loaded'] ) && ! isset( $hooks['admin_init'] ), 'bootstrap defers initialization' );
 check( 90 === $defaults['booking_horizon'] && 30 === $defaults['time_increment'], 'neutral scheduling defaults' );
 check( 0 === array_sum( array_column( $defaults['weekly_hours'], 'open' ) ), 'all seven days default closed' );
@@ -94,7 +97,7 @@ $options[ Settings::OPTION ] = $valid;
 Plugin::activate();
 Plugin::record_version();
 check( $valid === $options[ Settings::OPTION ], 'reactivation and version handling preserve saved settings' );
-check( '0.7.0' === $options['brp_plugin_version'], 'version recorded independently of settings' );
+check( '0.7.1' === $options['brp_plugin_version'], 'version recorded independently of settings' );
 check( 'Ready for Package Setup' === Settings::configuration_status( $valid ), 'valid business and open day ready for package setup' );
 $partial = $defaults;
 $partial['business_name'] = 'Coastal Cycles';

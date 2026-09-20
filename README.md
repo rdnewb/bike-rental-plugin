@@ -2,7 +2,9 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current version: 0.7.0 — rental deep links and weekly administration calendar. Schema remains 1. Dedicated-site Square sandbox acceptance is pending.**
+**Current version: 0.7.1 — administrator-controlled booking form branding. Schema remains 1. Dedicated-site Square sandbox acceptance is pending.**
+
+**Bike Rentals > Settings > Booking Form Branding** controls the selection heading, safe intro HTML, three card/change button labels, six colors, card/button radius presets, an optional Media Library logo and administrator-only scoped CSS. Blank colors preserve existing appearance; font families inherit the active theme and no font files are loaded. Save and refresh the booking page to preview. See [branding settings, defaults and verification](docs/booking-branding-verification.md).
 
 Use one dedicated page with `[bike_rental_booking]`. Divi buttons can link to `/reserve/?rental=3-day-rental` using the WooCommerce product slug. A valid active package appears selected on its own; **Change Rental** reveals the full grid without reloading. Invalid links fall back to normal selection. See [deep-link usage and verification](docs/deep-link-booking-verification.md).
 
@@ -123,7 +125,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` remains **1**, separate from plugin version **0.7.0**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.7.1**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.
@@ -199,6 +201,7 @@ WooCommerce Square processes Full Payment through WooCommerce. Compatible deposi
 - `bike-rental-plugin.php`: headers, direct-access guard, explicit class loading, activation and deferred bootstrap.
 - `src/Plugin.php`: lifecycle, text domain, version marker, dependency visibility, conditional package loading after WooCommerce initializes.
 - `src/Settings.php`: capabilities, native settings registration, strict validation, and configuration status.
+- `src/Branding.php`, `src/branding-fields.php`, and `assets/js/branding-admin.js`: presentation settings in the existing option/form, color/media controls, per-instance CSS variables, and restricted administrator CSS. Presentation is excluded from scheduling/readiness validation.
 - `src/settings-page.php`: native WordPress administration HTML, separate from validation logic.
 - `src/Packages.php`: rental metadata validation, product-editor save hooks, package reads, and overview query.
 - `src/package-fields.php` and `src/packages-page.php`: product tab and read-only overview.

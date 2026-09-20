@@ -90,5 +90,7 @@ defined( 'ABSPATH' ) || exit;
 		</table>
 		<p><?php esc_html_e( 'Ready for Package Setup requires a business name, valid scheduling settings, and at least one open day. It does not mean the system is ready for rentals.', 'bike-rental-plugin' ); ?></p>
 		<?php submit_button( __( 'Save settings', 'bike-rental-plugin' ) ); ?>
+		<?php require __DIR__ . '/branding-fields.php'; ?>
+		<?php submit_button( __( 'Save settings', 'bike-rental-plugin' ) ); ?>
 	</form>
 </div>

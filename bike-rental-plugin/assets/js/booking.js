@@ -16,6 +16,8 @@
         const cards = Array.from(root.querySelectorAll('.brp-card'));
         const details = root.querySelector('.brp-details');
         const changeRental = root.querySelector('.brp-change-rental');
+        const selectText = root.dataset.selectText || 'Select Rental';
+        const selectedText = root.dataset.selectedText || 'Selected';
         let filtered = Boolean(Number(root.dataset.preselected));
         const showCards = () => {
             root.dataset.filtered = String(filtered);
@@ -35,8 +37,8 @@
             card.classList.toggle('brp-selected', selected);
             const button = card.querySelector('.brp-select');
             button.setAttribute('aria-pressed', String(selected));
-            button.textContent = selected ? '✓ Selected' : 'Select Rental';
-            button.setAttribute('aria-label', (selected ? 'Selected: ' : 'Select Rental: ') + button.dataset.packageName);
+            button.textContent = selected ? '✓ ' + selectedText : selectText;
+            button.setAttribute('aria-label', (selected ? selectedText : selectText) + ': ' + button.dataset.packageName);
         });
         const storageKey = 'brp-booking:' + root.dataset.api + location.pathname;
         let packages = [], selection = null, generation = 0, requestKey = '', timer = null;

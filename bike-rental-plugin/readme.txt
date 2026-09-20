@@ -1,13 +1,23 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.7.0
+Stable tag: 0.7.1
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
 Reusable bicycle-rental settings, packages, reservations, and shared fleet availability.
 
 == Description ==
+
+Version 0.7.1 adds Booking Form Branding to Bike Rentals > Settings: heading, safe intro,
+card/change button labels, six color pickers, radius presets, Media Library logo and
+administrator-only scoped CSS. Blank colors retain current appearance. Typography uses
+theme font families; no fonts or font controls are added. Save and refresh to preview.
+Branding uses the existing settings option and nonce/capability checks. Custom CSS supports
+restricted flat .brp-booking rules only, rewritten to the specific shortcode instance.
+No global selectors, imports, URLs, scripts or arbitrary stylesheets. Choose accessible
+color combinations; contrast is not automatically corrected. Restore defaults resets
+branding only. Booking, payments, deposits, availability and calendar behavior are unchanged.
 
 Milestone 7A adds dedicated booking-page links such as /reserve/?rental=3-day-rental.
 Use the WooCommerce product slug; numeric product ID fallback is supported. Valid links
@@ -90,6 +100,12 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.7.1 =
+* Add configurable booking content, labels, colors, radius presets and responsive media logo.
+* Use wrapper CSS variables and safe administrator-only per-instance CSS overrides.
+* Retain theme fonts, existing default appearance and all booking/calendar/checkout behavior.
+* Add branding validation, browser checks and documentation. Schema remains 1; no waiver work.
 
 = 0.7.0 =
 * Add validated rental slug/ID deep links, selected-card display, Change Rental and URL state.

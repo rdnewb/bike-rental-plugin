@@ -197,6 +197,8 @@ final class PublicBooking {
 		// Also supports shortcodes rendered after the theme has printed its head styles.
 		wp_print_styles( 'brp-booking' );
 		$uid = wp_unique_id( 'brp-booking-' );
+		$branding = Branding::get();
+		$branding_css = Branding::css( $branding['custom_css'], '#' . $uid . '.brp-booking' );
 		// Crawlable presentation only. REST handlers still validate every booking selection.
 		$cards = array();
 		if ( class_exists( Packages::class ) ) {

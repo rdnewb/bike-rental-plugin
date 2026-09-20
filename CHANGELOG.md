@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 — Booking form branding controls
+
+- Add Booking Form Branding to the existing Settings API form/option: optional heading and safe intro, three card/change button labels, six hex colors, card/button rounding presets, and an optional responsive Media Library image with existing alt text.
+- Apply sanitized colors/radius through CSS variables on each shortcode wrapper. Retain current blank-setting colors/rounding, theme font inheritance, keyboard focus, selected states, deep links and responsive layout. No new font controls, fonts or external assets.
+- Add administrator-only Advanced Custom CSS with a deliberately restricted flat-rule grammar, supported visual properties and per-instance ID scoping. Reject scripts, HTML, external URLs/imports, global selectors and unsupported syntax; preserve CSS during shop manager saves/resets.
+- Add branding-only restore defaults, defensive output fallbacks, real WordPress sanitization/permission/media tests, Chromium layout/interaction checks and manual acceptance instructions. Keep all booking/payment/deposit/calendar logic and schema 1 unchanged; no waiver integration.
+
 ## 0.7.0 — Milestone 7A deep links and weekly calendar
 
 - Resolve `?rental=product-slug` (numeric product ID fallback) against the server-validated active rental catalog. Initially show the selected card with booking controls, and reveal the full grid through keyboard-accessible Change Rental. Invalid/ineligible links fall back safely. Manual selection updates the URL without reloading; owned hold recovery remains intact.

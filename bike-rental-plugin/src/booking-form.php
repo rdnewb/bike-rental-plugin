@@ -2,13 +2,15 @@
 namespace BikeRentalPlugin;
 defined( 'ABSPATH' ) || exit;
 ?>
-<section class="brp-booking" data-filtered="<?php echo $preselected ? 'true' : 'false'; ?>" data-preselected="<?php echo esc_attr( $preselected ); ?>" data-selection-source="<?php echo $preselected ? 'url' : 'none'; ?>" data-api="<?php echo esc_url( rest_url( PublicBooking::API . '/' ) ); ?>" aria-label="Bike rental selection">
+<section class="brp-booking" id="<?php echo esc_attr( $uid ); ?>" style="<?php echo esc_attr( Branding::variables( $branding ) ); ?>" data-select-text="<?php echo esc_attr( $branding['select_text'] ); ?>" data-selected-text="<?php echo esc_attr( $branding['selected_text'] ); ?>" data-filtered="<?php echo $preselected ? 'true' : 'false'; ?>" data-preselected="<?php echo esc_attr( $preselected ); ?>" data-selection-source="<?php echo $preselected ? 'url' : 'none'; ?>" data-api="<?php echo esc_url( rest_url( PublicBooking::API . '/' ) ); ?>" aria-label="Bike rental selection">
+<?php if ( $branding_css ) : ?><style><?php echo $branding_css; // Validated flat CSS, scoped to this generated ID; HTML/escapes are forbidden. ?></style><?php endif; ?>
 <form class="brp-form">
 <fieldset><legend>Book your bike rental</legend>
-<section aria-labelledby="<?php echo esc_attr( $uid ); ?>-choose">
-<h2 id="<?php echo esc_attr( $uid ); ?>-choose">1. Choose Your Rental</h2>
-<p>Choose a rental below, then select your date, start time, and number of bikes.</p>
-<button class="brp-change-rental" type="button" aria-expanded="false" aria-controls="<?php echo esc_attr( $uid ); ?>-grid"<?php if ( ! $preselected ) { echo ' hidden'; } ?> disabled>Change Rental</button>
+<section <?php echo $branding['heading'] ? 'aria-labelledby="' . esc_attr( $uid ) . '-choose"' : 'aria-label="Rental packages"'; ?>>
+<?php echo Branding::logo( $branding['logo_id'] ); // Image attributes allowlisted by the renderer. ?>
+<?php if ( $branding['heading'] ) : ?><h2 id="<?php echo esc_attr( $uid ); ?>-choose">1. <?php echo esc_html( $branding['heading'] ); ?></h2><?php endif; ?>
+<?php if ( $branding['intro'] ) : ?><div class="brp-intro"><?php echo Branding::intro( $branding['intro'] ); // Restricted safe HTML only. ?></div><?php endif; ?>
+<button class="brp-change-rental" type="button" aria-expanded="false" aria-controls="<?php echo esc_attr( $uid ); ?>-grid"<?php if ( ! $preselected ) { echo ' hidden'; } ?> disabled><?php echo esc_html( $branding['change_text'] ); ?></button>
 <div class="brp-grid" id="<?php echo esc_attr( $uid ); ?>-grid">
 <?php foreach ( $cards as $card ) :
 	$product = wc_get_product( $card['product_id'] );
@@ -28,7 +30,7 @@ defined( 'ABSPATH' ) || exit;
 <p class="brp-duration"><?php echo esc_html( $amount . ' ' . $unit ); ?></p>
 <?php if ( trim( wp_strip_all_tags( $description ) ) ) : ?><div class="brp-description" tabindex="0" role="region" aria-label="<?php echo esc_attr( $card['name'] . ' short description' ); ?>"><?php echo $description; // Restricted formatting allowlist above. ?></div><?php endif; ?>
 <p class="brp-card-price"><?php echo wp_kses_post( $product->get_price_html() ); ?> <span class="brp-price-unit">per bike</span></p>
-<button class="brp-select" type="button" aria-pressed="<?php echo $selected ? 'true' : 'false'; ?>" aria-label="<?php echo esc_attr( ( $selected ? 'Selected: ' : 'Select Rental: ' ) . $card['name'] ); ?>" data-package-name="<?php echo esc_attr( $card['name'] ); ?>" disabled><?php echo $selected ? '✓ Selected' : 'Select Rental'; ?></button>
+<button class="brp-select" type="button" aria-pressed="<?php echo $selected ? 'true' : 'false'; ?>" aria-label="<?php echo esc_attr( ( $selected ? $branding['selected_text'] : $branding['select_text'] ) . ': ' . $card['name'] ); ?>" data-package-name="<?php echo esc_attr( $card['name'] ); ?>" disabled><?php echo esc_html( $selected ? '✓ ' . $branding['selected_text'] : $branding['select_text'] ); ?></button>
 </div>
 </article>
 <?php endforeach; ?>

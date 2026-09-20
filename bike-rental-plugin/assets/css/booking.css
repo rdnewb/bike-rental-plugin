@@ -6,9 +6,9 @@
 .brp-booking label { display: block; margin-block: 1rem .35rem; font-weight: 600; }
 .brp-booking input, .brp-booking select, .brp-booking button { font: inherit; min-height: 48px; max-width: 100%; padding: .65rem; border: 1px solid currentColor; border-radius: .25rem; }
 .brp-booking input, .brp-booking select { width: 100%; min-width: 0; }
-.brp-booking button { color: inherit; background: transparent; cursor: pointer; }
+.brp-booking button { color: var(--brp-button-text, inherit); background: var(--brp-button-bg, transparent); border-radius: var(--brp-radius, .25rem); cursor: pointer; overflow-wrap: anywhere; }
 .brp-booking button:disabled { opacity: .55; cursor: wait; }
-.brp-booking :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.brp-booking :focus-visible { outline: 3px solid var(--brp-accent, currentColor); outline-offset: 3px; }
 .brp-booking .brp-submit, .brp-booking .brp-restart { width: 100%; font-weight: 600; }
 .brp-booking .brp-status, .brp-booking .brp-summary, .brp-booking .brp-package { margin-block: 1rem; }
 .brp-booking .brp-status:empty, .brp-booking .brp-summary:empty, .brp-booking .brp-package:empty { display: none; }
@@ -16,8 +16,8 @@
 .brp-booking p { margin-block: .65rem; }
 .brp-booking .brp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1.25rem; margin-block: 1.5rem; }
 .brp-booking[data-filtered="true"] .brp-grid { max-width: 26rem; margin-inline: auto; }
-.brp-booking .brp-card { min-width: 0; border: 2px solid GrayText; border-radius: .75rem; overflow: hidden; display: flex; flex-direction: column; background: Canvas; color: CanvasText; }
-.brp-booking .brp-card.brp-selected { border-color: CanvasText; box-shadow: 0 0 0 2px CanvasText; }
+.brp-booking .brp-card { min-width: 0; border: 2px solid var(--brp-card-border, GrayText); border-radius: var(--brp-radius, .75rem); overflow: hidden; display: flex; flex-direction: column; background: var(--brp-card-bg, Canvas); color: CanvasText; }
+.brp-booking .brp-card.brp-selected { border-color: var(--brp-selected-border, var(--brp-accent, CanvasText)); box-shadow: 0 0 0 2px var(--brp-selected-border, var(--brp-accent, CanvasText)); }
 .brp-booking .brp-card-image { aspect-ratio: 4 / 3; background: ButtonFace; display: grid; place-items: center; }
 .brp-booking .brp-card-image img { display: block; width: 100%; height: 100%; aspect-ratio: 4 / 3; object-fit: contain; }
 .brp-booking .brp-image-fallback { padding: 1.5rem; text-align: center; color: GrayText; }
@@ -31,7 +31,8 @@
 .brp-booking .brp-card .brp-card-price { font-size: 1.35rem; font-weight: 700; margin-top: auto; padding-top: .5rem; }
 .brp-booking .brp-price-unit { font-size: .85rem; font-weight: 400; }
 .brp-booking .screen-reader-text { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.brp-booking .brp-select { width: 100%; background: CanvasText; color: Canvas; border-color: CanvasText; font-weight: 700; }
-.brp-booking .brp-select:focus-visible { outline-color: CanvasText; }
+.brp-booking .brp-select { width: 100%; background: var(--brp-button-bg, CanvasText); color: var(--brp-button-text, Canvas); border-color: var(--brp-button-bg, CanvasText); font-weight: 700; }
+.brp-booking .brp-select:focus-visible { outline-color: var(--brp-accent, CanvasText); }
 .brp-booking .brp-details { max-width: 42rem; margin: 2rem auto 0; }
 .brp-booking .brp-details h2 { margin-top: 1.5rem; font-size: 1.4rem; }
+.brp-booking .brp-logo { display: block; max-width: min(100%, 300px); width: auto; height: auto; margin-block: 0 1rem; }
