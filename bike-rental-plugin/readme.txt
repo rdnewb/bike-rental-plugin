@@ -1,13 +1,21 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.7.2
+Stable tag: 0.7.3
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
 Reusable bicycle-rental settings, packages, reservations, and shared fleet availability.
 
 == Description ==
+
+Version 0.7.3 refines public rental cards: full-width centered 4:3 featured-image crops,
+safe WooCommerce short descriptions between title and price, natural description height,
+and no automatic standalone duration line. Edit Product short description in WooCommerce;
+the long description is not duplicated. Empty excerpts omit the description area. Images
+retain responsive thumbnail sizes and alt text; rounded corners and missing-image fallbacks
+remain. Branding, deep links, booking, payments, deposits, availability and calendar logic
+are unchanged. Schema remains 1; waiver integration has not started.
 
 Version 0.7.2 organizes Bike Rentals > Settings into native General (default) and Booking
 Form Branding tabs. General includes operational settings and dependency information.
@@ -106,6 +114,12 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.7.3 =
+* Show safe, server-rendered short descriptions at natural height between title and price.
+* Remove standalone card duration labels without changing package metadata or scheduling.
+* Fill card image width using centered 4:3 cover crops, preserving responsive images,
+  branding radius, missing-image fallback, accessibility and existing selection behavior.
 
 = 0.7.2 =
 * Split settings into native General and Booking Form Branding tabs with direct links.

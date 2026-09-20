@@ -1,5 +1,7 @@
 # Milestone 6A UX — 0.6.1 product grid
 
+Historical release record. For current image cropping, natural-height descriptions and removal of the standalone duration line, see [0.7.3 card presentation](card-presentation-verification.md).
+
 Version **0.6.1**, schema **1**. Work is directly on `main`. This enhancement changes the public shortcode presentation and package-selection controls only. Payment policy, Full Payment/Deposit behavior, Square integration, reservations, availability, guest sessions, order linkage, and database schema are unchanged. Milestone 7 has not started.
 
 ## Card content and interaction

@@ -55,6 +55,8 @@ const check = (ok, label) => { assert.ok(ok, label); checks++; console.log('PASS
         check(await page.locator('.brp-select:visible').evaluate((e) => getComputedStyle(e).backgroundColor) === 'rgb(18, 52, 86)', 'configured button background applied');
         check(await page.locator('.brp-select:visible').evaluate((e) => getComputedStyle(e).color) === 'rgb(255, 255, 255)', 'configured button text applied');
         check(await page.locator('.brp-card:visible').evaluate((e) => getComputedStyle(e).borderRadius) === '12px', 'radius preset applied');
+        check(await page.locator('.brp-card:visible img').evaluate(e => { const card = e.closest('.brp-card'); return getComputedStyle(card).overflow === 'hidden' && getComputedStyle(card).borderTopLeftRadius === '12px' && getComputedStyle(e).objectFit === 'cover' && Math.abs(e.getBoundingClientRect().width - card.clientWidth) < 1; }), 'deep-linked image fills card and is clipped by configured radius');
+        check((await page.locator('.brp-card:visible .brp-description').textContent()).trim() === 'Delivery and pickup included.' && await page.locator('.brp-duration').count() === 0, 'branded deep link includes description without duplicate duration');
         check(await page.locator('.brp-intro').last().evaluate((e) => getComputedStyle(e).letterSpacing) === '1px', 'scoped custom CSS applies inside booking wrapper');
         check(await page.locator('.outside .brp-intro').evaluate((e) => getComputedStyle(e).letterSpacing) === 'normal', 'custom CSS does not reach unrelated matching class');
         check(await page.locator('.outside button').evaluate((e) => getComputedStyle(e).backgroundColor) === 'rgb(230, 230, 230)', 'theme/Woo-style buttons outside wrapper unaffected');

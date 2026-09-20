@@ -57,6 +57,7 @@ try {
 	update_post_meta( $attachment, '_wp_attachment_image_alt', 'Generic rental mark' );
 	$small = str_replace( '.png', '-300x225.png', $upload['file'] ); copy( $upload['file'], $small );
 	wp_update_attachment_metadata( $attachment, array( 'width' => 800, 'height' => 600, 'file' => _wp_relative_upload_path( $upload['file'] ), 'sizes' => array( 'medium' => array( 'file' => basename( $small ), 'width' => 300, 'height' => 225, 'mime-type' => 'image/png' ) ) ) );
+	$products[1]->set_image_id( $attachment ); $products[1]->set_short_description( 'Delivery and pickup included.' ); $products[1]->save();
 	$branding['logo_id'] = $attachment; brand_save( $branding ); $deep_html = PublicBooking::shortcode();
 	brand_check( str_contains( $deep_html, 'class="brp-logo"' ) && str_contains( $deep_html, 'alt="Generic rental mark"' ), 'Media Library logo and existing alt text rendered' );
 	brand_check( str_contains( $deep_html, 'srcset=' ) && str_contains( $deep_html, 'sizes=' ), 'logo uses responsive image metadata' );

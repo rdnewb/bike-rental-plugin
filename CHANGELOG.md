@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.3 — Rental-card content and images
+
+- Keep WooCommerce `get_short_description()` as the server-rendered card description source; retain safe paragraphs, emphasis, lists and line breaks below the title and above price. Remove script/style/embed contents as well as unsafe markup. Empty descriptions omit the wrapper, with no long-description fallback or extra requests.
+- Let descriptions and cards grow naturally without nested scrolling or stretching shorter cards to the longest description. Remove the redundant scroll-region focus target.
+- Remove automatic standalone Hours/Days labels from cards only. Administrator titles and duration metadata remain intact.
+- Use full-width, centered `object-fit: cover` images at the existing responsive 4:3 ratio; retain WooCommerce thumbnails/srcset/alt text, card radius clipping and missing-image fallback.
+- Verify normal and deep-linked cards, branding, keyboard selection, mobile layout and existing regression suites. No booking, payment/deposit, reservation, availability, calendar, deep-link logic or schema changes. Waiver integration has not started.
+
 ## 0.7.2 — Native settings tabs
 
 - Organize Bike Rentals > Settings into General (default) and Booking Form Branding, using normal WordPress admin links, native active-tab styling and a single page heading. Unknown query tabs safely load General.

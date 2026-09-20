@@ -2,7 +2,7 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current version: 0.7.2 — native General and Booking Form Branding settings tabs. Schema remains 1. Dedicated-site Square sandbox acceptance is pending.**
+**Current version: 0.7.3 — refined rental-card descriptions and full-width images. Schema remains 1. Dedicated-site Square sandbox acceptance is pending.**
 
 **Bike Rentals > Settings** opens on General, with all operational settings and dependency information. The **Booking Form Branding** tab contains the existing branding controls and restore-default action. Each tab saves its own values in the existing option, preserves the other tab, and returns to the same tab with WordPress notices. Direct links use `admin.php?page=brp-settings&tab=general` or `&tab=branding`; unknown tabs fall back to General. See [settings tabs and release verification](docs/settings-tabs-verification.md).
 
@@ -47,7 +47,7 @@ Insert `[bike_rental_booking]` into a normal WordPress page or a Divi shortcode-
 
 Start-time dropdown labels use 12-hour AM/PM display (for example, `1:30 PM`); option values remain `HH:MM` for existing booking validation.
 
-Rental packages render as semantic product cards before JavaScript loads. Cards use WooCommerce featured thumbnail images (responsive `srcset`/`sizes` and attachment alt text), short descriptions with restricted basic formatting, and WooCommerce formatted prices; duration and optional promotion come from rental metadata. Missing images have an aligned fallback. Long descriptions are contained in keyboard-scrollable regions.
+Rental packages render as semantic product cards before JavaScript loads. Cards use WooCommerce featured thumbnail images (responsive `srcset`/`sizes` and attachment alt text), full-width centered 4:3 crops, short descriptions with restricted basic formatting, and WooCommerce formatted prices. Edit the WooCommerce **Product short description** to add card content; the long product description is not duplicated. Descriptions appear below the title and above the price, grow naturally without nested scrolling, and are omitted when empty. Cards retain their own content height. The automatic standalone duration line is removed; duration metadata and scheduling are unchanged, and product titles may still include duration. Optional promotions and full-width missing-image fallbacks remain. See [0.7.3 card presentation and verification](docs/card-presentation-verification.md).
 
 The grid fits up to three columns in its 72rem container, two in medium spaces, and one on narrow screens. Native Select Rental buttons support Enter/Space, visible focus, and `aria-pressed`; selected text/checkmark and borders make selection clear without relying on color. Selecting a card synchronizes a hidden package ID and reveals the existing date/time, quantity, and review controls. The existing catalog request refreshes eligibility and date limits before buttons enable; the server still validates all booking requests. Clear cached booking pages after updating products or deploying. See [0.6.1 verification and deployment](docs/product-grid-verification.md).
 
@@ -127,7 +127,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` remains **1**, separate from plugin version **0.7.2**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.7.3**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.

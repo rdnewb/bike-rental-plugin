@@ -9,6 +9,7 @@ const fixtureDir = process.env.BRP_GRID_FIXTURE_DIR;
 if (!fixtureDir) throw new Error('BRP_GRID_FIXTURE_DIR is required');
 const fixture = JSON.parse(fs.readFileSync(path.join(fixtureDir, 'cards.json'), 'utf8'));
 const markup = fs.readFileSync(path.join(fixtureDir, 'cards.html'), 'utf8').replace(/data-api="[^"]+"/, 'data-api="http://127.0.0.1:33319/api/"');
+const deepMarkup = fs.readFileSync(path.join(fixtureDir, 'cards-deep.html'), 'utf8').replace(/data-api="[^"]+"/, 'data-api="http://127.0.0.1:33319/api/"');
 const css = fs.readFileSync(path.join(__dirname, '../bike-rental-plugin/assets/css/booking.css'), 'utf8');
 const script = path.join(__dirname, '../bike-rental-plugin/assets/js/booking.js');
 let checks = 0;
@@ -43,9 +44,9 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
                 return route.fulfill({ json: data });
             }
             if (url.pathname === '/checkout') return route.fulfill({ contentType: 'text/html', body: '<p>Checkout transfer destination fixture</p>' });
-            if (request.resourceType() === 'image') return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAE0lEQVR4nGO8/ugeAwwwwVnoHABgaAKd72wTXQAAAABJRU5ErkJggg==', 'base64') });
+            if (request.resourceType() === 'image') return route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400"><rect width="800" height="400" fill="#9bc6ce"/><circle cx="400" cy="200" r="100" fill="#244b54"/></svg>' });
             if (request.resourceType() === 'stylesheet') return route.fulfill({ contentType: 'text/css', body: '' });
-            return route.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font:16px system-ui;margin:16px}' + css + '</style></head><body>' + markup + '</body></html>' });
+            return route.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font:16px system-ui;margin:16px}' + css + '</style></head><body>' + (url.searchParams.has('rental') ? deepMarkup : markup) + '</body></html>' });
         });
         const card = (index) => page.locator(`[data-package-id="${fixture.ids[index]}"]`);
         const button = (index) => card(index).locator('button');
@@ -62,6 +63,13 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
             check(await page.locator('.brp-grid').evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length) === columns, `${width}px grid has ${columns} columns`);
             check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}px has no horizontal overflow`);
             check((await button(0).boundingBox()).height >= 48, `${width}px tap target at least 48px`);
+            check(await card(0).locator('.brp-card-image').evaluate(el => Math.abs(el.getBoundingClientRect().width - el.parentElement.clientWidth) < 1), `${width}px image wrapper fills card interior`);
+            check(await card(0).locator('img').evaluate(el => { const a = el.getBoundingClientRect(), b = el.parentElement.getBoundingClientRect(), s = getComputedStyle(el); return Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1 && Math.abs(a.width / a.height - 4 / 3) < .01 && s.objectFit === 'cover' && s.objectPosition === '50% 50%' && el.naturalWidth / el.naturalHeight === 2; }), `${width}px non-4:3 image fills centered 4:3 crop without gutters or stretching`);
+            check(await card(1).locator('.brp-card-image').evaluate(el => Math.abs(el.getBoundingClientRect().width - el.parentElement.clientWidth) < 1), `${width}px fallback spans card width`);
+            check(await card(2).locator('.brp-description').evaluate(el => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth && getComputedStyle(el).maxHeight === 'none'), `${width}px description fully visible and wraps naturally`);
+            check(await card(0).evaluate(el => getComputedStyle(el).overflow === 'hidden' && parseFloat(getComputedStyle(el).borderTopLeftRadius) > 0), `${width}px card clips image to rounded corners`);
+            check((await card(1).boundingBox()).height < (await card(2).boundingBox()).height, `${width}px short card is not stretched to long description height`);
+            check(await card(0).locator('.brp-card-price').evaluate(el => el.scrollWidth <= el.clientWidth), `${width}px price remains within card`);
             if ([1280, 375].includes(width)) await page.screenshot({ path: path.join(fixtureDir, `grid-${width}.png`), fullPage: true });
         }
         await page.setViewportSize({ width: 1280, height: 1000 });
@@ -74,7 +82,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
         await button(2).focus(); await page.keyboard.press('Space');
         check(await page.locator('[name=package_id]').inputValue() === String(fixture.ids[2]), 'Space selects another package');
         check(await page.locator('.brp-select[aria-pressed=true]').count() === 1 && await button(0).getAttribute('aria-pressed') === 'false', 'exactly one package selected');
-        check(await card(2).locator('.brp-description').evaluate((el) => el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === 'auto'), 'long description contained and scrollable');
+        check(await card(2).locator('.brp-description').evaluate((el) => el.scrollHeight <= el.clientHeight + 1 && !el.hasAttribute('tabindex')), 'long description readable without nested scrolling');
         await page.locator('[name=date]').fill('2032-09-20'); await page.locator('[name=date]').dispatchEvent('change');
         await page.waitForFunction(() => !document.querySelector('[name=time]').disabled);
         check(calls.filter((c) => c.name === 'times').at(-1).input.package_id === String(fixture.ids[2]), 'time request uses selected calendar package');
@@ -120,6 +128,12 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
         await page.locator('.brp-form').waitFor({ state: 'visible' });
         check(await page.locator('.brp-result').isHidden(), 'Back/Forward-cache restoration rechecks and clears cancelled hold');
         check(await page.evaluate(() => sessionStorage.getItem('brp-booking:http://127.0.0.1:33319/api//booking')) === null, 'Back/Forward recovery clears only stale booking pointer');
+        await page.goto('http://127.0.0.1:33319/booking?rental=' + fixture.ids[2]); await page.evaluate(() => sessionStorage.clear()); await page.addScriptTag({ path: script });
+        await page.waitForFunction(() => !document.querySelector('.brp-change-rental').disabled);
+        check(await page.locator('.brp-card:visible').count() === 1 && await card(2).locator('.brp-description').isVisible(), 'deep-linked card shows its description');
+        check(await page.locator('.brp-duration').count() === 0 && await card(2).locator('img').evaluate(el => getComputedStyle(el).objectFit === 'cover'), 'deep-linked card shares full-width crop and omits duration');
+        await page.locator('.brp-change-rental').click();
+        check(await page.locator('.brp-card:visible').count() === 4, 'Change Rental reveals all updated cards');
         catalog = [];
         await load();
         check(await page.locator('.brp-card:visible').count() === 0 && await page.locator('.brp-empty').isVisible(), 'fresh catalog hides stale server-rendered packages');

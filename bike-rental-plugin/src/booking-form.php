@@ -18,17 +18,15 @@ defined( 'ABSPATH' ) || exit;
 	$heading = $uid . '-package-' . $card['product_id'];
 	$selected = $preselected === (int) $card['product_id'];
 	$image = wp_get_attachment_image( $product->get_image_id(), 'woocommerce_thumbnail', false, array( 'loading' => 'lazy', 'decoding' => 'async' ) );
-	$description = wp_kses( wpautop( strip_shortcodes( $product->get_short_description() ) ), array( 'p' => array(), 'br' => array(), 'strong' => array(), 'b' => array(), 'em' => array(), 'i' => array(), 'ul' => array(), 'ol' => array(), 'li' => array() ) );
-	$amount = (int) $card['duration_amount'];
-	$unit = 'hours' === $card['duration_type'] ? _n( 'Hour', 'Hours', $amount, 'bike-rental-plugin' ) : _n( 'Day', 'Days', $amount, 'bike-rental-plugin' );
+	$description = preg_replace( '~<(script|style|iframe|object)\b[^>]*>.*?</\1\s*>~is', '', $product->get_short_description() );
+	$description = wp_kses( wpautop( strip_shortcodes( $description ) ), array( 'p' => array(), 'br' => array(), 'strong' => array(), 'b' => array(), 'em' => array(), 'i' => array(), 'ul' => array(), 'ol' => array(), 'li' => array() ) );
 ?>
 <article class="brp-card<?php if ( $selected ) { echo ' brp-selected'; } ?>" data-package-id="<?php echo esc_attr( $card['product_id'] ); ?>" data-package-slug="<?php echo esc_attr( $product->get_slug() ); ?>" aria-labelledby="<?php echo esc_attr( $heading ); ?>"<?php if ( $preselected && ! $selected ) { echo ' hidden'; } ?>>
 <div class="brp-card-image"><?php if ( $image ) { echo wp_kses( $image, array( 'img' => array_fill_keys( array( 'src', 'srcset', 'sizes', 'width', 'height', 'alt', 'class', 'loading', 'decoding', 'fetchpriority' ), true ) ) ); } else { ?><span class="brp-image-fallback" role="img" aria-label="No rental photo available">Rental photo coming soon</span><?php } ?></div>
 <div class="brp-card-content">
 <?php if ( $card['promotional_label'] ) : ?><p class="brp-promo"><?php echo esc_html( $card['promotional_label'] ); ?></p><?php endif; ?>
 <h3 id="<?php echo esc_attr( $heading ); ?>"><?php echo esc_html( $card['name'] ); ?></h3>
-<p class="brp-duration"><?php echo esc_html( $amount . ' ' . $unit ); ?></p>
-<?php if ( trim( wp_strip_all_tags( $description ) ) ) : ?><div class="brp-description" tabindex="0" role="region" aria-label="<?php echo esc_attr( $card['name'] . ' short description' ); ?>"><?php echo $description; // Restricted formatting allowlist above. ?></div><?php endif; ?>
+<?php if ( trim( wp_strip_all_tags( $description ) ) ) : ?><div class="brp-description"><?php echo $description; // Server-rendered short description; restricted formatting allowlist above. ?></div><?php endif; ?>
 <p class="brp-card-price"><?php echo wp_kses_post( $product->get_price_html() ); ?> <span class="brp-price-unit">per bike</span></p>
 <button class="brp-select" type="button" aria-pressed="<?php echo $selected ? 'true' : 'false'; ?>" aria-label="<?php echo esc_attr( ( $selected ? $branding['selected_text'] : $branding['select_text'] ) . ': ' . $card['name'] ); ?>" data-package-name="<?php echo esc_attr( $card['name'] ); ?>" disabled><?php echo esc_html( $selected ? '✓ ' . $branding['selected_text'] : $branding['select_text'] ); ?></button>
 </div>
