@@ -15,6 +15,10 @@ final class Settings {
 	const GROUP  = 'brp_settings_group';
 	const PAGE   = 'brp-settings';
 
+	public static function tabs() { return array( 'general' => __( 'General', 'bike-rental-plugin' ), 'branding' => __( 'Booking Form Branding', 'bike-rental-plugin' ) ); }
+	public static function tab( $value ) { return is_string( $value ) && array_key_exists( $value, self::tabs() ) ? $value : 'general'; }
+	public static function tab_url( $tab ) { return admin_url( 'admin.php?page=' . self::PAGE . '&tab=' . self::tab( $tab ) ); }
+
 	public function register_hooks() {
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_init', array( $this, 'register' ) );
@@ -175,10 +179,27 @@ final class Settings {
 			add_settings_error( self::OPTION, 'brp_permission', __( 'You do not have permission to change rental settings.', 'bike-rental-plugin' ) );
 			return self::get();
 		}
-		if ( is_array( $input ) && ! array_key_exists( 'payment_mode', $input ) ) { $input['payment_mode'] = self::get()['payment_mode'] ?? 'full'; }
-		$result = self::validate( $input );
-		// Presentation is validated only on save, never by the scheduling/readiness validator.
 		$previous = self::get();
+		// Form context stays outside the persisted option. Missing marker retains legacy full-form saves.
+		$tab = $_POST['brp_settings_tab'] ?? null;
+		if ( null !== $tab && ( ! is_string( $tab ) || ! array_key_exists( $tab, self::tabs() ) ) ) {
+			add_settings_error( self::OPTION, 'brp_tab', __( 'Invalid settings tab. Reload the settings page and try again.', 'bike-rental-plugin' ) );
+			return $previous;
+		}
+		if ( 'branding' === $tab ) {
+			if ( ! is_array( $previous ) || ! is_array( $input ) || ! array_key_exists( 'branding', $input ) ) {
+				add_settings_error( self::OPTION, 'brp_branding_form', __( 'The branding form is incomplete or stored settings need repair. Reload, or repair General settings first.', 'bike-rental-plugin' ) );
+				return $previous;
+			}
+			// Do not revalidate, normalize or replace values belonging to the other tab.
+			$result = array( 'values' => $previous, 'errors' => array() );
+		} else {
+			if ( is_array( $input ) && ! array_key_exists( 'payment_mode', $input ) ) { $input['payment_mode'] = $previous['payment_mode'] ?? 'full'; }
+			$result = self::validate( $input );
+			if ( 'general' === $tab && is_array( $previous ) ) { $result['values'] = array_replace( $previous, $result['values'] ); }
+		}
+		// Presentation is validated only on save, never by the scheduling/readiness validator.
+		if ( 'general' === $tab && is_array( $input ) ) { unset( $input['branding'] ); }
 		if ( is_array( $input ) && array_key_exists( 'branding', $input ) ) {
 			$branding = $input['branding'];
 			if ( is_array( $branding ) ) {
@@ -225,7 +246,8 @@ final class Settings {
 		$result = self::validate( $saved );
 		$values = $result['errors'] ? self::defaults() : $result['values'];
 		$status = self::configuration_status( $saved );
-		$dependencies = Plugin::dependencies();
+		$tab = self::tab( $_GET['tab'] ?? null );
+		$dependencies = 'general' === $tab ? Plugin::dependencies() : array();
 		require __DIR__ . '/settings-page.php';
 	}
 }

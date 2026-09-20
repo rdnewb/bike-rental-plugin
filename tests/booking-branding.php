@@ -75,7 +75,7 @@ try {
 	brand_check( '' === Branding::get()['accent'] && '' === Branding::get()['custom_css'], 'malformed persisted presentation falls back safely' );
 	brand_check( $base == BookingSchedule::settings(), 'malformed branding never blocks scheduling' );
 	brand_save( $branding ); $_GET = array(); $normal_html = PublicBooking::shortcode();
-	ob_start(); ( new Settings() )->render(); $admin_html = ob_get_clean();
+	$_GET['tab'] = 'branding'; ob_start(); ( new Settings() )->render(); $admin_html = ob_get_clean();
 	brand_check( str_contains( $admin_html, 'Booking Form Branding' ) && str_contains( $admin_html, 'options.php' ), 'branding uses existing Settings API form' );
 	brand_check( str_contains( $admin_html, 'brp_settings_group-options' ) || str_contains( $admin_html, 'name="_wpnonce"' ), 'existing settings nonce rendered' );
 	brand_check( 6 === brand_dom( $admin_html )->query( '//input[@class="brp-color"]' )->length, 'six native color-picker fields' );

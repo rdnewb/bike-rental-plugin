@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.7.1
+Stable tag: 0.7.2
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,7 +9,13 @@ Reusable bicycle-rental settings, packages, reservations, and shared fleet avail
 
 == Description ==
 
-Version 0.7.1 adds Booking Form Branding to Bike Rentals > Settings: heading, safe intro,
+Version 0.7.2 organizes Bike Rentals > Settings into native General (default) and Booking
+Form Branding tabs. General includes operational settings and dependency information.
+Each tab saves only its own settings, preserves the other tab, and returns to the same
+tab with WordPress notices. Direct links use admin.php?page=brp-settings&tab=branding
+or tab=general. Invalid tabs fall back to General. No data migration; schema remains 1.
+
+Booking Form Branding includes the existing 0.7.1 controls: heading, safe intro,
 card/change button labels, six color pickers, radius presets, Media Library logo and
 administrator-only scoped CSS. Blank colors retain current appearance. Typography uses
 theme font families; no fonts or font controls are added. Save and refresh to preview.
@@ -100,6 +106,11 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.7.2 =
+* Split settings into native General and Booking Form Branding tabs with direct links.
+* Preserve the other tab's values on save or branding reset using the existing option,
+  validation, capabilities and Settings API nonce/return URL. No public runtime changes.
 
 = 0.7.1 =
 * Add configurable booking content, labels, colors, radius presets and responsive media logo.

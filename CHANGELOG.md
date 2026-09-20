@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.2 — Native settings tabs
+
+- Organize Bike Rentals > Settings into General (default) and Booking Form Branding, using normal WordPress admin links, native active-tab styling and a single page heading. Unknown query tabs safely load General.
+- Keep operational controls and dependencies on General; keep all existing branding controls and restore defaults on Branding. Load media/color-picker helpers only on Branding.
+- Save the submitted tab's values in the existing `brp_settings` option while preserving the other tab, including during branding reset. Retain sanitization, capability checks, the core Settings API nonce and current-tab return URL with success/error notices.
+- Add WordPress integration and keyboard/browser tab checks. Public branding, booking, payment/deposit, reservations, availability and calendar behavior are unchanged. Schema remains 1; waiver integration has not started.
+
 ## 0.7.1 — Booking form branding controls
 
 - Add Booking Form Branding to the existing Settings API form/option: optional heading and safe intro, three card/change button labels, six hex colors, card/button rounding presets, and an optional responsive Media Library image with existing alt text.

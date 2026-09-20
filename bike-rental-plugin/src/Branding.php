@@ -106,7 +106,7 @@ final class Branding {
 		return wp_kses( wp_get_attachment_image( $id, 'medium', false, array( 'class' => 'brp-logo', 'decoding' => 'async' ) ), array( 'img' => array_fill_keys( array( 'src', 'srcset', 'sizes', 'width', 'height', 'alt', 'class', 'loading', 'decoding', 'fetchpriority' ), true ) ) );
 	}
 	public static function assets( $hook ) {
-		if ( 'toplevel_page_' . Settings::PAGE !== $hook || ! Settings::can_manage() ) { return; }
+		if ( 'toplevel_page_' . Settings::PAGE !== $hook || ! Settings::can_manage() || 'branding' !== Settings::tab( $_GET['tab'] ?? null ) ) { return; }
 		wp_enqueue_style( 'wp-color-picker' ); wp_enqueue_media();
 		wp_enqueue_script( 'brp-branding-admin', plugins_url( 'assets/js/branding-admin.js', dirname( __DIR__ ) . '/bike-rental-plugin.php' ), array( 'jquery', 'wp-color-picker', 'media-views' ), Plugin::VERSION, true );
 	}
