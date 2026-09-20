@@ -176,6 +176,19 @@ final class PublicBooking {
 		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => $row['hold_expires_at'] ? str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z' : null, 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
 	}
 	public static function next_step_message() { return __( 'Your bikes are temporarily reserved. Continue to checkout to complete payment.', 'bike-rental-plugin' ); }
+	/** Resolve only against the same server-validated catalog rendered by the form. */
+	public static function preselection( $value, $cards ) {
+		if ( ! is_string( $value ) || '' === $value || strlen( $value ) > 200 || sanitize_title( $value ) !== $value ) { return 0; }
+		foreach ( $cards as $card ) {
+			$product = wc_get_product( $card['product_id'] );
+			if ( $product && $product->get_slug() === $value ) { return (int) $card['product_id']; }
+		}
+		// Slugs take precedence, including numeric slugs. IDs must be in this catalog too.
+		foreach ( $cards as $card ) {
+			if ( Database::positive( $value ) && (string) $card['product_id'] === $value ) { return (int) $card['product_id']; }
+		}
+		return 0;
+	}
 	public static function shortcode() {
 		$file = dirname( __DIR__ ) . '/bike-rental-plugin.php';
 		wp_enqueue_style( 'brp-booking', plugins_url( 'assets/css/booking.css', $file ), array(), Plugin::VERSION );
@@ -192,6 +205,7 @@ final class PublicBooking {
 				if ( ! is_wp_error( $package ) ) { $cards[] = $package; }
 			}
 		}
+		$preselected = self::preselection( wp_unslash( $_GET['rental'] ?? '' ), $cards );
 		require __DIR__ . '/booking-form.php';
 		return ob_get_clean();
 	}

@@ -15,6 +15,21 @@
         const checkout = root.querySelector('.brp-checkout');
         const cards = Array.from(root.querySelectorAll('.brp-card'));
         const details = root.querySelector('.brp-details');
+        const changeRental = root.querySelector('.brp-change-rental');
+        let filtered = Boolean(Number(root.dataset.preselected));
+        const showCards = () => {
+            root.dataset.filtered = String(filtered);
+            cards.forEach((card) => {
+                card.hidden = !packages.some((p) => String(p.product_id) === card.dataset.packageId) || (filtered && card.dataset.packageId !== fields.package_id.value);
+            });
+        };
+        const syncUrl = (slug) => {
+            try {
+                const url = new URL(location.href);
+                slug ? url.searchParams.set('rental', slug) : url.searchParams.delete('rental');
+                history.replaceState(history.state, '', url);
+            } catch (_) { /* URL convenience never blocks booking. */ }
+        };
         const updateCards = () => cards.forEach((card) => {
             const selected = card.dataset.packageId === fields.package_id.value;
             card.classList.toggle('brp-selected', selected);
@@ -130,11 +145,19 @@
             const id = card.dataset.packageId;
             if (card.querySelector('.brp-select').disabled || id === fields.package_id.value || !packages.some((p) => String(p.product_id) === id)) return;
             fields.package_id.value = id; updateCards();
+            root.dataset.selectionSource = 'manual';
+            syncUrl(card.dataset.packageSlug);
             details.hidden = false; fields.date.disabled = false;
             loadTimes();
             if (!fields.date.value) message('Rental selected. Choose your start date and time.');
             fields.date.focus();
         }));
+        changeRental.addEventListener('click', () => {
+            filtered = false; showCards(); changeRental.setAttribute('aria-expanded', 'true');
+            root.dataset.changeRentalClicked = 'true';
+            cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
+            message('Choose a different rental, or continue with your selected rental.');
+        });
         fields.date.addEventListener('change', loadTimes);
         fields.time.addEventListener('change', async () => {
             resetSelection(); if (!fields.time.value) return;
@@ -164,6 +187,7 @@
         const resetBooking = (focus = true) => {
             clearInterval(timer); result.hidden = true; form.hidden = false; resetSelection(); form.reset();
             fields.package_id.value = ''; updateCards(); details.hidden = true;
+            filtered = false; showCards(); changeRental.hidden = true; syncUrl(''); root.dataset.selectionSource = 'none';
             fields.time.disabled = true; fields.date.disabled = true;
             if (focus) cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
             message('Choose a package to check availability again.');
@@ -184,14 +208,24 @@
         (async () => {
             try {
                 const data = await api('packages'); packages = data.packages;
+                const requested = new URL(location.href).searchParams.get('rental');
+                const initial = cards.find((card) => card.dataset.packageId === fields.package_id.value);
+                const matchesLink = initial && (requested === initial.dataset.packageSlug || requested === initial.dataset.packageId);
                 cards.forEach((card) => {
                     const available = packages.some((item) => String(item.product_id) === card.dataset.packageId);
-                    card.hidden = !available; card.querySelector('.brp-select').disabled = !available;
+                    card.querySelector('.brp-select').disabled = !available;
                 });
+                if (!matchesLink || !packages.some((p) => String(p.product_id) === fields.package_id.value)) {
+                    fields.package_id.value = ''; filtered = false; details.hidden = true;
+                    root.dataset.selectionSource = 'none'; updateCards();
+                }
+                showCards(); changeRental.hidden = !filtered; changeRental.disabled = false;
+                if (filtered) { details.hidden = false; fields.date.disabled = false; }
                 const visible = cards.some((card) => !card.hidden);
                 root.querySelector('.brp-empty').hidden = visible;
                 fields.date.min = data.min_date; fields.date.max = data.max_date;
                 message(visible ? 'Choose a rental to get started.' : packages.length ? 'Rental options have changed. Refresh this page to see the latest packages.' : 'No rental packages are currently available. Please check back soon or contact us.');
+                if (filtered) message('Rental selected from your link. Choose your start date and time.');
                 await restoreHold();
             } catch (error) { message(error.message); }
         })();

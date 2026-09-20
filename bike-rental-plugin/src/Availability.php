@@ -7,7 +7,7 @@ final class Availability {
 	const FOREVER = '9999-12-31 23:59:59';
 
 	/** Use the same locked database clock for reads and proposed allocations. */
-	private static function reservation_end( $row ) {
+	public static function reservation_end( $row ) {
 		return 'active' === $row['status'] && $row['occupied_end_utc'] < Database::now() ? self::FOREVER : $row['occupied_end_utc'];
 	}
 

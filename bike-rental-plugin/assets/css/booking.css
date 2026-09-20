@@ -15,6 +15,7 @@
 .brp-booking .brp-result { border: 1px solid currentColor; border-radius: .4rem; padding: 1rem; }
 .brp-booking p { margin-block: .65rem; }
 .brp-booking .brp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1.25rem; margin-block: 1.5rem; }
+.brp-booking[data-filtered="true"] .brp-grid { max-width: 26rem; margin-inline: auto; }
 .brp-booking .brp-card { min-width: 0; border: 2px solid GrayText; border-radius: .75rem; overflow: hidden; display: flex; flex-direction: column; background: Canvas; color: CanvasText; }
 .brp-booking .brp-card.brp-selected { border-color: CanvasText; box-shadow: 0 0 0 2px CanvasText; }
 .brp-booking .brp-card-image { aspect-ratio: 4 / 3; background: ButtonFace; display: grid; place-items: center; }

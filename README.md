@@ -2,7 +2,11 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current version: 0.6.2 — release temporary holds when rental cart items are removed. Dedicated-site Square sandbox acceptance is pending.**
+**Current version: 0.7.0 — rental deep links and weekly administration calendar. Schema remains 1. Dedicated-site Square sandbox acceptance is pending.**
+
+Use one dedicated page with `[bike_rental_booking]`. Divi buttons can link to `/reserve/?rental=3-day-rental` using the WooCommerce product slug. A valid active package appears selected on its own; **Change Rental** reveals the full grid without reloading. Invalid links fall back to normal selection. See [deep-link usage and verification](docs/deep-link-booking-verification.md).
+
+**Bike Rentals > Calendar** shows one occupied-time bar per reservation/block, weekly navigation, status filters, WooCommerce customer names when available, and daily peak capacity from the existing availability engine. WordPress timezone, DST, buffers, valid holds, and overdue active rentals are respected. See [calendar operation and verification](docs/admin-calendar-verification.md). Payment, deposit architecture and schema are unchanged; waiver integration has not started.
 
 Milestone 6A supersedes the deposit-dependent Milestone 6 plan. Full Payment requires no deposit extension. Deposit mode is configurable but blocks new rental checkout until a compatible provider is selected. See [Milestone 6A architecture and verification](docs/milestone-6a-verification.md); the earlier [Acowebs compatibility findings](docs/milestone-6-compatibility.md) remain an archived preflight record.
 
@@ -119,7 +123,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` remains **1**, separate from plugin version **0.6.2**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
+- Schema option `brp_db_version` remains **1**, separate from plugin version **0.7.0**. No columns, tables, or indexes changed. Tables use the actual WordPress prefix: `{prefix}brp_reservations` and `{prefix}brp_availability`.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.
@@ -207,6 +211,7 @@ WooCommerce Square processes Full Payment through WooCommerce. Compatible deposi
 - `src/GuestSession.php`: signed guest cookie, origin/token protection, and advisory rate limits.
 - `src/PublicBooking.php`, `src/booking-form.php`, and `assets/{css,js}/booking.*`: REST boundary and public shortcode interface.
 - `src/DataAdmin.php`, `src/fleet-page.php`, and `src/reservations-page.php`: capability/nonce-protected administration test tools.
+- `src/AdminCalendar.php`, `src/calendar-page.php`, and `assets/css/calendar.css`: authorized weekly timeline, bounded interval queries, batched Woo order reads and shared-engine capacity summaries; no JavaScript calendar dependency.
 - `assets/js/package-admin.js`: field visibility on product-edit screens only; PHP validates all submissions.
 - `uninstall.php`: explicit data-preserving uninstall behavior.
 
@@ -216,7 +221,7 @@ There is no autoload framework or runtime dependency manager. Runtime PHP has di
 
 Use GitHub Desktop to clone/update, open the local repository in Visual Studio Code, and edit locally. Git/GitHub is the source of truth. Do not edit production files directly unless expressly authorized.
 
-Make all commits directly on `main`; do not create feature or development branches unless explicitly requested. Keep commits focused, push reviewed changes, and tag tested deployments using semantic versions. A commit on `main` does not by itself authorize deployment. Keep the plugin header, `Plugin::VERSION`, readme stable tag, and changelog synchronized. Do not commit credentials, exports, signed evidence, or local dependencies.
+Make all commits directly on `main`; do not create feature or development branches unless explicitly requested. Keep commits focused; push only when explicitly requested. A commit on `main` does not by itself authorize deployment. Keep the plugin header, `Plugin::VERSION`, readme stable tag, and changelog synchronized. Do not commit credentials, exports, signed evidence, or local dependencies.
 
 No build command is needed. To syntax-check with a local PHP executable in PowerShell:
 

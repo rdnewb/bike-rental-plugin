@@ -2,23 +2,25 @@
 namespace BikeRentalPlugin;
 defined( 'ABSPATH' ) || exit;
 ?>
-<section class="brp-booking" data-api="<?php echo esc_url( rest_url( PublicBooking::API . '/' ) ); ?>" aria-label="Bike rental selection">
+<section class="brp-booking" data-filtered="<?php echo $preselected ? 'true' : 'false'; ?>" data-preselected="<?php echo esc_attr( $preselected ); ?>" data-selection-source="<?php echo $preselected ? 'url' : 'none'; ?>" data-api="<?php echo esc_url( rest_url( PublicBooking::API . '/' ) ); ?>" aria-label="Bike rental selection">
 <form class="brp-form">
 <fieldset><legend>Book your bike rental</legend>
 <section aria-labelledby="<?php echo esc_attr( $uid ); ?>-choose">
 <h2 id="<?php echo esc_attr( $uid ); ?>-choose">1. Choose Your Rental</h2>
 <p>Choose a rental below, then select your date, start time, and number of bikes.</p>
-<div class="brp-grid">
+<button class="brp-change-rental" type="button" aria-expanded="false" aria-controls="<?php echo esc_attr( $uid ); ?>-grid"<?php if ( ! $preselected ) { echo ' hidden'; } ?> disabled>Change Rental</button>
+<div class="brp-grid" id="<?php echo esc_attr( $uid ); ?>-grid">
 <?php foreach ( $cards as $card ) :
 	$product = wc_get_product( $card['product_id'] );
 	if ( ! $product ) { continue; }
 	$heading = $uid . '-package-' . $card['product_id'];
+	$selected = $preselected === (int) $card['product_id'];
 	$image = wp_get_attachment_image( $product->get_image_id(), 'woocommerce_thumbnail', false, array( 'loading' => 'lazy', 'decoding' => 'async' ) );
 	$description = wp_kses( wpautop( strip_shortcodes( $product->get_short_description() ) ), array( 'p' => array(), 'br' => array(), 'strong' => array(), 'b' => array(), 'em' => array(), 'i' => array(), 'ul' => array(), 'ol' => array(), 'li' => array() ) );
 	$amount = (int) $card['duration_amount'];
 	$unit = 'hours' === $card['duration_type'] ? _n( 'Hour', 'Hours', $amount, 'bike-rental-plugin' ) : _n( 'Day', 'Days', $amount, 'bike-rental-plugin' );
 ?>
-<article class="brp-card" data-package-id="<?php echo esc_attr( $card['product_id'] ); ?>" aria-labelledby="<?php echo esc_attr( $heading ); ?>">
+<article class="brp-card<?php if ( $selected ) { echo ' brp-selected'; } ?>" data-package-id="<?php echo esc_attr( $card['product_id'] ); ?>" data-package-slug="<?php echo esc_attr( $product->get_slug() ); ?>" aria-labelledby="<?php echo esc_attr( $heading ); ?>"<?php if ( $preselected && ! $selected ) { echo ' hidden'; } ?>>
 <div class="brp-card-image"><?php if ( $image ) { echo wp_kses( $image, array( 'img' => array_fill_keys( array( 'src', 'srcset', 'sizes', 'width', 'height', 'alt', 'class', 'loading', 'decoding', 'fetchpriority' ), true ) ) ); } else { ?><span class="brp-image-fallback" role="img" aria-label="No rental photo available">Rental photo coming soon</span><?php } ?></div>
 <div class="brp-card-content">
 <?php if ( $card['promotional_label'] ) : ?><p class="brp-promo"><?php echo esc_html( $card['promotional_label'] ); ?></p><?php endif; ?>
@@ -26,15 +28,15 @@ defined( 'ABSPATH' ) || exit;
 <p class="brp-duration"><?php echo esc_html( $amount . ' ' . $unit ); ?></p>
 <?php if ( trim( wp_strip_all_tags( $description ) ) ) : ?><div class="brp-description" tabindex="0" role="region" aria-label="<?php echo esc_attr( $card['name'] . ' short description' ); ?>"><?php echo $description; // Restricted formatting allowlist above. ?></div><?php endif; ?>
 <p class="brp-card-price"><?php echo wp_kses_post( $product->get_price_html() ); ?> <span class="brp-price-unit">per bike</span></p>
-<button class="brp-select" type="button" aria-pressed="false" aria-label="<?php echo esc_attr( 'Select Rental: ' . $card['name'] ); ?>" data-package-name="<?php echo esc_attr( $card['name'] ); ?>" disabled>Select Rental</button>
+<button class="brp-select" type="button" aria-pressed="<?php echo $selected ? 'true' : 'false'; ?>" aria-label="<?php echo esc_attr( ( $selected ? 'Selected: ' : 'Select Rental: ' ) . $card['name'] ); ?>" data-package-name="<?php echo esc_attr( $card['name'] ); ?>" disabled><?php echo $selected ? '✓ Selected' : 'Select Rental'; ?></button>
 </div>
 </article>
 <?php endforeach; ?>
 </div>
 <p class="brp-empty"<?php if ( $cards ) { echo ' hidden'; } ?>>No rental packages are currently available. Please check back soon or contact us.</p>
 </section>
-<input name="package_id" type="hidden" value="">
-<div class="brp-details" hidden>
+<input name="package_id" type="hidden" value="<?php echo esc_attr( $preselected ?: '' ); ?>">
+<div class="brp-details"<?php if ( ! $preselected ) { echo ' hidden'; } ?>>
 <h2>2. Choose Date / Time</h2>
 <label for="<?php echo esc_attr( $uid ); ?>-date">Start date</label>
 <input id="<?php echo esc_attr( $uid ); ?>-date" name="date" type="date" required disabled>

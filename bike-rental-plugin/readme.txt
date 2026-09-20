@@ -1,13 +1,24 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.6.2
+Stable tag: 0.7.0
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
 Reusable bicycle-rental settings, packages, reservations, and shared fleet availability.
 
 == Description ==
+
+Milestone 7A adds dedicated booking-page links such as /reserve/?rental=3-day-rental.
+Use the WooCommerce product slug; numeric product ID fallback is supported. Valid links
+show one selected card and booking controls. Change Rental reveals the full grid without
+reloading. Invalid/inactive links show normal selection. Use one shortcode on the booking
+page; ordinary Divi button links need no JavaScript. Keep its plain page URL canonical.
+Bike Rentals > Calendar provides a read-only weekly pooled-inventory timeline, status
+filters, occupied-time bars, quantity blocks, and daily peak totals from the existing
+availability engine. WordPress timezone/DST and configured week start are respected.
+Totals include all current claims regardless of filters; historical completed/cancelled/
+expired rows remain visible but do not allocate. No payment, deposit or waiver changes.
 
 Milestone 4 adds authoritative shared fleet availability and double-booking protection.
 Milestone 5 adds [bike_rental_booking] for public package/date/time/quantity selection,
@@ -79,6 +90,12 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.7.0 =
+* Add validated rental slug/ID deep links, selected-card display, Change Rental and URL state.
+* Add weekly admin reservation/quantity-block timeline, filters and shared-engine peak totals.
+* Read linked customer data through Woo CRUD; retain schema 1 and all payment/deposit behavior.
+* Add automated verification and manual dedicated-site checklists. Waivers remain deferred.
 
 = 0.6.2 =
 * Release matching temporary holds on rental cart removal, cart emptying, and cart restoration/reset, using locked cancellation and retaining audit records.

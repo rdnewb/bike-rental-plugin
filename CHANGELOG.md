@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 — Milestone 7A deep links and weekly calendar
+
+- Resolve `?rental=product-slug` (numeric product ID fallback) against the server-validated active rental catalog. Initially show the selected card with booking controls, and reveal the full grid through keyboard-accessible Change Rental. Invalid/ineligible links fall back safely. Manual selection updates the URL without reloading; owned hold recovery remains intact.
+- Add Bike Rentals > Calendar with WordPress-local weekly navigation, status filters, one occupied-interval bar per reservation or quantity block, text/status styling, linked details, and batched WooCommerce customer/order reads.
+- Reuse the existing locked availability sweep for all seven daily peak totals, independently of display filters. Include buffers, live holds, active quantity blocks and overdue active rentals; preserve existing completion/return semantics.
+- Add real WordPress/WooCommerce/MariaDB and Chromium tests, usage instructions, and dedicated-site acceptance checklists. No new calendar dependencies, schema changes, payment/deposit changes or waiver integration.
+
 ## 0.6.2 — Release removed rental cart holds
 
 - Cancel only an owned, unchanged temporary hold when its rental cart item is removed, the cart is emptied, or a recorded binding disappears during cart restoration. Use the existing shared inventory lock and revision writer; retain the reservation, order relationship, and audit identifiers.

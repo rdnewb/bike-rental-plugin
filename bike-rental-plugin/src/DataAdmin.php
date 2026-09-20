@@ -15,6 +15,7 @@ final class DataAdmin {
 	public function menus() {
 		add_submenu_page( Settings::PAGE, __( 'Fleet', 'bike-rental-plugin' ), __( 'Fleet', 'bike-rental-plugin' ), Settings::capability(), self::FLEET, array( $this, 'fleet' ) );
 		add_submenu_page( Settings::PAGE, __( 'Reservations', 'bike-rental-plugin' ), __( 'Reservations', 'bike-rental-plugin' ), Settings::capability(), self::RESERVATIONS, array( $this, 'reservations' ) );
+		add_submenu_page( Settings::PAGE, __( 'Calendar', 'bike-rental-plugin' ), __( 'Calendar', 'bike-rental-plugin' ), Settings::capability(), AdminCalendar::PAGE, array( AdminCalendar::class, 'render' ) );
 		add_submenu_page( Settings::PAGE, __( 'Availability test', 'bike-rental-plugin' ), __( 'Availability test', 'bike-rental-plugin' ), Settings::capability(), self::AVAILABILITY, array( $this, 'availability' ) );
 	}
 
