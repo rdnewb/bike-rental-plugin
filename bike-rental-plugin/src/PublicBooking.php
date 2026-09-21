@@ -28,6 +28,7 @@ final class PublicBooking {
 	}
 	private static function dispatch( $request ) {
 		$route = basename( $request->get_route() );
+		if ( in_array( $route, array( 'packages', 'times', 'availability', 'holds' ), true ) && ! License::allows_new() ) { return self::reply( License::guard() ); }
 		$private = in_array( $route, array( 'session', 'holds', 'hold-status', 'checkout' ), true );
 		if ( $private ) {
 			$permission = GuestSession::permission( $request, 'session' !== $route );
@@ -61,7 +62,9 @@ final class PublicBooking {
 			$code = $result->get_error_code();
 			$message = 'Online rental selection is temporarily unavailable. Please try again.';
 			$status = 503;
+			if ( 'brp_booking_disabled' === $code ) { $message = License::PUBLIC_MESSAGE; }
 			if ( in_array( $code, array( 'brp_rider', 'brp_selection', 'brp_session', 'brp_existing_hold', 'brp_idempotency', 'brp_rate', 'brp_checkout' ), true ) ) { $message = $result->get_error_message(); $status = $result->get_error_data()['status'] ?? 400; }
+			if ( 'brp_booking_disabled' === $code ) { $message = License::PUBLIC_MESSAGE; }
 			if ( 'brp_conflict' === $code ) { $message = sprintf( 'Only %d bikes are available. Please choose another time or quantity.', max( 0, $result->get_error_data()['available_quantity'] ?? 0 ) ); $status = 409; }
 			if ( in_array( $code, array( 'brp_quantity', 'brp_request' ), true ) ) { $message = 'Please check your bike quantity and rental selection.'; $status = 400; }
 			$result = array( 'valid' => false, 'message' => $message );
@@ -190,6 +193,7 @@ final class PublicBooking {
 		return 0;
 	}
 	public static function shortcode() {
+		if ( ! License::allows_new() ) { return '<p>' . esc_html( License::PUBLIC_MESSAGE ) . '</p>'; }
 		$file = dirname( __DIR__ ) . '/bike-rental-plugin.php';
 		wp_enqueue_style( 'brp-booking', plugins_url( 'assets/css/booking.css', $file ), array(), Plugin::VERSION );
 		wp_enqueue_script( 'brp-booking', plugins_url( 'assets/js/booking.js', $file ), array(), Plugin::VERSION, true );

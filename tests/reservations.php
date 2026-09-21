@@ -291,9 +291,9 @@ update_option( 'brp_m3_verification_count', $before_rows );
 
 $source = '';
 foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ) . '/bike-rental-plugin', FilesystemIterator::SKIP_DOTS ) ) as $file ) {
-	if ( in_array( $file->getExtension(), array( 'php', 'js' ), true ) ) { $source .= file_get_contents( $file->getPathname() ); }
+	if ( 'License.php' !== $file->getFilename() && in_array( $file->getExtension(), array( 'php', 'js' ), true ) ) { $source .= file_get_contents( $file->getPathname() ); }
 }
-verify( ! preg_match( '/wp_remote_|wc_create_order|set_stock_quantity\s*\(/', $source ), 'no custom order creation, remote integration, or stock sync introduced' );
+verify( ! preg_match( '/wp_(?:safe_)?remote_|wc_create_order|set_stock_quantity\s*\(/', $source ), 'rental operations have no direct remote integration, custom order creation or stock sync; licensing transport isolated' );
 verify( ! preg_match( '/manatee|anna maria island|\bmbr\b/i', $source ), 'generic runtime branding' );
 verify( ! str_contains( file_get_contents( dirname( __DIR__ ) . '/bike-rental-plugin/src/Packages.php' ), '$wpdb' ), 'existing package service still uses WooCommerce APIs only' );
 echo PHP_EOL . $checks . ' real WordPress/WooCommerce/MariaDB integration checks passed.' . PHP_EOL;

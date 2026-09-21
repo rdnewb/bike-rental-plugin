@@ -8,4 +8,6 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
+wp_clear_scheduled_hook( 'brp_license_daily' );
+
 // No deletion of options, package metadata, files, reservations, or availability tables.

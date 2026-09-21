@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || exit;
 <?php endforeach; ?>
 </nav>
 <?php settings_errors(); ?>
+<?php if ( 'license' === $tab ) { LicenseAdmin::render(); echo '</div>'; return; } ?>
 <form action="<?php echo esc_url( admin_url( 'options.php' ) ); ?>" method="post">
 <?php settings_fields( Settings::GROUP ); // Core includes the current tab URL as its return referer. ?>
 <input type="hidden" name="brp_settings_tab" value="<?php echo esc_attr( $tab ); ?>">

@@ -15,7 +15,7 @@ final class Settings {
 	const GROUP  = 'brp_settings_group';
 	const PAGE   = 'brp-settings';
 
-	public static function tabs() { return array( 'general' => __( 'General', 'bike-rental-plugin' ), 'branding' => __( 'Booking Form Branding', 'bike-rental-plugin' ), 'waivers' => __( 'Waivers', 'bike-rental-plugin' ) ); }
+	public static function tabs() { return array( 'general' => __( 'General', 'bike-rental-plugin' ), 'branding' => __( 'Booking Form Branding', 'bike-rental-plugin' ), 'waivers' => __( 'Waivers', 'bike-rental-plugin' ), 'license' => __( 'License', 'bike-rental-plugin' ) ); }
 	public static function tab( $value ) { return is_string( $value ) && array_key_exists( $value, self::tabs() ) ? $value : 'general'; }
 	public static function tab_url( $tab ) { return admin_url( 'admin.php?page=' . self::PAGE . '&tab=' . self::tab( $tab ) ); }
 
@@ -187,6 +187,7 @@ final class Settings {
 		}
 		// Form context stays outside the persisted option. Missing marker retains legacy full-form saves.
 		$tab = $_POST['brp_settings_tab'] ?? null;
+		if ( 'license' === $tab ) { return $previous; } // Separate administrator-only form, never rental Settings API storage.
 		if ( null !== $tab && ( ! is_string( $tab ) || ! array_key_exists( $tab, self::tabs() ) ) ) {
 			add_settings_error( self::OPTION, 'brp_tab', __( 'Invalid settings tab. Reload the settings page and try again.', 'bike-rental-plugin' ) );
 			return $previous;

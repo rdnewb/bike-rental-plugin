@@ -55,6 +55,7 @@ function add_filter( $hook, $callback ) { add_action( $hook, $callback ); }
 function add_shortcode( $tag, $callback ) { $GLOBALS['shortcodes'][ $tag ] = $callback; }
 function register_activation_hook( $file, $callback ) { $GLOBALS['activation'] = $callback; }
 function register_deactivation_hook( $file, $callback ) { $GLOBALS['deactivation'] = $callback; }
+function wp_clear_scheduled_hook( $hook ) { $GLOBALS['cleared_schedules'][] = $hook; }
 function register_setting( $group, $option, $args ) { $GLOBALS['registered'][ $option ] = array( $group, $args ); }
 function is_admin() { return $GLOBALS['is_admin']; }
 function get_plugins() { return $GLOBALS['installed']; }
@@ -82,7 +83,7 @@ function check( $condition, $label ) {
 
 $settings = new Settings();
 $defaults = Settings::defaults();
-check( '0.8.2' === Plugin::VERSION, 'version constant' );
+check( '0.9.0' === Plugin::VERSION, 'version constant' );
 check( isset( $hooks['plugins_loaded'] ) && ! isset( $hooks['admin_init'] ), 'bootstrap defers initialization' );
 check( 90 === $defaults['booking_horizon'] && 30 === $defaults['time_increment'], 'neutral scheduling defaults' );
 check( 0 === array_sum( array_column( $defaults['weekly_hours'], 'open' ) ), 'all seven days default closed' );
@@ -99,7 +100,7 @@ $options[ Settings::OPTION ] = $valid;
 Plugin::activate();
 Plugin::record_version();
 check( $valid === $options[ Settings::OPTION ], 'reactivation and version handling preserve saved settings' );
-check( '0.8.2' === $options['brp_plugin_version'], 'version recorded independently of settings' );
+check( '0.9.0' === $options['brp_plugin_version'], 'version recorded independently of settings' );
 check( 'Ready for Package Setup' === Settings::configuration_status( $valid ), 'valid business and open day ready for package setup' );
 $partial = $defaults;
 $partial['business_name'] = 'Coastal Cycles';
@@ -232,6 +233,7 @@ define( 'WP_UNINSTALL_PLUGIN', 'bike-rental-plugin/bike-rental-plugin.php' );
 $before_uninstall = $options;
 require dirname( __DIR__ ) . '/bike-rental-plugin/uninstall.php';
 check( $before_uninstall === $options, 'uninstall preserves all settings' );
+check( in_array( 'brp_license_daily', $GLOBALS['cleared_schedules'], true ), 'uninstall clears licensing schedule without deleting data' );
 $header = file_get_contents( dirname( __DIR__ ) . '/bike-rental-plugin/bike-rental-plugin.php' );
 check( str_contains( $header, 'Version: ' . Plugin::VERSION ), 'plugin header and internal version agree' );
 

@@ -28,7 +28,7 @@ try {
 		$dom = tabs_dom( $html );
 		tabs_check( 1 === $dom->query( '//h1' )->length && 'Bike Rentals Settings' === $dom->query( '//h1' )->item( 0 )->textContent, "$tab has one page heading" );
 		tabs_check( 1 === $dom->query( '//h1/following-sibling::*[1][self::nav]' )->length, "$tab navigation immediately follows heading" );
-		tabs_check( 3 === $dom->query( '//nav/a[contains(@class,"nav-tab")]' )->length, "$tab has three normal tab links" );
+		tabs_check( 4 === $dom->query( '//nav/a[contains(@class,"nav-tab")]' )->length, "$tab has four normal tab links" );
 		foreach ( Settings::tabs() as $key => $label ) { tabs_check( $label === $dom->query( '//nav/a[@href="' . Settings::tab_url( $key ) . '"]' )->item( 0 )->textContent, "$tab links to $key" ); }
 		tabs_check( str_contains( $dom->query( '//nav/a[@aria-current="page"]' )->item( 0 )->getAttribute( 'href' ), 'tab=' . $tab ), "$tab is active" );
 		tabs_check( 1 === $dom->query( '//form[@method="post"]' )->length && str_ends_with( $dom->query( '//form' )->item( 0 )->getAttribute( 'action' ), '/wp-admin/options.php' ), "$tab uses core Settings API POST endpoint" );

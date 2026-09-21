@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.8.2
+Stable tag: 0.9.0
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,7 +9,16 @@ Reusable bicycle-rental settings, packages, reservations, and shared fleet avail
 
 == Description ==
 
-Version 0.8.2 adds configurable product-card text color and retains pre-checkout rider collection and generic waiver management.
+Version 0.9.0 adds the administrator-only License tab, encrypted key storage,
+activation/deactivation, manual/daily checks and seven-day bounded outage grace.
+Compatibility mode defaults to enforcement OFF. Deploy and test the separate
+NT License Controller before enabling BRP_LICENSE_ENFORCE internally. PHP sodium
+is required for key storage. No new booking/page-load remote checks. Existing
+reservations, returns, orders and waiver evidence remain accessible when invalid.
+No Stripe billing, renewals or private update delivery. Rental schema remains 2.
+See repository docs/license-client-setup.md and licensing-phase1-verification.md.
+
+Version 0.8.2 added configurable product-card text color and retains pre-checkout rider collection and generic waiver management.
 Waivers default to No. Configure the Waivers settings tab and dedicated mapped form
 before enabling. Full Payment remains selected; deposit architecture is unchanged.
 Paid bookings with required waivers enter Pending Waivers and retain inventory until
@@ -134,6 +143,12 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.9.0 =
+Licensing Phase 1: independent NT License Controller 0.1.0 and cached client
+activation. Administrator-only License tab; protected encrypted storage; daily
+validation and seven-day bounded grace. Internal opt-in new-booking enforcement.
+Existing rental/payment/waiver workflows preserved; rental schema unchanged at 2.
 
 = 0.8.2 =
 * Add Product Card Text Color to Booking Form Branding and public shortcode cards.

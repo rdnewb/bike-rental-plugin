@@ -2,7 +2,9 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current version: 0.8.2 - configurable product-card text color. Schema 2. Live WPForms signing, invitation delivery and Square sandbox acceptance remain pending.**
+**Current versions: Bike Rental Plugin 0.9.0 (rental schema 2) and NT License Controller 0.1.0 (controller schema 1). Licensing Phase 1 adds an independent controller and cached client activation. Compatibility mode leaves booking enforcement OFF until explicitly enabled. Live HTTPS licensing deployment, WPForms signing, invitation delivery and Square sandbox acceptance remain pending.**
+
+The repository contains two independently installable plugin folders: `bike-rental-plugin/` for rental sites and `nt-license-controller/` for the licensing server. They are packaged separately. Start with [licensing setup](docs/license-client-setup.md), [architecture](docs/licensing-architecture.md), [API](docs/license-controller-api.md) and [verification/release report](docs/licensing-phase1-verification.md). The new administrator-only **License** tab supports activation, deactivation, manual checks, daily validation, encrypted key storage and seven-day bounded outage grace. No Stripe billing, renewals or private update delivery is implemented.
 
 **Milestone 8:** the new **Waivers** settings tab defaults to **Require Rider Waivers = No**. This customer's setup uses **Full Payment** and **Yes** after a valid WPForms Elite + Signature form is configured. Paid bookings then retain inventory as **Pending Waivers** until every adult or guardian waiver is verified. Collect and validate one rider per bike before creating the temporary hold and entering checkout; each adult (18+) signs for themselves, and a guardian signs separately for each minor. Older reservations retain their previous policy. See [architecture](docs/waiver-architecture.md), [WPForms setup](docs/wpforms-waiver-provider.md), and [verification and release](docs/waiver-verification.md).
 

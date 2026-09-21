@@ -103,6 +103,7 @@ final class Reservations {
 	}
 
 	private static function create_record( $input, $identity = null, $booking = null ) {
+		$license = License::guard(); if ( is_wp_error( $license ) ) { return $license; }
 		$gate = Database::gate();
 		if ( is_wp_error( $gate ) ) { return $gate; }
 		if ( ! is_array( $input ) ) { return Database::error( 'input', 'Invalid reservation input.' ); }

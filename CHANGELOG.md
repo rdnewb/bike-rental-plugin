@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 / NT License Controller 0.1.0 - Licensing Phase 1
+
+- Add a separately packaged, product-independent WordPress controller with schema 1 license/activation/event tables, manually issued monthly/annual/lifetime keys, status and expiration administration, atomic activation limits and retained installation history.
+- Add HTTPS activation/validation/deactivation REST endpoints, hashed controller keys, bounded event retention, basic IP/key throttling and non-sensitive machine-readable responses.
+- Add an administrator-only License tab, sodium-encrypted non-autoload key storage, stable random installation identity, manual/daily validation and cached entitlement with seven-day non-rolling outage grace.
+- Default to compatibility mode with enforcement off. Internal opt-in enforcement blocks new bookings while preserving existing rental completion, checkout, orders and waiver evidence. Preserve rental schema 2 and payment/deposit behavior.
+- Reserve nullable billing identifiers and return update entitlement for future adapters. Stripe billing, subscriptions, renewals and private updater delivery remain unimplemented.
+
 ## 0.8.2 - Product card text color
 
 - Add Product Card Text Color to Booking Form Branding using the existing validated WordPress color picker.
