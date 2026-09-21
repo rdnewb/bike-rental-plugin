@@ -9,3 +9,12 @@ require_once dirname( __DIR__ ) . '/bike-rental-plugin/bike-rental-plugin.php';
 wp_set_current_user( 1 );
 \BikeRentalPlugin\Plugin::boot();
 \BikeRentalPlugin\Plugin::load_packages();
+
+/** Real pre-checkout fixture data required by 0.8.1; dedicated tests omit/mutate it explicitly. */
+function brp_test_riders( $quantity ) {
+ $riders = array(); for ( $i = 1; $i <= (int) $quantity; ++$i ) { $riders[$i] = array( 'legal_name' => 'Fixture Rider ' . $i, 'age' => '25', 'email' => 'rider' . $i . '@example.test' ); } return $riders;
+}
+function brp_test_hold( $input, $key, $session ) {
+ if ( ! array_key_exists( 'riders', $input ) ) { $input['riders'] = brp_test_riders( $input['quantity'] ?? 0 ); }
+ return \BikeRentalPlugin\Reservations::create_booking_hold( $input, $key, $session );
+}

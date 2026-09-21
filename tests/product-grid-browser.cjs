@@ -14,6 +14,14 @@ const css = fs.readFileSync(path.join(__dirname, '../bike-rental-plugin/assets/c
 const script = path.join(__dirname, '../bike-rental-plugin/assets/js/booking.js');
 let checks = 0;
 function check(value, label) { assert.ok(value, label); checks++; console.log('PASS:', label); }
+async function fillRiders(page) {
+ const sections = page.locator('.brp-riders fieldset');
+ for(let i=0;i<await sections.count();i++) {
+  await sections.nth(i).locator('[data-field=legal_name]').fill('Fixture Rider '+(i+1));
+  await sections.nth(i).locator('[data-field=age]').fill('25');
+  await sections.nth(i).locator('[data-field=email]').fill('rider'+i+'@example.test');
+ }
+}
 (async () => {
     const browser = await chromium.launch({ headless: true, ...(process.env.BRP_BROWSER_CHANNEL ? { channel: process.env.BRP_BROWSER_CHANNEL } : {}) });
     try {
@@ -100,7 +108,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
         check(await page.locator('[name=package_id]').inputValue() === String(fixture.ids[3]) && await page.locator('.brp-select[aria-pressed=true]').count() === 1, 'rapid package switching keeps latest selection');
         check(await page.locator('.brp-summary').innerText() === '' && await page.locator('.brp-submit').isDisabled(), 'package change clears stale review and submission');
         await page.locator('[name=time]').selectOption('09:00'); await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
-        await page.locator('.brp-submit').click(); await page.waitForURL('**/checkout');
+        await fillRiders(page); await page.locator('.brp-submit').click(); await page.locator('.brp-checkout').click(); await page.waitForURL('**/checkout');
         const holds = calls.filter((c) => c.name === 'holds'), transfers = calls.filter((c) => c.name === 'checkout');
         check(holds.length === 1 && holds[0].input.package_id === String(fixture.ids[3]) && holds[0].input.quantity === '3', 'one hold uses selected package and quantity');
         check(transfers.length === 1 && transfers[0].input.request_key === holds[0].input.request_key, 'unchanged checkout transfer reuses hold key');
@@ -119,7 +127,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
         check(await page.locator('.brp-details').isHidden() && await page.locator('[name=package_id]').inputValue() === '', 'cancelled receipt resets selection and booking controls');
         await button(0).click(); await page.locator('[name=date]').fill('2032-09-20'); await page.locator('[name=date]').dispatchEvent('change');
         await page.waitForFunction(() => !document.querySelector('[name=time]').disabled); await page.locator('[name=time]').selectOption('09:00');
-        await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled); await page.locator('.brp-submit').click(); await page.waitForURL('**/checkout');
+        await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled); await fillRiders(page); await page.locator('.brp-submit').click(); await page.locator('.brp-checkout').click(); await page.waitForURL('**/checkout');
         check(calls.filter((c) => c.name === 'holds').length === 2 && calls.filter((c) => c.name === 'checkout').length === 2, 'fresh booking and checkout work after removed hold recovery');
         restoredStatus = 'hold'; await load(false); await page.locator('.brp-result').waitFor({ state: 'visible' });
         check(await page.locator('.brp-form').isHidden(), 'navigation alone restores live hold normally');

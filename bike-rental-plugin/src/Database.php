@@ -310,6 +310,15 @@ KEY signer_email (signer_email)
 		if ( $wpdb->last_error ) { return self::retry_error(); }
 		return $row ?: self::error( 'record', 'Record unavailable. Check the ID and database connection.' );
 	}
+	/** Transaction-guarded deletion, restricted to an explicit predicate. */
+	public static function delete( $kind, $where ) {
+		global $wpdb;
+		if ( ! self::in_transaction() || ! $where || 'availability' === $kind ) { return false; }
+		$conditions = array(); foreach ( $where as $key => $value ) { $conditions[] = $wpdb->prepare( '%i = %s', $key, $value ); }
+		$conditions[] = $wpdb->prepare( '@brp_inventory_token = %s', self::$token );
+		$result = $wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE ', self::table( $kind ) ) . implode( ' AND ', $conditions ) );
+		return self::connection_valid() ? $result : false;
+	}
 
 	public static function listing( $kind, $page = 1 ) {
 		global $wpdb;

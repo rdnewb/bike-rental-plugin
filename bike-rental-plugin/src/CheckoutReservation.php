@@ -23,6 +23,7 @@ final class CheckoutReservation {
 		} ) );
 	}
 	private static function validate( $row, $owner, $capacity ) {
+		$roster = Waivers::roster_ready( $row ); if ( is_wp_error( $roster ) ) { return Database::error( 'checkout', 'Complete one valid rider record per bike before checkout. Return to the booking form or contact the shop.' ); }
 		$waivers = WaiverSettings::ready( Waivers::policy( $row ) ); if ( is_wp_error( $waivers ) ) { return Database::error( 'checkout', 'Online rental checkout is unavailable while rider waiver setup needs attention. Please contact the shop.' ); }
 		if ( ! is_string( $owner ) || strlen( $owner ) !== 64 || ! hash_equals( (string) $row['session_hash'], $owner ) || 'hold' !== $row['status'] || empty( $row['hold_expires_at'] ) || $row['hold_expires_at'] <= Database::now() ) { return self::error(); }
 		$s = json_decode( $row['snapshot'], true ); $p = Packages::get_package( $row['package_product_id'] );

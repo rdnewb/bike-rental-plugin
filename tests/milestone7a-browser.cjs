@@ -13,6 +13,14 @@ const css = fs.readFileSync(path.join(runtime, 'assets/css/booking.css'), 'utf8'
 const calendarCss = fs.readFileSync(path.join(runtime, 'assets/css/calendar.css'), 'utf8');
 let checks = 0;
 const check = (value, label) => { assert.ok(value, label); checks++; console.log('PASS:', label); };
+async function fillRiders(page) {
+ const sections = page.locator('.brp-riders fieldset');
+ for(let i=0;i<await sections.count();i++) {
+  await sections.nth(i).locator('[data-field=legal_name]').fill('Fixture Rider '+(i+1));
+  await sections.nth(i).locator('[data-field=age]').fill('25');
+  await sections.nth(i).locator('[data-field=email]').fill('rider'+i+'@example.test');
+ }
+}
 (async () => {
     const browser = await chromium.launch({ headless: true, channel: process.env.BRP_BROWSER_CHANNEL || 'chrome' });
     try {
@@ -78,7 +86,7 @@ const check = (value, label) => { assert.ok(value, label); checks++; console.log
         check(await page.locator('[name=time] option').last().textContent() === '1:30 PM', '12-hour dropdown retained');
         await page.locator('[name=time]').selectOption('09:00'); await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
         check(calls.filter((c) => c.name === 'availability').at(-1).input.package_id === String(packages[2].product_id), 'availability uses new package');
-        await page.locator('[name=quantity]').fill('2'); await page.locator('.brp-submit').click(); await page.waitForURL('**/checkout');
+        await page.locator('[name=quantity]').fill('2'); await fillRiders(page); await page.locator('.brp-submit').click(); await page.locator('.brp-checkout').click(); await page.waitForURL('**/checkout');
         const hold = calls.filter((c) => c.name === 'holds').at(-1), transfer = calls.filter((c) => c.name === 'checkout').at(-1);
         check(hold.input.package_id === String(packages[2].product_id) && hold.input.quantity === '2', 'hold uses correct selection');
         check(transfer.input.request_key === hold.input.request_key, 'checkout transfer preserves hold identity');

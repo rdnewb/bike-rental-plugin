@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.1 - Pre-checkout riders, signing page and protected cleanup
+
+- Persist exactly one validated rider per bike in the hold transaction before WooCommerce checkout; dynamically collect adult or guardian details and revalidate server-side. No waiver requests or emails before verified payment.
+- Add current adult/guardian invitation subjects/bodies with eleven safe plain-text placeholders. Preserve resend rotation, throttling, identities and frozen legal text.
+- Add a public-page selector and generic `[bike_rental_waiver]` shortcode with token validation and provider delegation; missing/invalid pages block setup readiness.
+- Check actual provider-rendered context inputs before showing the form, add opt-in non-sensitive diagnostics, allow authorized internal guest entry reads, and strip bearer query parameters from WPForms source URL metadata.
+- Add confirmed single-record deletion only for cancelled/expired reservations with no linked order or completed/exempt/provider/return audit evidence. Delete unprotected associated rows atomically. Remove old abandoned unlinked rider PII after 30 terminal days in bounded cron batches.
+- Keep schema 2, financial calculations, Square processing, deposits and inventory algorithms unchanged. Actual Elite/Signature and sandbox/email acceptance remains pending.
+
 ## 0.8.0 - Generic rider waivers and WPForms adapter
 
 - Add the optional Waivers settings tab (default No), generic provider registry, frozen form mapping and legal text/version policies.

@@ -1,6 +1,7 @@
 <?php
 /** Real WP/Woo/InnoDB; explicit WPForms storage/hook doubles, never a live signature or charge. */
 ob_start();
+define( 'BRP_WAIVER_DIAGNOSTICS', true );
 require __DIR__ . '/inventory-test-bootstrap.php';
 require_once ABSPATH . 'wp-admin/includes/template.php';
 use BikeRentalPlugin\{Settings, Database, Packages, Reservations, Availability, GuestSession, Checkout, CheckoutReservation, Payments, Waivers, WaiverSettings, WaiverUI, WPFormsWaiverProvider, AdminCalendar};
@@ -9,9 +10,9 @@ function wcheck( $ok, $label ) { if ( ! $ok ) { throw new RuntimeException( 'FAI
 function wok( $v, $label ) { wcheck( ! is_wp_error( $v ), $label . ( is_wp_error( $v ) ? ': ' . $v->get_error_message() : '' ) ); return $v; }
 function wbad( $v, $label ) { wcheck( is_wp_error( $v ), $label ); }
 function wr( $id ) { return Database::public_booking( static fn() => Reservations::read( $id ) ); }
-function wh( $qty = 1, $pay = true ) {
+function wh( $qty = 1, $pay = true, $riders = null ) {
  wc_load_cart(); WC()->cart->empty_cart(); unset( $_COOKIE[ GuestSession::cookie_name() ] ); GuestSession::start();
- $r = wok( Database::public_booking( static fn() => Reservations::create_booking_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $qty, 'date' => $GLOBALS['date'], 'time' => '09:00' ), bin2hex( random_bytes( 16 ) ), GuestSession::identity()['hash'] ) ), 'create waiver fixture hold' );
+ $r = wok( Database::public_booking( static fn() => Reservations::create_booking_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $qty, 'riders' => $riders ?? ( 1 === $qty ? array( 1 => wadult() ) : ( 2 === $qty ? array( 1 => wadult(), 2 => wminor() ) : array( 1 => wadult(), 2 => wminor(), 3 => wminor( 'Minor Two' ) ) ) ), 'date' => $GLOBALS['date'], 'time' => '09:00' ), bin2hex( random_bytes( 16 ) ), GuestSession::identity()['hash'] ) ), 'create waiver fixture hold' );
  wok( Checkout::transfer( $r['request_key'] ), 'transfer waiver fixture' );
  $order = wc_create_order( array( 'created_via' => 'store-api' ) ); $GLOBALS['orders'][] = $order->get_id();
  $order->add_product( $GLOBALS['product'], $qty ); $order->set_currency( 'USD' ); $order->set_payment_method( 'square_credit_card' );
@@ -23,7 +24,11 @@ function wh( $qty = 1, $pay = true ) {
 function wadult( $name = 'Adult One' ) { return array( 'legal_name' => $name, 'age' => '18', 'email' => strtolower( str_replace( ' ', '.', $name ) ) . '@example.test' ); }
 function wminor( $name = 'Minor One' ) { return array( 'legal_name' => $name, 'age' => '17', 'guardian_name' => 'Guardian One', 'guardian_email' => 'guardian@example.test', 'guardian_relationship' => 'Parent' ); }
 function wsave( $r, $riders ) { return wok( Waivers::save_roster( $r['id'], $riders, $r['revision'] ), 'save exact roster' ); }
-function wtoken( $id ) { wok( Waivers::invite( $id ), 'send invitation' ); preg_match( '/brp_waiver=([a-f0-9]{64})/', end( $GLOBALS['mail'] )['message'], $m ); return $m[1] ?? ''; }
+function wtoken( $id ) {
+ $w = Database::read( 'waivers', $id );
+ foreach ( $GLOBALS['mail'] as $m ) { if ( preg_match( '/brp_waiver=([a-f0-9]{64})/', $m['message'], $match ) && hash( 'sha256', $match[1] ) === $w['token_hash'] ) { return $match[1]; } }
+ throw new RuntimeException( 'Fixture invitation missing.' );
+}
 function wentry( $token, $id, $alter = null ) {
  $ctx = wok( Waivers::context( $token ), 'resolve private signer context' ); $config = json_decode( $ctx['waiver']['provider_config'], true ); $fields = array();
  foreach ( WPFormsWaiverProvider::expected( $ctx ) as $key => $value ) { $fields[ $config['mapping'][ $key ] ] = array( 'value' => $value ); }
@@ -44,7 +49,8 @@ try {
  $s = json_decode( $legacy['snapshot'], true ); unset( $s['waiver_policy'] ); $wpdb->update( Database::table( 'reservations' ), array( 'snapshot' => wp_json_encode( $s ) ), array( 'id' => $legacy['id'] ) ); $legacy = wr( $legacy['id'] );
  update_option( Database::OPTION, '1' ); Database::install(); wcheck( '2' === get_option( Database::OPTION ) && wr( $legacy['id'] ) === $legacy, 'schema 1 upgrade preserves original reservation bytes' );
  foreach ( array( 'riders', 'waivers' ) as $table ) { wcheck( 'InnoDB' === $wpdb->get_var( $wpdb->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s', Database::table( $table ) ) ), "$table is InnoDB" ); }
- $policy = array_replace( WaiverSettings::defaults(), array( 'required' => 'yes', 'provider' => 'wpforms', 'version' => 'test-v1', 'text' => "Approved fixture waiver\nAdult or guardian accepts." ) );
+ $signing_page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Waiver fixture page', 'post_content' => '[bike_rental_waiver]' ) );
+ $policy = array_replace( WaiverSettings::defaults(), array( 'required' => 'yes', 'provider' => 'wpforms', 'signing_page' => $signing_page, 'version' => 'test-v1', 'text' => "Approved fixture waiver\nAdult or guardian accepts." ) );
  wbad( WaiverSettings::ready( $policy ), 'missing WPForms fails closed' ); $settings['waivers'] = $policy; update_option( Settings::OPTION, $settings );
  ob_start(); WaiverSettings::notice(); wcheck( str_contains( ob_get_clean(), 'notice-error' ), 'missing provider admin warning' );
  wcheck( ! Waivers::required( $legacy ) && 'confirmed' === wr( $legacy['id'] )['status'], 'enabling does not retrofit old reservation' );
@@ -67,7 +73,7 @@ try {
  foreach ( array( '-1', '18.5', '121', array() ) as $age ) { wbad( Waivers::validate_rider( array_replace( wadult(), array( 'age' => $age ) ) ), 'invalid age rejected' ); }
  $r = Waivers::validate_rider( wadult( '<b>Adult One</b>' ) + array() ); wcheck( ! is_wp_error( $r ) && $r['email'] === 'adult.one@example.test', 'decorated email sanitized' ); $r = wadult(); $r['legal_name'] = '<b>Adult One</b>'; wcheck( 'Adult One' === Waivers::validate_rider( $r )['legal_name'], 'rider name sanitized' );
  list( $row, $order ) = wh( 3 ); wcheck( 'pending_waivers' === $row['status'] && '60.00' === $order->get_total(), 'full paid amount unchanged and status pending waivers' );
- wcheck( 3 === count( Waivers::roster( $row ) ) && ! Waivers::progress( $row )['complete'], 'one blank rider per bike blocks readiness' );
+ wcheck( 3 === count( Waivers::roster( $row ) ) && ! Waivers::progress( $row )['complete'], 'one valid rider per bike waits for signatures' );
  wbad( Waivers::save_roster( $row['id'], array( 1 => wadult() ), $row['revision'] ), 'missing rider rejected' );
  $row = wsave( $row, array( 1 => wadult(), 2 => wminor(), 3 => wminor( 'Minor Two' ) ) ); $roster = Waivers::roster( $row );
  wcheck( 3 === count( $roster ) && count( array_unique( array_column( $roster, 'waiver_id' ) ) ) === 3, 'individual adult and two guardian waiver records' );
@@ -104,14 +110,14 @@ try {
  preg_match( '/brp_waiver=([a-f0-9]{64})/', end( $mail )['message'], $match ); $pt = $match[1];
  ob_start(); WaiverUI::reservation_admin( $pending ); $html = ob_get_clean(); wcheck( str_contains( $html, 'Resend Waiver Email' ) && str_contains( $html, 'Adult One' ), 'admin roster summary and resend' );
  ob_start(); WaiverUI::order_admin( $po ); wcheck( str_contains( ob_get_clean(), 'Waivers: 0/1 Pending' ), 'order admin compact summary' );
- ob_start(); WaiverUI::customer_progress( $pending ); $html = ob_get_clean(); wcheck( str_contains( $html, 'invitation emailed' ) && ! str_contains( $html, '@' ), 'customer invitation state no private email details: ' . $html );
+ ob_start(); WaiverUI::customer_progress( $pending ); $html = ob_get_clean(); wcheck( str_contains( $html, 'invitation submitted' ) && ! str_contains( $html, '@' ), 'customer invitation state no private email details: ' . $html );
  $po->update_meta_data( '_wc_square_credit_card_charge_captured', 'no' ); $po->save(); wentry( $pt, 200 ); wok( Waivers::complete( $pt, '200' ), 'waiver proof retained despite lost payment evidence' ); wcheck( 'pending_waivers' === wr( $pending['id'] )['status'], 'missing payment prevents confirmation' );
  $po->update_meta_data( '_wc_square_credit_card_charge_captured', 'yes' ); $po->save(); Payments::observe( $po->get_id() ); wcheck( 'confirmed' === wr( $pending['id'] )['status'], 'restored verified payment permits confirmation' );
  foreach ( array( 'cancelled', 'expired', 'completed' ) as $status ) {
   list( $r, $o ) = wh(); $r = wsave( $r, array( 1 => wadult() ) ); $rr = Waivers::roster( $r )[0]; $token = wtoken( $rr['waiver_id'] );
   $wpdb->update( Database::table( 'reservations' ), array( 'status' => $status ), array( 'id' => $r['id'] ) ); wbad( Waivers::context( $token ), "$status link unavailable" ); wbad( Waivers::complete( $token, '101' ), "$status cannot complete/reconfirm" ); wcheck( wr( $r['id'] )['status'] === $status, "$status preserved" );
  }
- list( $r, $o ) = wh(); $r = wsave( $r, array( 1 => wminor() ) ); $rr = Waivers::roster( $r )[0]; $token = wtoken( $rr['waiver_id'] ); $wpdb->update( Database::table( 'waivers' ), array( 'token_expires_at' => '2000-01-01 00:00:00' ), array( 'id' => $rr['waiver_id'] ) ); wbad( Waivers::context( $token ), 'expired link rejected' );
+ list( $r, $o ) = wh( 1, true, array( 1 => wminor() ) ); $r = wsave( $r, array( 1 => wminor() ) ); $rr = Waivers::roster( $r )[0]; $token = wtoken( $rr['waiver_id'] ); $wpdb->update( Database::table( 'waivers' ), array( 'token_expires_at' => '2000-01-01 00:00:00' ), array( 'id' => $rr['waiver_id'] ) ); wbad( Waivers::context( $token ), 'expired link rejected' );
  $post = array( 'operation' => 'exempt', 'id' => $rr['waiver_id'], 'reason' => 'Paper evidence reviewed by staff', '_wpnonce' => wp_create_nonce( 'brp_waiver_exempt_' . $rr['waiver_id'] ) ); wbad( WaiverUI::admin_dispatch( array_replace( $post, array( 'reason' => '' ) ) ), 'exemption requires reason' ); wok( WaiverUI::admin_dispatch( $post ), 'audited exemption' );
  $w = Database::read( 'waivers', $rr['waiver_id'] ); wcheck( $w['status'] === 'exempt' && (int) $w['override_user_id'] === 1 && $w['override_reason'] === $post['reason'] && $w['completed_at'], 'exemption audit actor reason timestamp' ); wcheck( 'confirmed' === wr( $r['id'] )['status'], 'paid complete exemption confirms' );
  wp_set_current_user( 0 ); wcheck( ! WaiverUI::order_access( $o, 'bad' ) && WaiverUI::order_access( $o, $o->get_order_key() ), 'guest roster requires private order key' );
@@ -125,7 +131,7 @@ try {
  ob_start(); ( new \BikeRentalPlugin\DataAdmin() )->reservations(); $html = ob_get_clean(); wcheck( str_contains( $html, '>Waivers</th>' ) && str_contains( $html, '0/2 Pending' ), 'reservation list waiver column' );
  $_GET = array( 'key' => $o->get_order_key() ); ob_start(); WaiverUI::order_section( $o->get_id() ); $html = ob_get_clean(); wcheck( str_contains( $html, 'Payment received.' ) && str_contains( $html, Waivers::NOTICE ), 'thank-you received-payment and action notice' );
  $method = new ReflectionMethod( \BikeRentalPlugin\PublicBooking::class, 'hold_view' ); $receipt = $method->invoke( null, $r ); wcheck( str_contains( $receipt['waiver_notice'], '0 of 2' ) && ! str_contains( $receipt['message'], 'expired' ), 'public receipt has progress and pending status' );
- ob_start(); WaiverUI::roster_form( $r, $o, false, true ); $html = ob_get_clean(); wcheck( str_contains( $html, 'value="Buyer Example"' ) && str_contains( $html, 'value="buyer@example.test"' ), 'purchaser shortcut prefills without duplicate name/email entry' );
+ ob_start(); WaiverUI::roster_form( $r, $o, false, true ); $html = ob_get_clean(); wcheck( str_contains( $html, 'value="Adult One"' ) && str_contains( $html, ' readonly' ), 'post-payment shortcut cannot overwrite frozen pre-checkout identity' );
  if ( $dir = getenv( 'BRP_WAIVER_FIXTURE_DIR' ) ) {
   preg_match( '#<style>(.*?)</style>#s', file_get_contents( dirname( __DIR__ ) . '/bike-rental-plugin/src/WaiverUI.php' ), $style );
   file_put_contents( $dir . '/waiver-roster.html', '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' . $style[1] . '</style><main class="brp-waiver-page"><h1>Rental riders</h1>' . WaiverUI::notice( $r ) . $html . '</main>' );
@@ -144,7 +150,7 @@ try {
  wcheck( Waivers::context( $token )['waiver']['waiver_text'] === $policy['text'] && Waivers::context( $token )['waiver']['waiver_version'] === 'test-v1', 'legal version/text frozen despite settings change' );
  $count = count( $mail ); $_GET['completed'] = 1; wcheck( Waivers::progress( wr( $r['id'] ) )['done'] === 0 && count( $mail ) === $count, 'browser completion flag has no authority' ); unset( $_GET['completed'] );
  list( $unpaid, $uo ) = wh( 1, false ); $ur = wsave( $unpaid, array( 1 => wadult() ) ); $urr = Waivers::roster( $ur )[0]; wbad( Waivers::invite( $urr['waiver_id'] ), 'unpaid roster cannot send invitations' ); wbad( Waivers::guard_state( array_replace( $ur, array( 'status' => 'pending_waivers' ) ) ), 'unpaid cannot enter paid waiting state' );
- list( $r, $o ) = wh(); $r = wsave( $r, array( 1 => wadult() ) ); $rr = Waivers::roster( $r )[0]; $GLOBALS['mail_fail'] = true; wbad( Waivers::invite( $rr['waiver_id'] ), 'mail transport failure reported' ); $GLOBALS['mail_fail'] = false;
+ $GLOBALS['mail_fail'] = true; list( $r, $o ) = wh(); $r = wsave( $r, array( 1 => wadult() ) ); $rr = Waivers::roster( $r )[0]; wbad( Waivers::invite( $rr['waiver_id'] ), 'mail transport failure reported' ); $GLOBALS['mail_fail'] = false;
  wcheck( Database::read( 'waivers', $rr['waiver_id'] )['status'] === 'invitation_pending', 'failed mail remains pending for staff resend' );
  $wpf->form->value['fields'][ $config['mapping']['signature'] ]['required'] = 0; wbad( $provider->configuration( $config ), 'optional signature is invalid provider configuration' ); $wpf->form->value = $form;
  $wpf->form->value['fields'][ $config['mapping']['consent'] ]['conditional_logic'] = array( 'enabled' => 1 ); wbad( $provider->configuration( $config ), 'conditional acceptance is rejected' ); $wpf->form->value = $form;
@@ -160,9 +166,10 @@ try {
  $generic = array_replace( $policy, array( 'provider' => 'fixture', 'fixture' => array( 'key' => '<b>configured</b>' ) ) ); $generic = wok( WaiverSettings::validate( $generic ), 'third-party provider config through generic interface' );
  wcheck( $generic['fixture']['key'] === 'configured' && true === WaiverSettings::ready( $generic ), 'new provider usable without reservation changes' );
  wcheck( 'full' === Settings::get()['payment_mode'] && '20.00' === wc_get_order( $o->get_id() )->get_total(), 'Full Payment selection and financial totals retained' );
+ require __DIR__ . "/waiver-refinements.php";
  echo "$checks waiver integration checks passed. Provider and Square evidence are test doubles, not live signing/charges.\n";
 } finally {
  wp_set_current_user( 1 ); update_option( Settings::OPTION, $saved ); WC()->cart->empty_cart();
- foreach ( $orders as $id ) { $o = wc_get_order( $id ); if ( $o ) { $o->delete( true ); } } $product->delete( true );
+ foreach ( $orders as $id ) { $o = wc_get_order( $id ); if ( $o ) { $o->delete( true ); } } $product->delete( true ); if ( isset( $signing_page ) ) { wp_delete_post( $signing_page, true ); }
 }
 ob_end_flush();

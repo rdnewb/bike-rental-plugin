@@ -72,6 +72,9 @@ final class Reservations {
 	public static function create_booking_hold( $input, $request_key, $session_hash ) {
 		$booking = BookingSchedule::prepare( $input );
 		if ( is_wp_error( $booking ) ) { return $booking; }
+		$riders = Waivers::validate_roster( $input['riders'] ?? null, $booking['input']['quantity'] );
+		if ( is_wp_error( $riders ) ) { return $riders; }
+		$booking['input']['riders'] = $riders;
 		return self::create_request( $booking['input'], $request_key, $session_hash, $booking );
 	}
 
@@ -82,7 +85,9 @@ final class Reservations {
 		$interval = RentalTime::interval( $input['start'] ?? null, $input['end'] ?? null );
 		if ( is_wp_error( $interval ) ) { return $interval; }
 		if ( ! in_array( $input['status'] ?? null, self::STATUSES, true ) ) { return Database::error( 'status', 'Invalid reservation status.' ); }
-		$identity = array( 'request_key' => strtolower( $request_key ), 'session_hash' => $session_hash, 'request_hash' => hash( 'sha256', wp_json_encode( array( (int) $input['package_product_id'], (int) $input['quantity'], $interval, wp_timezone_string(), $input['status'] ) ) ) );
+		$intent = array( (int) $input['package_product_id'], (int) $input['quantity'], $interval, wp_timezone_string(), $input['status'] );
+		if ( $booking ) { $intent[] = $input['riders']; }
+		$identity = array( 'request_key' => strtolower( $request_key ), 'session_hash' => $session_hash, 'request_hash' => hash( 'sha256', wp_json_encode( $intent ) ) );
 		$existing = Database::locked( static fn() => self::existing_request( $identity ) );
 		if ( null !== $existing ) { return $existing; }
 		return self::create_record( $input, $identity, $booking );
@@ -146,7 +151,7 @@ final class Reservations {
 			$data['reference'] = self::reference();
 			if ( false === Database::insert( 'reservations', $data ) ) { return Database::retry_error(); }
 			$row = self::read( $wpdb->insert_id ); if ( is_wp_error( $row ) ) { return $row; }
-			$roster = Waivers::reconcile_locked( $row ); return is_wp_error( $roster ) ? $roster : $row;
+			$roster = $booking ? Waivers::store_initial_roster( $row, $booking['input']['riders'] ) : Waivers::reconcile_locked( $row ); return is_wp_error( $roster ) ? $roster : $row;
 		} );
 	}
 

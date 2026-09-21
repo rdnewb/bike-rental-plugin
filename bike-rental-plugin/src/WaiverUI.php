@@ -6,8 +6,9 @@ defined( 'ABSPATH' ) || exit;
 final class WaiverUI {
 	public static $signed = false;
 	public static function register_hooks() {
+		add_shortcode( 'bike_rental_waiver', array( self::class, 'shortcode' ) );
 		add_action( 'brp_waiver_completed', static function () { self::$signed = true; } );
-		add_action( 'init', static function () { if ( isset( $_GET['brp_waiver'] ) || isset( $_GET['brp_riders'] ) ) { if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } nocache_headers(); header( 'Referrer-Policy: no-referrer' ); } }, 0 );
+		add_action( 'init', static function () { if ( isset( $_GET['brp_waiver'] ) || isset( $_GET['brp_riders'] ) ) { if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } nocache_headers(); header( 'Referrer-Policy: no-referrer' ); header( 'X-Robots-Tag: noindex, nofollow, noarchive' ); } }, 0 );
 		add_action( 'template_redirect', array( self::class, 'page' ), 1 );
 		add_action( 'woocommerce_thankyou', array( self::class, 'order_section' ), 25 );
 		add_action( 'woocommerce_view_order', array( self::class, 'order_section' ), 25 );
@@ -32,12 +33,13 @@ final class WaiverUI {
 			echo '<section class="brp-rider-section"><h2>Rental riders and waivers</h2>';
 			if ( Waivers::payment_satisfied( $row ) ) { echo '<p>Payment received.</p>'; }
 			echo self::notice( $row ); self::customer_progress( $row );
-			echo '<p><a href="' . esc_url( self::customer_url( $order ) ) . '">Complete rider information / view waiver progress</a></p></section>';
+			echo '<p><a href="' . esc_url( self::customer_url( $order ) ) . '">View rider waiver progress</a></p></section>';
 		} );
 	}
 	public static function customer_progress( $row ) {
 		$roster = Waivers::roster( $row ); if ( is_wp_error( $roster ) ) { echo '<p>Rider information is temporarily unavailable.</p>'; return; }
-		echo '<ul>'; foreach ( $roster as $r ) { $status = ! Waivers::required( $row ) ? 'Waiver not required' : ( in_array( $r['waiver_status'], array( 'completed', 'exempt' ), true ) ? ucfirst( $r['waiver_status'] ) : ( 'minor' === $r['rider_type'] ? 'Guardian waiver pending' : 'Waiver pending' ) ); echo '<li>Rider ' . (int) $r['sequence_number'] . ' — ' . esc_html( $r['legal_name'] ?: 'Information needed' ) . ': ' . esc_html( $status . ( 'invitation_sent' === $r['waiver_status'] ? ' — invitation emailed to the rider/guardian' : '' ) ) . '</li>'; } echo '</ul>';
+		if ( $roster && count( array_filter( $roster, static fn( $r ) => 'invitation_sent' === $r['waiver_status'] ) ) === count( $roster ) ) { echo '<p>Waiver invitations were submitted for delivery.</p>'; }
+		echo '<ul>'; foreach ( $roster as $r ) { $status = ! Waivers::required( $row ) ? 'Waiver not required' : ( in_array( $r['waiver_status'], array( 'completed', 'exempt' ), true ) ? ucfirst( $r['waiver_status'] ) : ( 'minor' === $r['rider_type'] ? 'Guardian waiver pending' : 'Waiver pending' ) ); echo '<li>Rider ' . (int) $r['sequence_number'] . ' — ' . esc_html( $r['legal_name'] ?: 'Information needed' ) . ': ' . esc_html( $status . ( 'invitation_sent' === $r['waiver_status'] ? ' — invitation submitted for delivery' : '' ) ) . '</li>'; } echo '</ul>';
 	}
 	private static function hidden( $name, $value ) { echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '">'; }
 	private static function field( $name, $label, $value = '', $type = 'text', $readonly = false ) {
@@ -120,15 +122,18 @@ final class WaiverUI {
 		echo '<!doctype html><html ' . get_language_attributes() . '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Rental riders and waivers</title>'; wp_head();
 		echo '<style>.brp-waiver-page{max-width:52rem;margin:2rem auto;padding:1rem;overflow-wrap:anywhere}.brp-roster label{display:block;margin:1rem 0}.brp-roster input{font:inherit;min-height:44px;padding:8px;display:block;width:100%;max-width:100%;box-sizing:border-box}.brp-roster fieldset{min-width:0;margin:1rem 0;padding:1rem}.brp-roster button{min-height:48px}.brp-waiver-notice{border:2px solid currentColor;padding:1rem}.brp-waiver-text{white-space:pre-wrap}</style></head><body><main class="brp-waiver-page">' . $content . '</main>'; wp_footer(); echo '</body></html>'; exit;
 	}
-	public static function page() {
-		if ( isset( $_GET['brp_waiver'] ) ) {
-			if ( self::$signed ) { self::document( '<h1>Waiver recorded</h1><p>Thank you. Your rider waiver was received. The purchaser can view reservation progress from their order.</p>' ); }
-			$token = wp_unslash( $_GET['brp_waiver'] ); $ctx = Waivers::context( $token );
-			if ( is_wp_error( $ctx ) ) { status_header( 403 ); self::document( '<h1>Waiver link unavailable</h1><p>' . esc_html( $ctx->get_error_message() ) . '</p>' ); }
+	/** Provider-independent page content; invalid tokens never reach a form renderer. */
+	public static function shortcode() {
+		if ( self::$signed ) { return '<p>Your rider waiver was recorded. The purchaser can view reservation progress from their order.</p>'; }
+			$token = wp_unslash( $_GET['brp_waiver'] ?? '' ); $ctx = Waivers::context( $token );
+			if ( is_wp_error( $ctx ) ) { return '<p>Waiver link unavailable. Ask the shop for a current invitation.</p>'; }
 			$w = $ctx['waiver']; $r = $ctx['rider']; $p = Waivers::providers()[ $w['provider'] ] ?? null;
-			$content = '<h1>Rider waiver</h1><p>Rider: ' . esc_html( $r['legal_name'] ) . ' · Age: ' . (int) $r['age'] . '</p><p>Signer: ' . esc_html( $w['signer_name'] . ' (' . $w['signer_role'] . ')' ) . '</p><p>Reservation: ' . esc_html( $ctx['reservation']['reference'] ) . ' · Waiver version: ' . esc_html( $w['waiver_version'] ) . '</p><div class="brp-waiver-text">' . esc_html( $w['waiver_text'] ) . '</div><p>By accepting and signing, you confirm that you are the named adult rider signing for yourself, or the named parent/guardian signing for this minor, and accept the waiver text above.</p>';
-			$content .= $p ? $p->render( $ctx, $token ) : '<p>Provider unavailable. Contact the shop.</p>'; self::document( $content );
-		}
+			$content = '<h1>Rider waiver</h1><p>Rider: ' . esc_html( $r['legal_name'] ) . ' · Age: ' . (int) $r['age'] . '</p><p>Signer: ' . esc_html( $w['signer_name'] . ' (' . $w['signer_role'] . ')' ) . '</p><p>Reservation: ' . esc_html( $ctx['reservation']['reference'] ) . ' · Waiver version: ' . esc_html( $w['waiver_version'] ) . '</p><div class="brp-waiver-text" style="white-space:pre-wrap">' . esc_html( $w['waiver_text'] ) . '</div><p>By accepting and signing, you confirm that you are the named adult rider signing for yourself, or the named parent/guardian signing for this minor, and accept the waiver text above.</p>';
+			$content .= $p ? $p->render( $ctx, $token ) : '<p>Provider unavailable. Contact the shop.</p>'; return $content;
+	}
+	public static function page() {
+		// Preserve older root invitation URLs; configured pages render the generic shortcode in their theme.
+		if ( isset( $_GET['brp_waiver'] ) && ! is_page( WaiverSettings::get()['signing_page'] ) ) { self::document( self::shortcode() ); }
 		if ( ! isset( $_GET['brp_riders'] ) ) { return; }
 		$order = function_exists( 'wc_get_order' ) && Database::positive( $_GET['brp_riders'] ) ? wc_get_order( (int) $_GET['brp_riders'] ) : false;
 		if ( ! self::order_access( $order, wp_unslash( $_GET['key'] ?? '' ) ) ) { status_header( 403 ); self::document( '<h1>Reservation unavailable</h1>' ); }

@@ -93,7 +93,7 @@ public_check( $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Databa
 $response = public_request( 'availability', $input + array( 'session_hash' => 'secret' ) );
 public_check( 400 === $response->get_status(), 'extra private fields rejected' );
 public_check( str_contains( public_request( 'packages' )->get_headers()['Cache-Control'], 'no-store' ), 'REST payloads explicitly bypass caches' );
-$hold_input = $input + array( 'quantity' => 3, 'request_key' => 'public-first' );
+$hold_input = $input + array( 'quantity' => 3, 'riders' => brp_test_riders( 3 ), 'request_key' => 'public-first' );
 public_check( 403 === public_request( 'holds', $hold_input )->get_status(), 'mutation requires guest cookie and CSRF token' );
 public_check( 403 === public_request( 'session', array(), null, 'https://other.invalid' )->get_status(), 'cross-origin session bootstrap rejected' );
 $session = public_request( 'session' )->get_data(); $cookie = $_COOKIE[ GuestSession::cookie_name() ];
@@ -110,14 +110,14 @@ public_check( '51.25' === $snapshot['price'] && 3 === $snapshot['quantity'] && $
 public_check( ! array_intersect( array( 'id', 'snapshot', 'session_hash', 'request_hash', 'issue_code' ), array_keys( $hold ) ), 'hold response exposes only customer summary' );
 public_check( 900 === strtotime( $row['hold_expires_at'] ) - strtotime( $row['created_at'] ) && strtotime( $hold['expires_at'] ) - strtotime( $hold['server_time'] ) <= 900 && $hold['reserved'], 'hold expires fifteen minutes from authoritative creation time' );
 public_check( $hold['reference'] === public_request( 'holds', $hold_input, $session['token'] )->get_data()['reference'], 'same request returns original hold' );
-public_check( 400 === public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 2 ) ), $session['token'] )->get_status(), 'same request key with different intent rejected' );
+public_check( 400 === public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 2, 'riders' => brp_test_riders( 2 ) ) ), $session['token'] )->get_status(), 'same request key with different intent rejected' );
 public_check( 400 === public_request( 'holds', array_replace( $hold_input, array( 'request_key' => 'second-live' ) ), $session['token'] )->get_status(), 'one live public hold per guest session' );
 unset( $_COOKIE[ GuestSession::cookie_name() ] );
 $other_session = public_request( 'session' )->get_data();
 public_check( 400 === public_request( 'hold-status', array( 'request_key' => 'public-first' ), $other_session['token'] )->get_status(), 'another guest cannot read first guest hold' );
 public_check( 400 === public_request( 'holds', $hold_input, $other_session['token'] )->get_status(), 'another guest cannot reuse first guest request key' );
-public_check( 409 === public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 5, 'request_key' => 'too-many' ) ), $other_session['token'] )->get_status(), 'final server check rejects quantity above available' );
-$full = public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 4, 'request_key' => 'remaining' ) ), $other_session['token'] );
+public_check( 409 === public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 5, 'riders' => brp_test_riders( 5 ), 'request_key' => 'too-many' ) ), $other_session['token'] )->get_status(), 'final server check rejects quantity above available' );
+$full = public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 4, 'riders' => brp_test_riders( 4 ), 'request_key' => 'remaining' ) ), $other_session['token'] );
 public_check( 200 === $full->get_status() && 0 === public_request( 'availability', $input )->get_data()['available_quantity'], 'exact remaining quantity succeeds and zero availability reported' );
 $_COOKIE[ GuestSession::cookie_name() ] = $cookie;
 $wpdb->update( Database::table( 'reservations' ), array( 'hold_expires_at' => '2000-01-01 00:00:00' ), array( 'id' => $row['id'] ) );
@@ -126,7 +126,7 @@ public_check( ! $expired['reserved'] && 'hold' === $wpdb->get_var( $wpdb->prepar
 public_check( 3 === public_request( 'availability', $input )->get_data()['available_quantity'], 'expired timestamp releases public availability before cleanup' );
 public_reset();
 $settings['preparation_buffer'] = 30; $settings['turnaround_buffer'] = 30; update_option( Settings::OPTION, $settings );
-$buffer_hold = public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 7, 'request_key' => 'buffered' ) ), $session['token'] )->get_data();
+$buffer_hold = public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 7, 'riders' => brp_test_riders( 7 ), 'request_key' => 'buffered' ) ), $session['token'] )->get_data();
 $adjacent = array_replace( $input, array( 'time' => '13:00' ) );
 public_check( 0 === public_request( 'availability', $adjacent )->get_data()['available_quantity'], 'occupied buffers affect adjacent availability' );
 public_check( '09:00' === substr( $buffer_hold['rental_start'], 11 ) && '13:00' === substr( $buffer_hold['rental_end'], 11 ), 'buffers never change customer displayed rental period' );

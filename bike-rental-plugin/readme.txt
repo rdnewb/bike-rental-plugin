@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.8.0
+Stable tag: 0.8.1
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,13 +9,18 @@ Reusable bicycle-rental settings, packages, reservations, and shared fleet avail
 
 == Description ==
 
-Version 0.8.0 adds generic rider waivers and a WPForms Elite/Signature adapter.
+Version 0.8.1 refines pre-checkout rider collection and generic waiver management.
 Waivers default to No. Configure the Waivers settings tab and dedicated mapped form
 before enabling. Full Payment remains selected; deposit architecture is unchanged.
 Paid bookings with required waivers enter Pending Waivers and retain inventory until
 all individual adult/guardian waivers complete. One rider per bike; adults are 18+.
 Minors require guardian name, email and relationship, with one waiver per minor.
-Customers collect riders after payment and can reuse purchaser information for Rider 1.
+Customers enter validated riders on the temporary hold before checkout. Waiver requests
+and invitations begin only after verified payment. Publish [bike_rental_waiver] on a
+page selected as Waiver Signing Page. Configure adult/guardian email templates in Waivers.
+Cancelled/expired records with no protected order/waiver/audit evidence may be individually
+deleted after admin confirmation. Thirty-day abandoned unlinked rider cleanup retains
+reservation audit metadata and all protected evidence. Schema remains 2.
 Secure invitations, admin resend/exempt actions, legal text/version retention, and
 customer/admin/calendar progress are included. Schema 2 adds InnoDB riders and waivers
 without changing existing reservation policies or duplicating signature blobs.
@@ -129,6 +134,15 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.8.1 =
+* Persist a validated adult/guardian roster atomically with public holds before checkout.
+* Activate waiver requests after payment; add generic plain-text invitation templates.
+* Add configured [bike_rental_waiver] signing page and runtime population diagnostics.
+* Verify rendered mapped values and stored provider entries; keep tokens out of source URL metadata.
+* Add controlled cancelled/expired deletion and bounded abandoned-rider retention cleanup.
+* Keep schema 2, Full Payment totals, Square and deposit architecture unchanged.
+* Real Elite/Signature, mail and Square acceptance remains pending.
 
 = 0.8.0 =
 * Add optional generic rider waivers, per-rider adult/guardian invitations and WPForms adapter.

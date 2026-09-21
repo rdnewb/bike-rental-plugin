@@ -37,10 +37,10 @@ for ( $duration = 1; $duration <= 7; ++$duration ) {
 		calendar_reason( BookingSchedule::calculate( $current_package, $dates[ $offset ], '09:00', $notice, $before_start ), 'minimum_notice', $label . ': minimum notice remains enforced' );
 		$horizon = $matrix; $horizon['booking_horizon'] = 1;
 		calendar_reason( BookingSchedule::calculate( $current_package, $dates[ $offset ], '09:00', $horizon, $expected_start_utc->sub( new DateInterval( 'P3D' ) )->format( 'Y-m-d H:i:s' ) ), 'booking_horizon', $label . ': start-date horizon remains enforced' );
-		$hold = Reservations::create_booking_hold( $case_input + array( 'time' => '09:00', 'quantity' => 10 ), 'matrix-' . $duration . '-' . $offset, hash( 'sha256', 'matrix-session' ) );
+		$hold = brp_test_hold( $case_input + array( 'time' => '09:00', 'quantity' => 10 ), 'matrix-' . $duration . '-' . $offset, hash( 'sha256', 'matrix-session' ) );
 		calendar_check( ! is_wp_error( $hold ) && $schedule['occupied_start_utc'] === $hold['occupied_start_utc'] && $schedule['occupied_end_utc'] === $hold['occupied_end_utc'] && $expected_end === json_decode( $hold['snapshot'], true )['local_end'], $label . ': saved hold and snapshot match generic schedule and buffers' );
 		calendar_check( 0 === Availability::check( $schedule['occupied_start_utc'], $schedule['occupied_end_utc'] )['available_quantity'] && 10 === Availability::check( $schedule['occupied_end_utc'], RentalTime::shift( $schedule['occupied_end_utc'], 1 ) )['available_quantity'], $label . ': capacity claimed only through buffered half-open interval' );
-		$conflict = Reservations::create_booking_hold( $case_input + array( 'time' => '09:00', 'quantity' => 1 ), 'conflict-' . $duration . '-' . $offset, hash( 'sha256', 'other-matrix-session' ) );
+		$conflict = brp_test_hold( $case_input + array( 'time' => '09:00', 'quantity' => 1 ), 'conflict-' . $duration . '-' . $offset, hash( 'sha256', 'other-matrix-session' ) );
 		calendar_check( is_wp_error( $conflict ) && 'brp_conflict' === $conflict->get_error_code(), $label . ': inventory still prevents overselling' );
 	}
 }

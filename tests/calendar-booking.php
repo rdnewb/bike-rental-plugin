@@ -133,7 +133,7 @@ $result = BookingSchedule::calculate( $package, '2030-06-17', '09:00', $settings
 calendar_check( ! is_wp_error( $result ) && '2030-06-19T17:00' === $result['local_end'] && '2030-06-19 11:30:00' === $result['end_utc'], 'fixed-offset WordPress timezone also preserves inclusive calendar dates' );
 update_option( 'timezone_string', 'America/New_York' );
 update_option( Settings::OPTION, $settings );
-$hold = Reservations::create_booking_hold( $input + array( 'time' => '09:00', 'quantity' => 2 ), 'calendar-hold-test', hash( 'sha256', 'calendar-test-session' ) );
+$hold = brp_test_hold( $input + array( 'time' => '09:00', 'quantity' => 2 ), 'calendar-hold-test', hash( 'sha256', 'calendar-test-session' ) );
 calendar_check( ! is_wp_error( $hold ) && RentalTime::from_local( $end_date . 'T17:00' ) === $hold['end_utc'], 'real calendar hold persists the same inclusive final day as time lookup' );
 calendar_check( $end_date . 'T17:00' === json_decode( $hold['snapshot'], true )['local_end'], 'calendar hold snapshot matches displayed schedule' );
 echo PHP_EOL . $checks . ' calendar booking checks passed.' . PHP_EOL;

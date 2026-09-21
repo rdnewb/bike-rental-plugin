@@ -57,20 +57,56 @@ final class Waivers {
 			if ( (string) $revision !== (string) $row['revision'] ) { return Database::error( 'revision', 'The reservation changed elsewhere. Reload before saving riders.' ); }
 			if ( ! is_array( $input ) || count( $input ) !== (int) $row['quantity'] ) { return Database::error( 'rider', 'Supply exactly one rider per reserved bike.' ); }
 			$sync = self::reconcile_locked( $row ); if ( is_wp_error( $sync ) ) { return $sync; } $roster = self::roster( $row ); if ( is_wp_error( $roster ) ) { return $roster; }
-			$policy = self::policy( $row ); $changed = false;
+			$changed = false;
 			foreach ( $roster as $r ) {
 				$v = self::validate_rider( $input[ $r['sequence_number'] ] ?? null ); if ( is_wp_error( $v ) ) { return $v; }
 				$diff = array_diff_assoc( $v, array_intersect_key( $r, $v ) );
 				if ( $diff && $r['waiver_id'] ) { return Database::error( 'rider', 'A rider with a waiver request cannot be replaced or edited. Contact staff to cancel/rebook if the signer is incorrect; existing evidence is retained.' ); }
 				if ( $diff ) { $v['updated_at'] = Database::now(); if ( 1 !== Database::update( 'riders', $v, array( 'id' => $r['id'] ) ) ) { return Database::retry_error(); } $changed = true; }
-				if ( self::required( $row ) && ! $r['waiver_id'] ) {
-					$adult = 'adult' === $v['rider_type'];
-					$data = array( 'reservation_id' => $id, 'rider_id' => $r['id'], 'provider' => $policy['provider'], 'provider_config' => wp_json_encode( $policy[ $policy['provider'] ] ?? array() ), 'waiver_version' => $policy['version'], 'waiver_text' => $policy['text'], 'text_hash' => hash( 'sha256', $policy['text'] ), 'signer_name' => $adult ? $v['legal_name'] : $v['guardian_name'], 'signer_email' => $adult ? $v['email'] : $v['guardian_email'], 'signer_role' => $adult ? 'self' : 'guardian', 'created_at' => Database::now(), 'updated_at' => Database::now() );
-					if ( false === Database::insert( 'waivers', $data ) ) { return Database::retry_error(); } $changed = true;
-				}
 			}
 			if ( $changed && 1 !== Database::update( 'reservations', array( 'revision' => (int) $row['revision'] + 1, 'updated_at' => Database::now() ), array( 'id' => $id, 'revision' => $row['revision'] ) ) ) { return Database::retry_error(); }
 			return Reservations::read( $id );
+		} );
+	}
+	/** Validate a numbered roster before allocating inventory. Never trust supplied classification. */
+	public static function validate_roster( $input, $quantity ) {
+		if ( ! is_array( $input ) || count( $input ) !== (int) $quantity ) { return Database::error( 'rider', 'Supply exactly one rider per reserved bike.' ); }
+		$out = array();
+		for ( $i = 1; $i <= (int) $quantity; ++$i ) {
+			$out[ $i ] = self::validate_rider( $input[ $i ] ?? null );
+			if ( is_wp_error( $out[ $i ] ) ) { return $out[ $i ]; }
+		}
+		return $out;
+	}
+	public static function roster_ready( $row ) {
+		$rows = self::roster( $row );
+		if ( is_wp_error( $rows ) ) { return $rows; }
+		$input = array(); foreach ( $rows as $r ) { $input[ $r['sequence_number'] ] = $r; }
+		$v = self::validate_roster( $input, $row['quantity'] ); return is_wp_error( $v ) ? $v : true;
+	}
+	/** Used inside the initial hold transaction; rollback covers both reservation and riders. */
+	public static function store_initial_roster( $row, $input ) {
+		if ( ! Database::in_transaction() ) { return Database::retry_error(); }
+		$v = self::validate_roster( $input, $row['quantity'] ); if ( is_wp_error( $v ) ) { return $v; }
+		foreach ( $v as $sequence => $r ) {
+			$r += array( 'reservation_id' => $row['id'], 'sequence_number' => $sequence, 'created_at' => Database::now(), 'updated_at' => Database::now() );
+			if ( false === Database::insert( 'riders', $r ) ) { return Database::retry_error(); }
+		} return true;
+	}
+	/** Requests are frozen only after verified payment; repeated callbacks reuse existing records. */
+	public static function activate_requests( $id ) {
+		return Database::locked( static function () use ( $id ) {
+			$row = Reservations::read( $id ); if ( is_wp_error( $row ) ) { return $row; }
+			if ( ! self::required( $row ) || self::terminal( $row ) || ! self::payment_satisfied( $row ) ) { return $row; }
+			$valid = self::roster_ready( $row ); if ( is_wp_error( $valid ) ) { return $valid; }
+			$policy = self::policy( $row );
+			$roster = self::roster( $row ); if ( is_wp_error( $roster ) ) { return $roster; }
+			foreach ( $roster as $r ) {
+				if ( $r['waiver_id'] ) { continue; }
+				$adult = 'adult' === $r['rider_type'];
+				$data = array( 'reservation_id' => $id, 'rider_id' => $r['id'], 'provider' => $policy['provider'], 'provider_config' => wp_json_encode( $policy[ $policy['provider'] ] ?? array() ), 'waiver_version' => $policy['version'], 'waiver_text' => $policy['text'], 'text_hash' => hash( 'sha256', $policy['text'] ), 'signer_name' => $adult ? $r['legal_name'] : $r['guardian_name'], 'signer_email' => $adult ? $r['email'] : $r['guardian_email'], 'signer_role' => $adult ? 'self' : 'guardian', 'created_at' => Database::now(), 'updated_at' => Database::now() );
+				if ( false === Database::insert( 'waivers', $data ) ) { return Database::retry_error(); }
+			} return $row;
 		} );
 	}
 	public static function payment_satisfied( $row ) {
@@ -108,6 +144,7 @@ final class Waivers {
 		} );
 	}
 	public static function invite( $id, $resend = false ) {
+		$page_url = WaiverSettings::signing_url(); if ( is_wp_error( $page_url ) ) { return $page_url; }
 		$prepared = Database::locked( static function () use ( $id, $resend ) {
 			$w = Database::read( 'waivers', $id ); if ( is_wp_error( $w ) ) { return $w; } $row = Reservations::read( $w['reservation_id'] );
 			if ( is_wp_error( $row ) || self::terminal( $row ) || ! self::payment_satisfied( $row ) || in_array( $w['status'], array( 'completed', 'exempt' ), true ) ) { return Database::error( 'waiver', 'This waiver cannot be invited in its current state.' ); }
@@ -120,14 +157,14 @@ final class Waivers {
 			return array( 'token' => $token, 'hash' => $hash, 'waiver' => $w, 'row' => $row, 'rider' => $r );
 		} );
 		if ( is_wp_error( $prepared ) ) { return $prepared; }
-		$url = add_query_arg( 'brp_waiver', $prepared['token'], home_url( '/' ) );
-		$business = sanitize_text_field( Settings::get()['business_name'] ?? get_bloginfo( 'name' ) ); $s = json_decode( $prepared['row']['snapshot'], true );
-		$body = $business . "\nReservation: " . $prepared['row']['reference'] . "\nPackage: " . ( $s['name'] ?? '' ) . "\nRider: " . $prepared['rider']['legal_name'] . "\nSigner: " . $prepared['waiver']['signer_name'] . ( 'guardian' === $prepared['waiver']['signer_role'] ? ' (parent/guardian)' : ' (sign for yourself)' ) . "\n\nPlease read and sign your rider waiver:\n" . $url . "\n\n" . self::NOTICE . "\nThis private link expires in 7 days. Do not forward it. A new invitation replaces the old link.";
-		$sent = wp_mail( $prepared['waiver']['signer_email'], 'Rider waiver required — ' . $prepared['row']['reference'], $body );
+		$url = add_query_arg( 'brp_waiver', $prepared['token'], $page_url );
+		$mail = WaiverEmail::compose( $prepared, $url );
+		$sent = wp_mail( $prepared['waiver']['signer_email'], $mail['subject'], $mail['body'], array( 'Content-Type: text/plain; charset=UTF-8' ) );
 		if ( $sent ) { $saved = Database::locked( static fn() => Database::update( 'waivers', array( 'status' => 'invitation_sent', 'updated_at' => Database::now() ), array( 'id' => $id, 'token_hash' => $prepared['hash'], 'status' => 'invitation_pending' ) ) ); if ( is_wp_error( $saved ) ) { return $saved; } if ( false === $saved ) { return Database::retry_error(); } }
 		return $sent ? true : Database::error( 'waiver_mail', 'Invitation could not be sent. Check WordPress mail delivery and resend after 15 minutes.' );
 	}
 	public static function invite_pending( $row ) {
+		$activated = self::activate_requests( $row['id'] ); if ( is_wp_error( $activated ) ) { return array( $activated->get_error_message() ); }
 		$roster = self::roster( $row ); if ( is_wp_error( $roster ) ) { return $roster; } $errors = array();
 		foreach ( $roster as $r ) { if ( $r['waiver_id'] && ! $r['last_invited_at'] && ! in_array( $r['waiver_status'], array( 'completed', 'exempt' ), true ) ) { $sent = self::invite( $r['waiver_id'] ); if ( is_wp_error( $sent ) ) { $errors[] = $sent->get_error_message(); } } } return $errors;
 	}

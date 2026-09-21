@@ -16,7 +16,7 @@ function hreset() {
 	unset( $_COOKIE[ GuestSession::cookie_name() ] ); GuestSession::start();
 }
 function hhold( $transfer = true ) {
-	$row = Database::public_booking( static fn() => Reservations::create_booking_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => 1, 'date' => $GLOBALS['date'], 'time' => '09:00' ), bin2hex( random_bytes( 16 ) ), GuestSession::identity()['hash'] ) );
+	$row = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => 1, 'date' => $GLOBALS['date'], 'time' => '09:00' ), bin2hex( random_bytes( 16 ) ), GuestSession::identity()['hash'] ) );
 	if ( is_wp_error( $row ) ) { throw new RuntimeException( $row->get_error_message() ); }
 	if ( $transfer ) { $result = Checkout::transfer( $row['request_key'] ); if ( is_wp_error( $result ) ) { throw new RuntimeException( $result->get_error_message() ); } }
 	return hrow( $row['id'] );

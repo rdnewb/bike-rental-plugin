@@ -20,7 +20,7 @@ function creset( $capacity = 3 ) {
 function csession() { unset( $_COOKIE[ GuestSession::cookie_name() ] ); return GuestSession::start(); }
 function chold( $quantity = 1 ) {
 	$key = bin2hex( random_bytes( 16 ) );
-	return cok( Database::public_booking( static fn() => Reservations::create_booking_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $quantity, 'date' => $GLOBALS['date'], 'time' => '09:00' ), $key, GuestSession::identity()['hash'] ) ), 'create guest booking hold' );
+	return cok( Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $quantity, 'date' => $GLOBALS['date'], 'time' => '09:00' ), $key, GuestSession::identity()['hash'] ) ), 'create guest booking hold' );
 }
 function cread( $id ) { return Database::public_booking( static fn() => Reservations::read( $id ) ); }
 function cexpire( $row ) { global $wpdb; $wpdb->update( Database::table( 'reservations' ), array( 'hold_expires_at' => '2000-01-01 00:00:00', 'status' => 'expired' ), array( 'id' => $row['id'] ) ); }

@@ -13,6 +13,14 @@ const script = path.join(runtime, 'assets/js/booking.js');
 const base = 'http://127.0.0.1:33319';
 let checks = 0;
 const check = (ok, label) => { assert.ok(ok, label); checks++; console.log('PASS:', label); };
+async function fillRiders(page) {
+ const sections = page.locator('.brp-riders fieldset');
+ for(let i=0;i<await sections.count();i++) {
+  await sections.nth(i).locator('[data-field=legal_name]').fill('Fixture Rider '+(i+1));
+  await sections.nth(i).locator('[data-field=age]').fill('25');
+  await sections.nth(i).locator('[data-field=email]').fill('rider'+i+'@example.test');
+ }
+}
 (async () => {
     const browser = await chromium.launch({ headless: true, channel: process.env.BRP_BROWSER_CHANNEL || 'chrome' });
     try {
@@ -84,7 +92,7 @@ const check = (ok, label) => { assert.ok(ok, label); checks++; console.log('PASS
         await page.waitForFunction(() => !document.querySelector('[name=time]').disabled);
         check(await page.locator('[name=time] option').last().textContent() === '1:30 PM', 'start-time labels unchanged');
         await page.locator('[name=time]').selectOption('09:00'); await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
-        await page.locator('[name=quantity]').fill('2'); await page.locator('.brp-submit').click(); await page.waitForURL('**/checkout');
+        await page.locator('[name=quantity]').fill('2'); await fillRiders(page); await page.locator('.brp-submit').click(); await page.locator('.brp-checkout').click(); await page.waitForURL('**/checkout');
         const hold = calls.filter((c) => c.name === 'holds').at(-1), checkout = calls.filter((c) => c.name === 'checkout').at(-1);
         check(hold.input.package_id === String(packages[2].product_id) && hold.input.quantity === '2', 'branded form holds the newly selected package and quantity');
         check(checkout.input.request_key === hold.input.request_key, 'checkout handoff keeps existing hold identity');

@@ -1,6 +1,6 @@
 # Milestone 8 schema and workflow design
 
-Design recorded before schema implementation. Runtime target 0.8.0; schema 2.
+Updated for runtime 0.8.1. Schema remains 2; no table/column/index changes in this release.
 
 ## Non-destructive migration
 
@@ -14,7 +14,7 @@ All rider/waiver writes and readiness transitions use the existing shared invent
 
 ## Collection and authorization
 
-Collect the roster immediately after payment via an order-owner/order-key-authorized customer section. Age is an integer 0–120; the operational adult threshold is 18, not a jurisdiction-specific legal determination. Adults need legal name, age and email; minors need their name/age plus guardian name, email and relationship. Minor email is optional. Purchaser details may prefill Rider 1 on explicit request. Each minor remains a separate requirement even with a shared guardian.
+Collect the complete roster on the public booking form before checkout. The protected guest hold endpoint validates exactly one numbered rider per bike, computes classification, hashes roster intent with the request, and inserts reservation plus riders in one inventory transaction. A failed rider write rolls back the entire hold. Checkout independently revalidates stored riders. No raw rider information is placed in sessionStorage or the public hold receipt. Age is an integer 0–120; the operational adult threshold is 18, not a jurisdiction-specific legal determination. Adults need legal name, age and email; minors need their name/age plus guardian name, email and relationship. Minor email is optional. The pre-checkout form does not offer billing prefill because it does not yet have trustworthy billing details. The existing owner-authorized legacy correction form can prefill Rider 1 only before a waiver request freezes identity. Each minor remains a separate requirement even with a shared guardian.
 
 Signers use individual 256-bit random, expiring bearer links without WordPress login. Only token hashes persist in rental tables; resends rotate tokens and revoke older links. A signer sees only that rider's context. Cancellation, expiry, completion and exemption make signing links unusable. Purchaser progress never exposes signatures or signer links. Invitation mail is generic and sent outside inventory locks, with per-rider cooldown and delivery-attempt timestamps. Mail acceptance does not prove delivery.
 
@@ -40,11 +40,13 @@ Register another implementation with `Waivers::register_provider('provider_id', 
 flowchart LR
     Woo[WooCommerce / Square verified payment] --> Rental[Reservation + inventory lock]
     Rental --> Pending[Pending Waivers / normal occupied interval]
-    Buyer[Authorized purchaser] --> Roster[One rider per bike]
-    Roster --> Core[Generic waiver service]
+    Buyer[Public booking form] --> Roster[Validated rider per bike on temporary hold]
+    Roster --> Woo
+    Pending --> Core[Generic waiver service creates requests]
     Core --> Mail[WordPress invitation email]
     Mail --> Signer[Adult or guardian private link]
-    Signer --> Adapter[WPForms adapter]
+    Signer --> Page[Configured page / generic shortcode]
+    Page --> Adapter[WPForms adapter]
     Adapter --> Entry[WPForms entry and signature]
     Entry --> Verify[Server-verified completion]
     Verify --> Core
@@ -56,9 +58,21 @@ flowchart LR
 
 - Invitation secrets have 256 bits of randomness; seven-day lifetime; 15-minute resend cooldown. Latest attempt timestamp and attempt count are retained. `invitation_sent` means the mail transport accepted the message, not that it reached an inbox. A resend rotates only the secret, retaining the same rider/request/legal version.
 - Signer identity becomes immutable when its waiver request exists, even if email delivery fails. Cancel/rebook an incorrect roster with staff assistance in this release; there is no automatic transfer of signatures between people. Quantity decreases cannot discard populated positions; signed evidence survives cancellations. A dedicated audited reassignment/history workflow is deferred.
-- An admin may collect a roster before payment. Invitations wait for verified payment; the normal public workflow collects immediately afterward. Purchaser access uses the existing WooCommerce account ownership or private order key, plus nonce for writes.
+- Both public and administrative rosters may exist before payment. Requests are created idempotently only after verified payment, then invitations are attempted outside the transaction. Purchaser access uses the existing WooCommerce account ownership or private order key, plus nonce for writes.
 - No automatic legacy opt-in action ships. Old reservations with no policy remain waiver-disabled. Global changes affect newly created reservations only, including holds; changing the provider/form/text does not silently rewrite existing requests.
 - Normal waiver-required confirmation and activation fail closed if the order is unavailable, association/fingerprint/quantity differs, payment capture is unverified, or a refund exists. Staff must resolve those discrepancies. Financial refunds do not release bikes. Terminal bookings cannot be revived by completion.
 - Confirmation sends no additional rental-confirmed email in this milestone; WooCommerce owns financial order emails. Repeated payment/provider hooks neither duplicate requests nor send repeated invitations. The customer progress page is authoritative for rental confirmation.
 - Signature evidence retention depends on preserving WPForms entries/assets alongside custom records. No signature blobs, payment credentials or session hashes appear in rider/waiver tables or signer views.
 - No cancellation-policy text, deposit implementation, additional waiver provider or later milestone is included.
+
+## 0.8.1 operational settings and cleanup
+
+Legal text/version and provider mappings remain frozen in the reservation/request policy. Signing-page selection and adult/guardian email templates are read from current settings on each invitation, including resend. The generic shortcode owns token checks and legal/context display; only the selected provider renders its form. Old root invitation URLs remain supported until their normal expiry. Missing, draft, password-protected or shortcode-less signing pages fail setup readiness.
+
+`WaiverEmail` performs non-recursive plain-text substitution. Supported placeholders: `{business_name}`, `{reservation_reference}`, `{rider_name}`, `{rider_age}`, `{guardian_name}`, `{guardian_relationship}`, `{package_name}`, `{rental_start}`, `{rental_end}`, `{waiver_url}`, `{waiver_version}`. Dates use the agreed local schedule plus timezone. Adult guardian values are blank. Unknown placeholders remain literal; subjects and substituted values cannot inject email headers. Each body must include `{waiver_url}`. Transport acceptance is described as submitted for delivery, not verified delivery.
+
+`ReservationCleanup` permanently deletes only a selected cancelled/expired record after capability, nonce, explicit warning/confirmation and current revision validation. It rechecks eligibility while holding the shared transaction, deletes incomplete waivers, riders, and the reservation (including its request/session linkage), and rolls back on any failed write. All linked Woo orders are conservatively protected, including unpaid/draft/trashed orders and reverse order metadata relationships. Completed, exempt, provider-referenced, inconsistent-association, or return-turnaround audit evidence blocks deletion. No Woo order, provider evidence or fleet-capacity row is deleted. Ordinary cancelled/expired records have no separate availability linkage: allocation reads their status directly. Return blocks are protected rather than removed.
+
+The existing five-minute cron schedule removes rider PII and incomplete waiver rows from cancelled/expired records after 30 days measured from the reservation's last update, only when the same protected-evidence checks pass. The reservation/reference, schedule, status and non-PII audit metadata remain. Batches inspect at most 50 records and persist a rotating ID cursor so protected records cannot indefinitely starve later candidates. No bulk deletion UI is added. WP-Cron must run reliably; order-linked or evidence-protected data requires a separate business retention policy. Uninstall still preserves data. No automatic erasure of completed evidence or full audit-history feature is introduced.
+
+Upgrade: an unpaid 0.8.0 hold with blank riders fails the new checkout validation. Staff may fill the existing roster, or the customer can let the short hold expire and start again. Existing paid records remain usable through their authorized rider/progress page. Schema 2 and existing financial snapshots are unchanged.

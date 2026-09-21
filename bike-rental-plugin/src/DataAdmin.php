@@ -24,14 +24,15 @@ final class DataAdmin {
 		if ( ! Settings::can_manage() ) { return Database::error( 'permission', 'You do not have permission to manage rental data.' ); }
 		if ( ! is_array( $post ) ) { return Database::error( 'input', 'Invalid form submission.' ); }
 		$operation = $post['operation'] ?? null;
-		if ( ! in_array( $operation, array( 'capacity', 'block_create', 'block_update', 'block_disable', 'reservation_create', 'reservation_update', 'reservation_status', 'reservation_confirm_hold', 'availability_test', 'hold_cleanup' ), true ) ) { return Database::error( 'operation', 'Unknown rental operation.' ); }
+		if ( ! in_array( $operation, array( 'capacity', 'block_create', 'block_update', 'block_disable', 'reservation_create', 'reservation_delete', 'reservation_update', 'reservation_status', 'reservation_confirm_hold', 'availability_test', 'hold_cleanup' ), true ) ) { return Database::error( 'operation', 'Unknown rental operation.' ); }
 		$id = $post['id'] ?? '0';
-		$existing = in_array( $operation, array( 'block_update', 'block_disable', 'reservation_update', 'reservation_status', 'reservation_confirm_hold' ), true );
+		$existing = in_array( $operation, array( 'block_update', 'block_disable', 'reservation_delete', 'reservation_update', 'reservation_status', 'reservation_confirm_hold' ), true );
 		if ( $existing ? ! Database::positive( $id ) : ! in_array( $id, array( 0, '0' ), true ) ) { return Database::error( 'id', 'Invalid record ID.' ); }
 		$nonce = $post['_wpnonce'] ?? null;
 		if ( ! is_string( $nonce ) || ! wp_verify_nonce( $nonce, 'brp_' . $operation . '_' . $id ) ) { return Database::error( 'nonce', 'This form expired or failed verification. Reload the page and try again.' ); }
 		if ( in_array( $operation, array( 'block_create', 'block_update', 'reservation_create', 'reservation_update', 'availability_test' ), true ) && ( $post['timezone'] ?? null ) !== wp_timezone_string() ) { return Database::error( 'timezone', 'The WordPress timezone changed while this form was open. Reload before entering local times.' ); }
 		switch ( $operation ) {
+			case 'reservation_delete': return ReservationCleanup::remove( $id, $post['revision'] ?? null, $post['confirm_delete'] ?? null );
 			case 'capacity': return Fleet::set_capacity( $post['quantity'] ?? null );
 			case 'block_create': return Fleet::save_block( $post );
 			case 'block_update': return Fleet::save_block( $post, $id );
@@ -62,6 +63,7 @@ final class DataAdmin {
 		$message = is_wp_error( $result ) ? $result->get_error_message() : __( 'Rental data saved.', 'bike-rental-plugin' );
 		if ( ! is_wp_error( $result ) && 'availability_test' === $operation ) { $message = sprintf( 'Fleet: %d. Peak used: %d. Available: %d. Requested: %d. %s', $result['total_capacity'], $result['peak_existing_usage'], $result['available_quantity'], $result['requested_quantity'], $result['fits'] ? 'Fits.' : 'Does not fit.' ); }
 		if ( ! is_wp_error( $result ) && 'hold_cleanup' === $operation ) { $message = sprintf( 'Expired %d holds. Capacity ignores expired timestamps even before cleanup.', $result ); }
+		if ( ! is_wp_error( $result ) && 'reservation_delete' === $operation ) { $message = 'Reservation permanently deleted.'; }
 		set_transient( 'brp_data_notice_' . get_current_user_id(), array( 'error' => is_wp_error( $result ) || ( 'availability_test' === $operation && ! is_wp_error( $result ) && ! $result['fits'] ), 'message' => $message ), 60 );
 		wp_safe_redirect( self::url( $page, $id ) );
 		exit;
@@ -132,6 +134,7 @@ final class DataAdmin {
 		$row = in_array( $id, array( 0, '0' ), true ) ? null : Reservations::read( $id );
 		if ( is_wp_error( $row ) ) { $this->error( $row ); $row = null; }
 		require __DIR__ . '/reservations-page.php';
+		if ( $row ) { ReservationCleanup::render( $row ); }
 		echo '</div>';
 	}
 

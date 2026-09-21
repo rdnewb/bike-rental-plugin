@@ -45,7 +45,10 @@ defined( 'ABSPATH' ) || exit;
 <h2>3. Choose Quantity</h2>
 <label for="<?php echo esc_attr( $uid ); ?>-quantity">Number of bikes</label>
 <input id="<?php echo esc_attr( $uid ); ?>-quantity" name="quantity" type="number" inputmode="numeric" min="1" step="1" value="1" required disabled>
-<h2>4. Review</h2>
+<h2>4. Rider Information</h2>
+<p>Enter one rider per bike. Adults sign their own waiver; a parent or guardian signs for each minor. Waiver invitations are sent after successful payment.</p>
+<div class="brp-riders"></div>
+<h2>5. Review / Temporary Reservation</h2>
 <div class="brp-summary" aria-live="polite"></div>
 <button class="brp-submit" type="submit" disabled>Reserve bikes</button>
 <p>Your selection is checked again before a temporary hold is created. Then continue to checkout.</p>
@@ -54,7 +57,7 @@ defined( 'ABSPATH' ) || exit;
 </form>
 <div class="brp-status" role="status" aria-live="polite" aria-atomic="true">Loading booking options…</div>
 <section class="brp-result" hidden tabindex="-1" aria-label="Temporary reservation">
-<h2>5. Checkout</h2><h3>Temporary reservation</h3><div class="brp-receipt"></div>
+<h2>6. Checkout</h2><h3>Temporary reservation</h3><div class="brp-receipt"></div>
 <p class="brp-expiry" role="status" aria-live="polite"></p>
 <button class="brp-checkout" type="button" hidden>Continue to checkout</button>
 <button class="brp-restart" type="button" hidden>Start over</button>

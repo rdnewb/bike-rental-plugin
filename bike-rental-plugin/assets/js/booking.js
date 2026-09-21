@@ -13,6 +13,37 @@
         const result = root.querySelector('.brp-result');
         const restart = root.querySelector('.brp-restart');
         const checkout = root.querySelector('.brp-checkout');
+        const riders = root.querySelector('.brp-riders');
+        const readRiders = () => Object.fromEntries(Array.from(riders.children, (section, index) => [index + 1,
+            Object.fromEntries(Array.from(section.querySelectorAll('input'), (input) => [input.dataset.field, input.value]))]));
+        const renderRiders = () => {
+            const previous = readRiders(); riders.replaceChildren();
+            if (fields.quantity.disabled || !fields.quantity.checkValidity()) return;
+            for (let i = 1; i <= Number(fields.quantity.value); i++) {
+                const section = document.createElement('fieldset');
+                const legend = document.createElement('legend'); legend.textContent = `Rider ${i}`; section.append(legend);
+                const inputs = {};
+                Object.entries({ legal_name: 'Full legal name', age: 'Age', email: 'Rider email (optional for minors)', guardian_name: 'Parent/guardian full legal name', guardian_email: 'Parent/guardian email', guardian_relationship: 'Relationship to minor' }).forEach(([key, text]) => {
+                    const label = document.createElement('label'); label.textContent = text;
+                    const input = document.createElement('input'); input.name = `riders[${i}][${key}]`; input.dataset.field = key;
+                    input.type = key === 'age' ? 'number' : key.includes('email') ? 'email' : 'text';
+                    input.value = previous[i]?.[key] || ''; input.autocomplete = 'off';
+                    input.maxLength = key.includes('email') ? 254 : key === 'guardian_relationship' ? 120 : 240;
+                    if (key === 'age') { input.min = '0'; input.max = '120'; input.step = '1'; }
+                    input.required = key === 'legal_name' || key === 'age';
+                    label.append(input); section.append(label); inputs[key] = input;
+                });
+                const classify = () => {
+                    const known = inputs.age.value !== '' && inputs.age.checkValidity(); const minor = known && Number(inputs.age.value) < 18;
+                    inputs.email.required = known && !minor;
+                    Object.keys(inputs).filter((key) => key.startsWith('guardian_')).forEach((key) => {
+                        inputs[key].parentElement.hidden = !minor; inputs[key].disabled = !minor; inputs[key].required = minor;
+                    });
+                };
+                inputs.age.addEventListener('input', classify); classify(); riders.append(section);
+            }
+        };
+        riders.addEventListener('input', () => { requestKey = ''; store(''); });
         const cards = Array.from(root.querySelectorAll('.brp-card'));
         const details = root.querySelector('.brp-details');
         const changeRental = root.querySelector('.brp-change-rental');
@@ -171,23 +202,25 @@
                 fields.quantity.max = String(data.available_quantity);
                 fields.quantity.value = String(Math.max(1, Math.min(Number(fields.quantity.value), data.available_quantity)));
                 fields.quantity.disabled = !data.available_quantity; submit.disabled = !data.available_quantity;
+                renderRiders();
                 line(summary, 'Start', dateLabel(data.rental_start)); line(summary, 'Pickup / end', dateLabel(data.rental_end));
                 line(summary, 'Timezone', data.timezone); price(summary, data.package); message(data.message);
             } catch (error) { if (current === generation) message(error.message); }
             finally { if (current === generation) root.removeAttribute('aria-busy'); }
         });
-        fields.quantity.addEventListener('input', () => { requestKey = ''; store(''); submit.disabled = !selection || !fields.quantity.checkValidity(); });
+        fields.quantity.addEventListener('input', () => { requestKey = ''; store(''); submit.disabled = !selection || !fields.quantity.checkValidity(); renderRiders(); });
         form.addEventListener('submit', async (event) => {
             event.preventDefault(); if (!selection || !form.reportValidity()) return;
             if (!requestKey) { const bytes = crypto.getRandomValues(new Uint8Array(24)); requestKey = Array.from(bytes, (v) => v.toString(16).padStart(2, '0')).join(''); }
-            const input = { ...selectionInput(), quantity: fields.quantity.value, request_key: requestKey };
+            const input = { ...selectionInput(), quantity: fields.quantity.value, request_key: requestKey, riders: readRiders() };
             store(requestKey); submit.disabled = true; fields[0].disabled = true; message('Reserving your bikes…');
-            try { const identity = await session(); const hold = await api('holds', input, true, identity.token); showHold(hold); if (hold.reserved) await goCheckout(); }
+            try { const identity = await session(); const hold = await api('holds', input, true, identity.token); showHold(hold); }
             catch (error) { message(error.message); }
             finally { fields[0].disabled = false; submit.disabled = false; }
         });
         const resetBooking = (focus = true) => {
             clearInterval(timer); result.hidden = true; form.hidden = false; resetSelection(); form.reset();
+            riders.replaceChildren();
             fields.package_id.value = ''; updateCards(); details.hidden = true;
             filtered = false; showCards(); changeRental.hidden = true; syncUrl(''); root.dataset.selectionSource = 'none';
             fields.time.disabled = true; fields.date.disabled = true;

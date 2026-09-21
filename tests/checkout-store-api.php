@@ -45,7 +45,7 @@ try {
 	$payload = array( 'billing_address' => $billing, 'shipping_address' => $address, 'payment_method' => 'square_credit_card', 'payment_data' => array(), 'customer_note' => '', 'create_account' => false );
 	if ( ! in_array( '--normal', $argv, true ) ) {
 	$date = ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+7 days' )->format( 'Y-m-d' );
-	$hold = Database::public_booking( static fn() => Reservations::create_booking_hold( array( 'package_id' => $product->get_id(), 'quantity' => 3, 'date' => $date, 'time' => '09:00' ), 'store-api-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $hold ), 'three-bike calendar hold created' );
+	$hold = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $product->get_id(), 'quantity' => 3, 'date' => $date, 'time' => '09:00' ), 'store-api-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $hold ), 'three-bike calendar hold created' );
 	$transfer = Checkout::transfer( $hold['request_key'] ); scheck( ! is_wp_error( $transfer ), 'hold transfers to real Woo cart' );
 	$cart = json_decode( wp_json_encode( sapi( 'GET', 'cart' )->get_data() ), true );
 	scheck( $cart['needs_shipping'] && count( $cart['items'] ) === 1, 'real Store API exposes rental delivery and single item' );

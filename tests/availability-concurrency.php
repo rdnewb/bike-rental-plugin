@@ -116,6 +116,7 @@ foreach ( array( false, true ) as $reverse ) {
 }
 reset_race( 1 );
 $hold = Reservations::create_hold( $input, 'checkout-claim-race', hash( 'sha256', 'concurrent-session' ) );
+$hold = \BikeRentalPlugin\Waivers::save_roster( $hold['id'], brp_test_riders( $hold['quantity'] ), $hold['revision'] );
 $fingerprint = \BikeRentalPlugin\CheckoutReservation::fingerprint( $hold );
 $jobs = array( array( 'operation' => 'checkout_begin', 'id' => $hold['id'], 'order_id' => 900001, 'item_id' => 900002, 'fingerprint' => $fingerprint ), array( 'operation' => 'checkout_begin', 'id' => $hold['id'], 'order_id' => 900003, 'item_id' => 900004, 'fingerprint' => $fingerprint ) );
 $results = run_race( $jobs, 'Two checkout orders claim the same hold' );

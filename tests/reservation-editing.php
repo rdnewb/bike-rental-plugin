@@ -110,6 +110,7 @@ wp_set_current_user( $manager_id );
 $manager_saved = good( $admin->dispatch( form_data( 'reservation_update', $edit_id, array_replace( $changes, array( 'quantity' => 5, 'status' => 'cancelled', 'issue_code' => 'Manager correction', 'revision' => 4 ) ) ) ), 'authorized real shop manager saves reservation edit' );
 wp_set_current_user( 1 );
 foreach ( Reservations::STATUSES as $status ) {
+	if ( 'pending_waivers' === $status ) { bad( Reservations::update( $edit_id, array_replace( $changes, array( 'quantity' => 5, 'status' => $status ) ), $manager_saved['revision'] ), 'waiver-disabled reservation cannot enter pending waivers' ); continue; }
 	$status_schedule = in_array( $status, array( 'active', 'completed' ), true ) ? array( 'start' => '2020-07-20T10:00', 'end' => '2020-07-22T10:00' ) : array();
 	$manager_saved = good( Reservations::update( $edit_id, array_replace( $changes, $status_schedule, array( 'quantity' => 5, 'status' => $status, 'issue_code' => 'Manager correction' ) ), $manager_saved['revision'] ), 'admin correction supports existing status with valid timing: ' . $status );
 }

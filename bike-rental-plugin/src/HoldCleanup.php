@@ -9,6 +9,7 @@ final class HoldCleanup {
 		add_filter( 'cron_schedules', array( self::class, 'schedules' ) );
 		add_action( 'init', array( self::class, 'schedule' ), 30 );
 		add_action( self::HOOK, array( self::class, 'run' ) );
+		add_action( self::HOOK, array( ReservationCleanup::class, 'retention' ), 30 );
 	}
 	public static function schedules( $schedules ) {
 		$schedules['brp_five_minutes'] = array( 'interval' => 300, 'display' => __( 'Every five minutes (rental holds)', 'bike-rental-plugin' ) );

@@ -20,10 +20,10 @@ const check = (ok, label) => { assert.ok(ok, label); checks++; console.log('PASS
    await page.setViewportSize({width,height:900}); await page.goto('http://127.0.0.1:33319/riders');
    check(await page.locator('fieldset').count() === 2, `${width}: one fieldset per bike`);
    check(await page.getByRole('status').innerText().then(s=>s.includes('not confirmed') && s.includes('0 of 2')), `${width}: incomplete notice and progress`);
-   check(await page.locator('[name="riders[1][legal_name]"]').inputValue() === 'Buyer Example', `${width}: purchaser name prefilled`);
-   check(await page.locator('[name="riders[1][email]"]').inputValue() === 'buyer@example.test', `${width}: purchaser email prefilled`);
-   check(await page.locator('[name="riders[1][age]"]').inputValue() === '', `${width}: age requires rider input`);
-   await page.locator('[name="riders[2][legal_name]"]').fill('Minor Example'); await page.keyboard.press('Tab');
+   check(await page.locator('[name="riders[1][legal_name]"]').inputValue() === 'Adult One', `${width}: pre-checkout rider name retained`);
+   check(await page.locator('[name="riders[1][email]"]').inputValue() === 'adult.one@example.test', `${width}: pre-checkout adult email retained`);
+   check(await page.locator('[name="riders[1][age]"]').inputValue() === '18', `${width}: pre-checkout age retained`);
+   await page.locator('[name="riders[2][legal_name]"]').focus(); await page.keyboard.press('Tab');
    check(await page.locator('[name="riders[2][age]"]').evaluate(e=>e === document.activeElement), `${width}: keyboard moves to age`);
    check(await page.locator('form').getAttribute('action').then(s=>s.endsWith('/wp-admin/admin-post.php')), `${width}: native POST endpoint`);
    check(await page.locator('input').evaluateAll(inputs=>inputs.filter(e=>e.type !== 'hidden').every(e=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth;})), `${width}: inputs fit viewport`);

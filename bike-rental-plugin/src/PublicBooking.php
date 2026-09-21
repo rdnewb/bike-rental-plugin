@@ -35,7 +35,7 @@ final class PublicBooking {
 		}
 		$limit = GuestSession::limit( 'holds' === $route );
 		if ( is_wp_error( $limit ) ) { return self::reply( $limit ); }
-		$allowed = match ( $route ) { 'packages', 'session' => array(), 'times' => array( 'package_id', 'date' ), 'availability' => array( 'package_id', 'date', 'time' ), 'holds' => array( 'package_id', 'date', 'time', 'quantity', 'request_key' ), 'hold-status', 'checkout' => array( 'request_key' ), default => array() };
+		$allowed = match ( $route ) { 'packages', 'session' => array(), 'times' => array( 'package_id', 'date' ), 'availability' => array( 'package_id', 'date', 'time' ), 'holds' => array( 'package_id', 'date', 'time', 'quantity', 'request_key', 'riders' ), 'hold-status', 'checkout' => array( 'request_key' ), default => array() };
 		$input = $request->get_params();
 		unset( $input['rest_route'] );
 		if ( array_diff( array_keys( $input ), $allowed ) || array_diff( $allowed, array_keys( $input ) ) ) { return self::reply( BookingSchedule::error( 'Please complete the requested booking fields.' ) ); }
@@ -61,7 +61,7 @@ final class PublicBooking {
 			$code = $result->get_error_code();
 			$message = 'Online rental selection is temporarily unavailable. Please try again.';
 			$status = 503;
-			if ( in_array( $code, array( 'brp_selection', 'brp_session', 'brp_existing_hold', 'brp_idempotency', 'brp_rate', 'brp_checkout' ), true ) ) { $message = $result->get_error_message(); $status = $result->get_error_data()['status'] ?? 400; }
+			if ( in_array( $code, array( 'brp_rider', 'brp_selection', 'brp_session', 'brp_existing_hold', 'brp_idempotency', 'brp_rate', 'brp_checkout' ), true ) ) { $message = $result->get_error_message(); $status = $result->get_error_data()['status'] ?? 400; }
 			if ( 'brp_conflict' === $code ) { $message = sprintf( 'Only %d bikes are available. Please choose another time or quantity.', max( 0, $result->get_error_data()['available_quantity'] ?? 0 ) ); $status = 409; }
 			if ( in_array( $code, array( 'brp_quantity', 'brp_request' ), true ) ) { $message = 'Please check your bike quantity and rental selection.'; $status = 400; }
 			$result = array( 'valid' => false, 'message' => $message );
