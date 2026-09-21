@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2 - Product card text color
+
+- Add Product Card Text Color to Booking Form Branding using the existing validated WordPress color picker.
+- Apply to public shortcode card titles, descriptions, prices, promotional labels and image-placeholder text. Button text remains separately configurable; blank preserves existing appearance.
+- Keep schema 2 and rental/payment/waiver behavior unchanged.
+
 ## 0.8.1 - Pre-checkout riders, signing page and protected cleanup
 
 - Persist exactly one validated rider per bike in the hold transaction before WooCommerce checkout; dynamically collect adult or guardian details and revalidate server-side. No waiver requests or emails before verified payment.

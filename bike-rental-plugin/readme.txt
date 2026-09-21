@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.8.1
+Stable tag: 0.8.2
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,7 +9,7 @@ Reusable bicycle-rental settings, packages, reservations, and shared fleet avail
 
 == Description ==
 
-Version 0.8.1 refines pre-checkout rider collection and generic waiver management.
+Version 0.8.2 adds configurable product-card text color and retains pre-checkout rider collection and generic waiver management.
 Waivers default to No. Configure the Waivers settings tab and dedicated mapped form
 before enabling. Full Payment remains selected; deposit architecture is unchanged.
 Paid bookings with required waivers enter Pending Waivers and retain inventory until
@@ -44,7 +44,7 @@ tab with WordPress notices. Direct links use admin.php?page=brp-settings&tab=bra
 or tab=general. Invalid tabs fall back to General. No data migration; schema remains 1.
 
 Booking Form Branding includes the existing 0.7.1 controls: heading, safe intro,
-card/change button labels, six color pickers, radius presets, Media Library logo and
+card/change button labels, seven color pickers (including Product Card Text Color), radius presets, Media Library logo and
 administrator-only scoped CSS. Blank colors retain current appearance. Typography uses
 theme font families; no fonts or font controls are added. Save and refresh to preview.
 Branding uses the existing settings option and nonce/capability checks. Custom CSS supports
@@ -134,6 +134,11 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.8.2 =
+* Add Product Card Text Color to Booking Form Branding and public shortcode cards.
+* Blank preserves existing colors; button text retains its separate setting.
+* Schema and booking/payment/waiver logic unchanged.
 
 = 0.8.1 =
 * Persist a validated adult/guardian roster atomically with public holds before checkout.

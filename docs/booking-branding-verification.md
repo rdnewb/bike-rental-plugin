@@ -1,4 +1,12 @@
-# Booking form branding — 0.7.1
+# Booking form branding — updated for 0.8.2
+
+## 0.8.2 verification
+
+425 checks passed: foundation/packages 208, branding integration 81, settings tabs 88, and browser branding 48. The browser checks verify computed title/description/price/unit colors, independent button color, desktop/mobile layout, deep links and checkout handoff. Existing validation and reset paths include the new field. PHP syntax and Git whitespace checks passed. No database schema change (schema 2), payment, availability or waiver-logic changes. Local fixtures only; remote deployment is manual.
+
+After uploading 0.8.2, open Bike Rentals > Settings > Booking Form Branding, set Product Card Text Color, save and refresh the public shortcode page. Check card copy and price, and confirm button text retains its own color. Clear the new field and save to restore existing card colors. Clear page/CDN caches if necessary. Advanced Custom CSS may intentionally override this setting.
+
+Release ZIP: `.release/milestone82/bike-rental-plugin-0.8.2.zip`. Upload the contents of the inner `bike-rental-plugin` folder to `wp-content/plugins/bike-rental-plugin/`. Commit message: `feat: add product card text color setting in 0.8.2`. Historical release results below are retained as historical evidence.
 
 ## Settings and defaults
 
@@ -16,6 +24,7 @@ Open **Bike Rentals > Settings > Booking Form Branding**. These fields use the e
 | Primary Button Text Color | Blank retains system canvas text on selection buttons and inherited text on other booking actions. |
 | Selected Package Border / Highlight Color | Blank follows the accent, then the original system foreground fallback. |
 | Card Background Color | Blank retains system `Canvas`. |
+| Product Card Text Color | Blank retains existing colors. Sets card titles, descriptions, prices, promotional labels and image-placeholder text. Button text remains controlled separately. |
 | Card Border Color | Blank retains system `GrayText`. |
 | Border Radius | `Current defaults` retains .75rem cards and .25rem buttons. Square = 0, Slightly Rounded = .25rem, Rounded = .75rem, Very Rounded = 1.5rem, applied to cards/buttons only. |
 | Booking Logo / Image | None (attachment ID 0). Choose/remove using the native Media Library. |
@@ -23,7 +32,7 @@ Open **Bike Rentals > Settings > Booking Form Branding**. These fields use the e
 
 Labels are plain text, sanitized on save and escaped in HTML/attributes; JavaScript uses textContent for changed labels. Button labels have a 240-byte limit and never become blank. Intro markup uses an explicit WordPress allowlist with safe URL protocols; scripts/event attributes and embedded content are removed. Script/style/iframe/object blocks are removed with their content.
 
-All six colors use native WordPress color pickers. Only blank or 3/6-digit hex is accepted; colors normalize to lowercase six-digit hex. No arbitrary expressions, named colors or 8-digit alpha colors in these settings. Invalid submitted fields retain the previous complete settings, with an admin error. Invalid persisted presentation fields fall back individually on read, without making booking unavailable.
+All seven colors use native WordPress color pickers. Only blank or 3/6-digit hex is accepted; colors normalize to lowercase six-digit hex. No arbitrary expressions, named colors or 8-digit alpha colors in these settings. Invalid submitted fields retain the previous complete settings, with an admin error. Invalid persisted presentation fields fall back individually on read, without making booking unavailable.
 
 Use **Restore booking branding defaults when saving** to reset only branding, including the logo. Administrators also reset custom CSS; shop managers cannot change or erase administrator CSS, including through forged form submissions or reset. Other settings submitted in the same form still save normally. Scheduling/payment settings are never reset by this checkbox. Submissions omitting the branding section retain existing branding.
 
@@ -31,7 +40,7 @@ Use **Restore booking branding defaults when saving** to reset only branding, in
 
 The wrapper receives only validated overrides:
 
-`--brp-accent`, `--brp-button-bg`, `--brp-button-text`, `--brp-selected-border`, `--brp-card-bg`, `--brp-card-border`, `--brp-radius`.
+`--brp-accent`, `--brp-button-bg`, `--brp-button-text`, `--brp-selected-border`, `--brp-card-bg`, `--brp-card-text`, `--brp-card-border`, `--brp-radius`.
 
 `booking.css` consumes these properties under `.brp-booking`. Blank settings emit no overrides; explicit fallback chains preserve the prior appearance. Font families inherit the current WordPress/Divi theme, including theme heading families and inherited form fonts. Existing relative size/weight hierarchy remains; this release adds no typography scale, family selector, font loading or external font service. Unrelated WooCommerce/Divi buttons, product cards and WordPress admin styles are not changed.
 
@@ -113,7 +122,7 @@ Local package: `.release/milestone7a/bike-rental-plugin-0.7.1.zip`. All **39 run
 ### Manual steps
 
 1. Upload the entire 0.7.1 plugin folder. Without changing branding, verify the ordinary and deep-linked booking pages retain their previous colors/layout and remain usable. Purge page/asset caches if needed; preserve query-aware caching for rental links.
-2. In Booking Form Branding, set a custom heading/intro, three button labels, all six colors and a rounded preset. Save and refresh. Check the chosen values, selected highlight, focus and review/checkout buttons. Clear heading/intro and confirm no empty elements.
+2. In Booking Form Branding, set a custom heading/intro, three button labels, all seven colors and a rounded preset. Save and refresh. Check the chosen values, selected highlight, focus and review/checkout buttons. Clear heading/intro and confirm no empty elements.
 3. Use Choose image to select a Media Library image with alt text. Verify its responsive public display, then Remove image and save. Delete a selected test attachment and confirm graceful omission.
 4. Open `/reserve/?rental=3-day-rental` with a real active slug. Check one branded selected card, custom Change Rental label and normal switching to hourly/7-day packages. Complete the usual date/time/quantity and checkout tests.
 5. At desktop/tablet/mobile widths, verify 3/2/1 columns, no logo overflow, readable button contrast, visible keyboard focus and usable selected text. Check with the actual Divi fonts and modules.

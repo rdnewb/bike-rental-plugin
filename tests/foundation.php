@@ -82,7 +82,7 @@ function check( $condition, $label ) {
 
 $settings = new Settings();
 $defaults = Settings::defaults();
-check( '0.8.1' === Plugin::VERSION, 'version constant' );
+check( '0.8.2' === Plugin::VERSION, 'version constant' );
 check( isset( $hooks['plugins_loaded'] ) && ! isset( $hooks['admin_init'] ), 'bootstrap defers initialization' );
 check( 90 === $defaults['booking_horizon'] && 30 === $defaults['time_increment'], 'neutral scheduling defaults' );
 check( 0 === array_sum( array_column( $defaults['weekly_hours'], 'open' ) ), 'all seven days default closed' );
@@ -99,7 +99,7 @@ $options[ Settings::OPTION ] = $valid;
 Plugin::activate();
 Plugin::record_version();
 check( $valid === $options[ Settings::OPTION ], 'reactivation and version handling preserve saved settings' );
-check( '0.8.1' === $options['brp_plugin_version'], 'version recorded independently of settings' );
+check( '0.8.2' === $options['brp_plugin_version'], 'version recorded independently of settings' );
 check( 'Ready for Package Setup' === Settings::configuration_status( $valid ), 'valid business and open day ready for package setup' );
 $partial = $defaults;
 $partial['business_name'] = 'Coastal Cycles';

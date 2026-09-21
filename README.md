@@ -2,7 +2,7 @@
 
 A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on Windows and deployed as a self-contained directory through SFTP. Business identity belongs in configuration. This project is focused on bicycle rentals.
 
-**Current version: 0.8.1 - pre-checkout riders, invitation templates, signing page and protected cleanup. Schema 2. Live WPForms signing, invitation delivery and Square sandbox acceptance remain pending.**
+**Current version: 0.8.2 - configurable product-card text color. Schema 2. Live WPForms signing, invitation delivery and Square sandbox acceptance remain pending.**
 
 **Milestone 8:** the new **Waivers** settings tab defaults to **Require Rider Waivers = No**. This customer's setup uses **Full Payment** and **Yes** after a valid WPForms Elite + Signature form is configured. Paid bookings then retain inventory as **Pending Waivers** until every adult or guardian waiver is verified. Collect and validate one rider per bike before creating the temporary hold and entering checkout; each adult (18+) signs for themselves, and a guardian signs separately for each minor. Older reservations retain their previous policy. See [architecture](docs/waiver-architecture.md), [WPForms setup](docs/wpforms-waiver-provider.md), and [verification and release](docs/waiver-verification.md).
 
@@ -10,7 +10,7 @@ A reusable WordPress/WooCommerce bicycle-rental extension, developed locally on 
 
 **Bike Rentals > Settings** opens on General, with all operational settings and dependency information. The **Booking Form Branding** tab contains the existing branding controls and restore-default action. Each tab saves its own values in the existing option, preserves the other tab, and returns to the same tab with WordPress notices. Direct links use `admin.php?page=brp-settings&tab=general` or `&tab=branding`; unknown tabs fall back to General. See [settings tabs and release verification](docs/settings-tabs-verification.md).
 
-**Bike Rentals > Settings > Booking Form Branding** controls the selection heading, safe intro HTML, three card/change button labels, six colors, card/button radius presets, an optional Media Library logo and administrator-only scoped CSS. Blank colors preserve existing appearance; font families inherit the active theme and no font files are loaded. Save and refresh the booking page to preview. See [branding settings, defaults and verification](docs/booking-branding-verification.md).
+**Bike Rentals > Settings > Booking Form Branding** controls the selection heading, safe intro HTML, three card/change button labels, seven colors, including Product Card Text Color, card/button radius presets, an optional Media Library logo and administrator-only scoped CSS. Blank colors preserve existing appearance; font families inherit the active theme and no font files are loaded. Save and refresh the booking page to preview. See [branding settings, defaults and verification](docs/booking-branding-verification.md).
 
 Use one dedicated page with `[bike_rental_booking]`. Divi buttons can link to `/reserve/?rental=3-day-rental` using the WooCommerce product slug. A valid active package appears selected on its own; **Change Rental** reveals the full grid without reloading. Invalid links fall back to normal selection. See [deep-link usage and verification](docs/deep-link-booking-verification.md).
 
@@ -131,7 +131,7 @@ These APIs return current product data. `Reservations::create()` captures agreed
 
 See [schema and service contracts](docs/reservation-storage.md) for every field/index, the final plugin folder structure, and method signatures.
 
-- Schema option `brp_db_version` is **2**, separate from plugin version **0.8.1**. Tables use the actual WordPress prefix: `{prefix}brp_reservations`, `{prefix}brp_availability`, `{prefix}brp_riders`, and `{prefix}brp_waivers`. See the Milestone 8 architecture for new table fields and migration.
+- Schema option `brp_db_version` is **2**, separate from plugin version **0.8.2**. Tables use the actual WordPress prefix: `{prefix}brp_reservations`, `{prefix}brp_availability`, `{prefix}brp_riders`, and `{prefix}brp_waivers`. See the Milestone 8 architecture for new table fields and migration.
 - Availability row **1** is the sole capacity row. Its saved quantity is authoritative and is never reset during upgrades. Fleet quantities must be positive integers. Capacity is independent of WooCommerce and Square stock.
 - Blocks reserve a quantity against a local start and optional end; a reason is required. Active blocks and reservations share the same availability calculation. Block replacements exclude their existing allocation; fleet reductions must support peak combined usage across all current/future commitments.
 - Administrator input/display uses the current WordPress timezone. Storage uses UTC. Invalid dates, daylight-saving gaps, repeated clock times, and changed form timezones are rejected.

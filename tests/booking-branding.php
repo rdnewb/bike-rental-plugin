@@ -27,7 +27,7 @@ try {
 	brand_check( ! str_contains( $html, 'class="brp-intro"' ), 'empty intro omitted' );
 	$branding['heading'] = '<b>Explore</b> & ride'; $branding['intro'] = '<p>Hello <strong>riders</strong> <em>today</em><br><a href="https://example.test/terms" onclick="alert(1)">Terms</a></p><script>alert(2)</script><a href="javascript:alert(3)">Bad</a><iframe src="https://example.test"></iframe>';
 	$branding['select_text'] = '<i>Book this</i>'; $branding['selected_text'] = 'Your choice'; $branding['change_text'] = 'Choose another';
-	$branding += array(); foreach ( array( 'accent' => '#AbC', 'button_bg' => '#123456', 'button_text' => '#ffffff', 'selected_border' => '#345678', 'card_bg' => '#fefefe', 'card_border' => '#567890' ) as $key => $value ) { $branding[ $key ] = $value; }
+	$branding += array(); foreach ( array( 'accent' => '#AbC', 'button_bg' => '#123456', 'button_text' => '#ffffff', 'selected_border' => '#345678', 'card_bg' => '#fefefe', 'card_text' => '#234567', 'card_border' => '#567890' ) as $key => $value ) { $branding[ $key ] = $value; }
 	$branding['radius'] = 'rounded'; $branding['custom_css'] = '.brp-booking .brp-promo { color: #123456; } .brp-booking .brp-card:hover, .brp-booking .brp-intro { letter-spacing: 1px; }';
 	$stored = brand_save( $branding ); $branding = $stored['branding'];
 	brand_check( 'Explore & ride' === $branding['heading'] && 'Book this' === $branding['select_text'], 'plain text headings / labels sanitized' );
@@ -39,7 +39,7 @@ try {
 	brand_check( str_contains( $html, '<strong>riders</strong>' ) && str_contains( $html, '<em>today</em>' ) && str_contains( $html, 'href="https://example.test/terms"' ), 'intro allows safe formatting and links' );
 	brand_check( ! str_contains( $html, '<script' ) && ! str_contains( $html, 'alert(2)' ) && ! str_contains( $html, 'onclick=' ) && ! str_contains( $html, 'javascript:' ) && ! str_contains( $html, '<iframe' ), 'unsafe intro HTML cannot execute' );
 	brand_check( str_contains( $html, 'Explore &amp; ride' ) && str_contains( $html, '>Book this</button>' ), 'custom heading and selection label escaped/rendered' );
-	foreach ( array( 'accent' => '#aabbcc', 'button-bg' => '#123456', 'button-text' => '#ffffff', 'selected-border' => '#345678', 'card-bg' => '#fefefe', 'card-border' => '#567890', 'radius' => '.75rem' ) as $name => $value ) { brand_check( str_contains( $html, '--brp-' . $name . ':' . $value ), 'wrapper variable ' . $name ); }
+	foreach ( array( 'accent' => '#aabbcc', 'button-bg' => '#123456', 'button-text' => '#ffffff', 'selected-border' => '#345678', 'card-bg' => '#fefefe', 'card-text' => '#234567', 'card-border' => '#567890', 'radius' => '.75rem' ) as $name => $value ) { brand_check( str_contains( $html, '--brp-' . $name . ':' . $value ), 'wrapper variable ' . $name ); }
 	foreach ( array( 'default' => '', 'square' => '--brp-radius:0', 'slight' => '--brp-radius:.25rem', 'rounded' => '--brp-radius:.75rem', 'very' => '--brp-radius:1.5rem' ) as $key => $expected ) { brand_check( $expected === Branding::variables( array( 'radius' => $key ) ), 'radius preset: ' . $key ); }
 	$bad = $branding; $bad['radius'] = 'calc(1px)'; brand_check( (bool) Branding::validate( $bad )['errors'], 'arbitrary radius units rejected' );
 	$_GET['rental'] = $products[1]->get_slug(); $deep_html = PublicBooking::shortcode();
@@ -79,7 +79,7 @@ try {
 	$_GET['tab'] = 'branding'; ob_start(); ( new Settings() )->render(); $admin_html = ob_get_clean();
 	brand_check( str_contains( $admin_html, 'Booking Form Branding' ) && str_contains( $admin_html, 'options.php' ), 'branding uses existing Settings API form' );
 	brand_check( str_contains( $admin_html, 'brp_settings_group-options' ) || str_contains( $admin_html, 'name="_wpnonce"' ), 'existing settings nonce rendered' );
-	brand_check( 6 === brand_dom( $admin_html )->query( '//input[@class="brp-color"]' )->length, 'six native color-picker fields' );
+	brand_check( 7 === brand_dom( $admin_html )->query( '//input[@class="brp-color"]' )->length, 'seven native color-picker fields' );
 	brand_check( str_contains( $admin_html, 'Advanced Custom CSS' ) && str_contains( $admin_html, 'sufficient contrast' ), 'advanced and accessibility guidance rendered' );
 	Branding::assets( 'dashboard' ); brand_check( ! wp_script_is( 'brp-branding-admin', 'enqueued' ), 'branding controls not loaded on unrelated admin pages' );
 	Branding::assets( 'toplevel_page_' . Settings::PAGE );

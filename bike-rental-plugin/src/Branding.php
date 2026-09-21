@@ -5,10 +5,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class Branding {
 	public static function defaults() {
-		return array( 'heading' => 'Choose Your Rental', 'intro' => '<p>Choose a rental below, then select your date, start time, and number of bikes.</p>', 'select_text' => 'Select Rental', 'selected_text' => 'Selected', 'change_text' => 'Change Rental', 'accent' => '', 'button_bg' => '', 'button_text' => '', 'selected_border' => '', 'card_bg' => '', 'card_border' => '', 'radius' => 'default', 'logo_id' => 0, 'custom_css' => '' );
+		return array( 'heading' => 'Choose Your Rental', 'intro' => '<p>Choose a rental below, then select your date, start time, and number of bikes.</p>', 'select_text' => 'Select Rental', 'selected_text' => 'Selected', 'change_text' => 'Change Rental', 'accent' => '', 'button_bg' => '', 'button_text' => '', 'selected_border' => '', 'card_bg' => '', 'card_text' => '', 'card_border' => '', 'radius' => 'default', 'logo_id' => 0, 'custom_css' => '' );
 	}
 	public static function colors() {
-		return array( 'accent' => 'Primary Accent Color', 'button_bg' => 'Primary Button Background Color', 'button_text' => 'Primary Button Text Color', 'selected_border' => 'Selected Package Border / Highlight Color', 'card_bg' => 'Card Background Color', 'card_border' => 'Card Border Color' );
+		return array( 'accent' => 'Primary Accent Color', 'button_bg' => 'Primary Button Background Color', 'button_text' => 'Primary Button Text Color', 'selected_border' => 'Selected Package Border / Highlight Color', 'card_bg' => 'Card Background Color', 'card_text' => 'Product Card Text Color', 'card_border' => 'Card Border Color' );
 	}
 	public static function texts() {
 		return array( 'heading' => 'Booking Section Heading', 'select_text' => 'Select Rental Button Text', 'selected_text' => 'Selected Button Text', 'change_text' => 'Change Rental Button Text' );

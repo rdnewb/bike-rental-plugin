@@ -60,6 +60,9 @@ async function fillRiders(page) {
         check(await page.locator('.brp-change-rental').textContent() === 'Choose another', 'custom Change Rental label');
         check(await page.locator('.brp-card.brp-selected').evaluate((e) => getComputedStyle(e).borderColor) === 'rgb(52, 86, 120)', 'configured selected border applied');
         check(await page.locator('.brp-card:visible').evaluate((e) => getComputedStyle(e).backgroundColor) === 'rgb(254, 254, 254)', 'configured card background applied');
+        for (const selector of ['h3', '.brp-description', '.brp-card-price', '.brp-price-unit']) {
+            check(await page.locator('.brp-card:visible ' + selector).evaluate((e) => getComputedStyle(e).color) === 'rgb(35, 69, 103)', 'configured card text applied to ' + selector);
+        }
         check(await page.locator('.brp-select:visible').evaluate((e) => getComputedStyle(e).backgroundColor) === 'rgb(18, 52, 86)', 'configured button background applied');
         check(await page.locator('.brp-select:visible').evaluate((e) => getComputedStyle(e).color) === 'rgb(255, 255, 255)', 'configured button text applied');
         check(await page.locator('.brp-card:visible').evaluate((e) => getComputedStyle(e).borderRadius) === '12px', 'radius preset applied');
