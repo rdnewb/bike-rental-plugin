@@ -54,9 +54,8 @@ final class License {
   return is_string( $url ) && 'https' === wp_parse_url( $url, PHP_URL_SCHEME ) && ! wp_parse_url( $url, PHP_URL_USER ) && ! wp_parse_url( $url, PHP_URL_QUERY ) && ! wp_parse_url( $url, PHP_URL_FRAGMENT ) ? rtrim( $url, '/' ) : false;
  }
  public static function enforced() {
-  $enforce = (bool) apply_filters( 'brp_license_enforcement_enabled', defined( 'BRP_LICENSE_ENFORCE' ) && BRP_LICENSE_ENFORCE );
-  if ( in_array( wp_get_environment_type(), array( 'local', 'development' ), true ) && defined( 'BRP_LICENSE_DEV_MODE' ) && BRP_LICENSE_DEV_MODE ) { return false; }
-  return $enforce;
+  // Enforcement is on unless explicitly overridden in wp-config.php.
+  return defined( 'BRP_LICENSE_ENFORCE' ) ? (bool) BRP_LICENSE_ENFORCE : true;
  }
  public static function entitlement() {
   $s = self::state(); $now = time();

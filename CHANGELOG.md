@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.2 — Production license enforcement
+
+- Default new-booking license enforcement ON, overridden only by BRP_LICENSE_ENFORCE in wp-config.php. Remove the filter and environment/development bypass.
+- Hide the controller URL and daily-transmission description on the License page.
+- Preserve bounded seven-day grace, existing reservation/order/waiver access and schema 2.
+
 ## 0.9.1 — Clear license activation state
 
 - Show a prominent License Active confirmation and disabled masked key field after activation; use the stored key automatically for Check License Now and Deactivate License.

@@ -1,20 +1,20 @@
 # Licensing deployment and client setup
 
-The controller is maintained in [rdnewb/nt-license-controller](https://github.com/rdnewb/nt-license-controller). This repository and its ZIP contain only the rental client. Version 0.9.1 clarifies the License tab's activation state; the protocol and enforcement settings remain unchanged.
+The controller is maintained in [rdnewb/nt-license-controller](https://github.com/rdnewb/nt-license-controller). This repository and its ZIP contain only the rental client. Version 0.9.2 enables new-booking license enforcement by default and removes controller details from the License page. The protocol and rental schema remain unchanged.
 
 1. Back up both sites. Verify PHP 8.3+, WordPress 6.6+, InnoDB, database schema permissions, HTTPS and working WP-Cron. The rental site's PHP must provide sodium authenticated encryption. Confirm correct site timezone and synchronized clocks.
 2. Deploy the separately maintained **NT License Controller 0.2.0** using its [migration/deployment guide](https://github.com/rdnewb/nt-license-controller/blob/main/docs/migration-from-bike-rental-repo.md). It remains on `newbytechnologies.com` at `/wp-content/plugins/nt-license-controller/`. Its new Products registry must have `bike-rental-plugin` Active. Server installation, tables and API documentation belong to that repository.
 3. Under **NT Licenses > Add License**, create product `bike-rental-plugin`, select Lifetime/Monthly/Annual, status Active, a positive limit or 0 for unlimited, and a local expiration for monthly/annual. Copy the generated key immediately to a secure location; it is displayed once. The controller cannot recover it later.
-4. Upload **Bike Rental Plugin 0.9.1** to the customer/test site's **`/wp-content/plugins/bike-rental-plugin/`**. This replaces the existing plugin directory's files. Do not upload the controller there or upload the Git repository as a plugin. Rental schema stays 2 and settings/data remain intact.
-5. Open **Bike Rentals > Settings > License** as an administrator. Confirm **Compatibility mode**. Enter the key and click **Activate License**. Confirm active/valid, plan, expiration, used/limit, connection, last validation and next validation. Verify the controller lists this site and installation. Use **Check License Now** and confirm the record's last check advances.
-6. Complete the deployment acceptance checklist in [verification](licensing-phase1-verification.md) on test installations, including suspension, expiry, outage, deactivation and booking behavior. No enforcement is enabled automatically during deployment.
-7. Only after acceptance, explicitly enable production enforcement in the rental site's `wp-config.php`, above the stop-editing line:
+4. Upload **Bike Rental Plugin 0.9.2** to the customer/test site's **`/wp-content/plugins/bike-rental-plugin/`**. This replaces the existing plugin directory's files. Do not upload the controller there or upload the Git repository as a plugin. Rental schema stays 2 and settings/data remain intact.
+5. Open **Bike Rentals > Settings > License** as an administrator. Confirm **Production enforcement is enabled for new reservations**. Enter the key and click **Activate License**. Confirm active/valid, plan, expiration, used/limit, connection, last validation and next validation. Verify the controller lists this site and installation. Use **Check License Now** and confirm the record's last check advances.
+6. Complete the deployment acceptance checklist in [verification](licensing-phase1-verification.md) on test installations, including suspension, expiry, outage, deactivation and booking behavior. Enforcement is on automatically; activate the license before accepting new bookings. Existing activated installations retain their cached entitlement.
+7. No configuration is required for normal enforcement. For an intentional development/maintenance override only, set this boolean in the rental site's `wp-config.php`, above the stop-editing line:
 
 ```php
-define( 'BRP_LICENSE_ENFORCE', true );
+define( 'BRP_LICENSE_ENFORCE', false );
 ```
 
-The trusted PHP filter `brp_license_enforcement_enabled` offers an equivalent integration seam. There is no UI bypass setting. Roll back enforcement by removing the constant or setting it false; existing license state is retained. This is a deliberate rollout control, not part of the purchaser workflow.
+Removing the constant or setting it to boolean true restores enforcement. Use boolean values, not quoted strings. This constant is the only override; there is no UI option or filter bypass. Existing license state is retained. Before upgrading, review any existing false override because it continues to disable enforcement.
 
 For a different HTTPS test controller, set the full namespace base before loading WordPress:
 
@@ -22,7 +22,7 @@ For a different HTTPS test controller, set the full namespace base before loadin
 define( 'BRP_LICENSE_CONTROLLER_URL', 'https://license-test.example.com/wp-json/nt-license/v1' );
 ```
 
-Deactivation on the old controller should precede changing that endpoint/key. For an explicit local/development exception only, `BRP_LICENSE_DEV_MODE=true` disables enforcement when `WP_ENVIRONMENT_TYPE` is `local` or `development`. It has no effect in `staging` or `production`. Development bypass does not bypass HTTPS for actual licensing calls.
+Deactivation on the old controller should precede changing that endpoint/key. The former `BRP_LICENSE_DEV_MODE` and `brp_license_enforcement_enabled` controls are ignored in every environment. The explicit enforcement constant does not bypass HTTPS requirements for licensing calls.
 
 ## Operating instructions
 
@@ -38,3 +38,11 @@ When activated, the tab shows **License Active** and a disabled masked **Saved L
 - Normal deactivation/uninstall preserves all records and options. To free a slot, explicitly deactivate the license before uninstalling or deactivate its activation from controller admin afterward.
 
 Neither deployment folder is a server account's absolute filesystem path: prepend each site's actual document root supplied by the host. No SFTP credentials or server-specific document roots are stored in the repository.
+
+## 0.9.2 verification
+
+442 local checks passed: 12 isolated enforcement configuration cases, 56 client/controller integration checks, 209 package/foundation checks, 90 settings-tab checks and 75 public-booking checks. Configuration cases cover default/true/false across local, development, staging and production with legacy bypass controls present. Licensing integration uses the normal default and verifies grace, definitive denial, existing-rental completion and the simplified License page. Other disposable rental suites explicitly disable licensing in their test bootstrap; this override is not packaged.
+
+All 65 runtime/test PHP files passed syntax checks. The rendered active License page was checked in local Chrome; the masked field, recovery disclosure and enforcement message remain usable, with both requested details absent. The release ZIP contains 49 byte-verified client files. No live deployment or live outage simulation was performed.
+
+After upload, confirm the License page says enforcement is enabled, the existing key remains active, both removed details are absent, and a valid-license booking reaches checkout. On a test installation, check that suspension blocks new bookings with generic public wording while existing reservation management remains accessible. Restore the test license and verify booking resumes.

@@ -1,6 +1,7 @@
 <?php
 /** Two independent WP installations. HTTP transport is bridged to the controller's real REST dispatcher. */
 ob_start();
+define('BRP_TEST_REAL_LICENSING',true);
 require __DIR__ . '/inventory-test-bootstrap.php';
 require_once ABSPATH . 'wp-admin/includes/template.php';
 use BikeRentalPlugin\{License, LicenseAdmin, Settings, PublicBooking, Reservations, Database, DataAdmin};
@@ -23,17 +24,14 @@ $transport=static function($pre,$args,$url){
  $r=cl_worker(array('operation'=>basename($url),'input'=>$payload));
  return array('response'=>array('code'=>$r['status']),'body'=>wp_json_encode($r['body']),'headers'=>array());
 };
-$enforce=static fn()=>true;
 try{
  update_option('home','https://rental.example.test');delete_option(License::OPTION);delete_option(License::INSTALLATION);cl_worker(array('operation'=>'reset'));
  add_filter('pre_http_request',$transport,10,3);
- cl_check(!License::enforced()&&License::allows_new(),'compatibility mode preserves existing installations');
+ cl_check(!defined('BRP_LICENSE_ENFORCE')&&License::enforced()&&!License::allows_new(),'default enforcement blocks unlicensed new bookings');
  $settings=Settings::defaults();$settings['business_name']='Licensing fixture';$settings['preparation_buffer']=0;$settings['turnaround_buffer']=0;update_option(Settings::OPTION,$settings);
  \BikeRentalPlugin\Fleet::set_capacity(10000);
  $product=new WC_Product_Simple();$product->set_name('Licensing existing-rental fixture');$product->set_status('publish');$product->set_regular_price('10');
  foreach(array(\BikeRentalPlugin\Packages::ENABLED=>'yes',\BikeRentalPlugin\Packages::ACTIVE=>'yes',\BikeRentalPlugin\Packages::TYPE=>'hours',\BikeRentalPlugin\Packages::AMOUNT=>4) as $k=>$v){$product->update_meta_data($k,$v);}
- $rental=Reservations::create(array('package_product_id'=>$product->save(),'quantity'=>1,'start'=>'2020-01-01T09:00','end'=>'2020-01-01T13:00','status'=>'active'));
- cl_check(!is_wp_error($rental),'create existing active rental before enforcement');
  License::schedule();cl_check(wp_get_schedule(License::HOOK)==='daily','daily validation scheduled');
  $id=License::installation();cl_check(strlen($id)===64&&License::installation()===$id,'random stable installation ID');
  cl_check(get_option(License::INSTALLATION)!==get_current_user_id(),'installation not based on WordPress ID');
@@ -44,12 +42,15 @@ try{
  $r=cl_admin('activate',$key);cl_check(!is_wp_error($r)&&$r['valid'],'B: activation through real separate controller REST');
  cl_check(cl_worker(array('operation'=>'used','id'=>$license_id))===1,'C: controller tracks activation');
  $s=License::state();cl_check($s['valid']&&License::entitlement()==='valid'&&$s['last_valid_at']>0,'valid activation caches entitlement');
+ $rental=Reservations::create(array('package_product_id'=>$product->save(),'quantity'=>1,'start'=>'2020-01-01T09:00','end'=>'2020-01-01T13:00','status'=>'active'));
+ cl_check(!is_wp_error($rental),'valid license permits rental creation before later suspension');
  cl_check(!str_contains(wp_json_encode($s),$key)&&$s['key_cipher']!==$key,'key encrypted in client option');
  cl_check(!in_array($wpdb->get_var($wpdb->prepare('SELECT autoload FROM %i WHERE option_name=%s',$wpdb->options,License::OPTION)),array('yes','on','auto-on','auto'),true),'secret option not autoloaded');
  cl_check(array_keys($payloads[0])===array('license_key','product_slug','installation_id','site_url','plugin_version','wordpress_version','php_version'),'activation sends only documented licensing fields');
- cl_check($payloads[0]['plugin_version']==='0.9.1'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
+ cl_check($payloads[0]['plugin_version']==='0.9.2'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
  $_GET=array('tab'=>'license');ob_start();(new Settings())->render();$html=ob_get_clean();
  cl_check(str_contains($html,'Check License Now')&&str_contains($html,'Deactivate License')&&str_contains($html,'License Status'),'License tab renders actions and status');
+ cl_check(!str_contains($html,'Controller URL')&&!str_contains($html,License::endpoint())&&!str_contains($html,'Daily validation sends'),'License tab omits controller URL and transmission description');
  cl_check(!str_contains($html,$key)&&str_contains($html,'License Active</strong>')&&str_contains($html,'value="NTL1-****-'.substr($key,-8).'" disabled')&&!str_contains($html,'>Activate License</button>'),'active license is clear and masked; raw stored key absent from HTML');
  cl_check(str_contains($html,'admin-post.php')&&!str_contains($html,'action="'.admin_url('options.php').'"'),'License has independent protected form');
  if($dir=getenv('BRP_LICENSE_FIXTURE_DIR')){file_put_contents($dir.'/license-client.html',$html);}
@@ -61,7 +62,7 @@ try{
  cl_check(!is_wp_error(cl_admin('activate',$key))&&License::entitlement()==='valid','re-enter original key recovers encrypted storage without losing activation');
  $input=cl_fields();$input['status']='suspended';cl_worker(array('operation'=>'save','input'=>$input,'id'=>$license_id));$r=cl_admin('validate');
  cl_check($r['code']==='license_suspended'&&!License::state()['valid'],'E-F: controller suspension immediately invalidates cache');
- add_filter('brp_license_enforcement_enabled',$enforce);cl_check(!License::allows_new(),'invalid enforced license blocks new bookings');
+ cl_check(!License::allows_new(),'invalid enforced license blocks new bookings');
  cl_check(PublicBooking::shortcode()==='<p>'.License::PUBLIC_MESSAGE.'</p>'&&!str_contains(strtolower(PublicBooking::shortcode()),'license'),'public message contains no licensing details');
  foreach(array('packages','times','availability') as $route){$response=PublicBooking::handle(new WP_REST_Request('GET','/bike-rental/v1/'.$route));$json=$response->get_data();cl_check($response->get_status()===503&&str_contains(wp_json_encode($json),'Online booking is temporarily unavailable')&&!str_contains(strtolower(wp_json_encode($json)),'license'),'enforced public REST guard: '.$route);}
  $finished=Reservations::mark_completed($rental['id'],$rental['revision']);cl_check(!is_wp_error($finished)&&$finished['status']==='completed','existing active rental can complete under invalid enforced license');
@@ -93,6 +94,6 @@ try{
  cl_check(!is_wp_error(cl_admin('deactivate')),'final deactivation succeeds');
  echo "$checks client/two-installation integration checks passed. Real controller REST/DB through subprocess transport bridge; HTTPS network deployment still pending.\n";
 }finally{
- remove_filter('pre_http_request',$transport,10);remove_filter('brp_license_enforcement_enabled',$enforce);update_option('home',$saved_home);update_option(License::OPTION,$saved_license,false);if($saved_install){update_option(License::INSTALLATION,$saved_install,false);}else{delete_option(License::INSTALLATION);}wp_set_current_user(1);update_option(Settings::OPTION,$saved_settings);\BikeRentalPlugin\Fleet::set_capacity($saved_capacity);
+ remove_filter('pre_http_request',$transport,10);update_option('home',$saved_home);update_option(License::OPTION,$saved_license,false);if($saved_install){update_option(License::INSTALLATION,$saved_install,false);}else{delete_option(License::INSTALLATION);}wp_set_current_user(1);update_option(Settings::OPTION,$saved_settings);\BikeRentalPlugin\Fleet::set_capacity($saved_capacity);
 }
 ob_end_flush();

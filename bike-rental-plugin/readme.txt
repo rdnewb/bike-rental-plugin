@@ -1,13 +1,18 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.9.1
+Stable tag: 0.9.2
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
 Reusable bicycle-rental settings, packages, reservations, and shared fleet availability.
 
 == Description ==
+
+Version 0.9.2 defaults new-booking license enforcement ON. Only the
+BRP_LICENSE_ENFORCE wp-config.php constant overrides it; the former filter and
+development bypass no longer apply. The License page omits the controller URL
+and transmission description. Existing records, administration and grace remain intact.
 
 Version 0.9.1 clearly shows License Active after activation, with a disabled masked
 key field. Check License Now and Deactivate use the stored key automatically.
@@ -16,8 +21,7 @@ while active. No changes to licensing protocol, enforcement or schema 2.
 
 Version 0.9.0 adds the administrator-only License tab, encrypted key storage,
 activation/deactivation, manual/daily checks and seven-day bounded outage grace.
-Compatibility mode defaults to enforcement OFF. Deploy and test the separate
-NT License Controller before enabling BRP_LICENSE_ENFORCE internally. PHP sodium
+The initial 0.9.0 compatibility default is superseded by 0.9.2 enforcement. PHP sodium
 is required for key storage. No new booking/page-load remote checks. Existing
 reservations, returns, orders and waiver evidence remain accessible when invalid.
 No Stripe billing, renewals or private update delivery. Rental schema remains 2.
@@ -148,6 +152,12 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.9.2 =
+- Default new-booking license enforcement ON, overridden only by BRP_LICENSE_ENFORCE in wp-config.php. Remove the filter and environment/development bypass.
+- Hide the controller URL and daily-transmission description on the License page.
+- Preserve bounded seven-day grace, existing reservation/order/waiver access and schema 2.
+
 
 = 0.9.1 =
 Clear active-license confirmation and disabled masked key field. Stored-key checks
