@@ -2,7 +2,7 @@
 
 The authoritative controller has moved to [rdnewb/nt-license-controller](https://github.com/rdnewb/nt-license-controller). This repository contains **only the client**, with product ID `bike-rental-plugin`. No server namespace, database tables, admin code or server bootstrap is loaded by the rental runtime.
 
-`src/License.php` handles encrypted non-autoload key storage, random installation identity, activation/deactivation, manual/daily validation, local entitlement cache and new-booking guard. `src/LicenseAdmin.php` provides the administrator-only License tab. All packaged files remain unchanged in this extraction; client version is **0.9.0**, rental schema **2**.
+`src/License.php` handles encrypted non-autoload key storage, random installation identity, activation/deactivation, manual/daily validation, local entitlement cache and new-booking guard. `src/LicenseAdmin.php` provides the administrator-only License tab. Client version **0.9.1** adds a clear Active confirmation and disabled masked key field; the protocol, key storage and rental schema **2** remain unchanged. The earlier repository extraction preserved the 0.9.0 runtime.
 
 Default base URL remains `https://newbytechnologies.com/wp-json/nt-license/v1`; HTTPS constant `BRP_LICENSE_CONTROLLER_URL` overrides it. Requests send the original seven fields: key, product, installation, site URL, plugin version, WordPress version and PHP version. The standalone controller supports those fields and the same 12-field response. Server Products inactivity returns the already-supported `license_suspended` denial. See its [API documentation](https://github.com/rdnewb/nt-license-controller/blob/main/docs/api.md).
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 — Clear license activation state
+
+- Show a prominent License Active confirmation and disabled masked key field after activation; use the stored key automatically for Check License Now and Deactivate License.
+- Distinguish grace period and inactive/attention states. Move original-key recovery into a collapsed disclosure while active, preserving recovery after WordPress salt changes.
+- Keep activation protocol, enforcement, key storage, grace and schema 2 unchanged.
+
 ## Repository extraction — client remains 0.9.0
 
 - Move authoritative controller runtime, tests, worker/bootstrap and server documentation to the standalone `rdnewb/nt-license-controller` repository (controller 0.2.0/schema 2).

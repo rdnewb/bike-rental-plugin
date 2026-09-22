@@ -1,13 +1,18 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 0.9.0
+Stable tag: 0.9.1
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
 Reusable bicycle-rental settings, packages, reservations, and shared fleet availability.
 
 == Description ==
+
+Version 0.9.1 clearly shows License Active after activation, with a disabled masked
+key field. Check License Now and Deactivate use the stored key automatically.
+Grace and inactive states remain distinct; original-key recovery is collapsed
+while active. No changes to licensing protocol, enforcement or schema 2.
 
 Version 0.9.0 adds the administrator-only License tab, encrypted key storage,
 activation/deactivation, manual/daily checks and seven-day bounded outage grace.
@@ -143,6 +148,10 @@ Settings, package metadata, fleet, blocks, and reservations are retained on upda
 deactivation, and uninstall. No automatic table deletion is performed.
 
 == Changelog ==
+
+= 0.9.1 =
+Clear active-license confirmation and disabled masked key field. Stored-key checks
+and deactivation remain available; recovery entry is collapsed while active.
 
 = 0.9.0 =
 Licensing Phase 1: independent NT License Controller 0.1.0 and cached client

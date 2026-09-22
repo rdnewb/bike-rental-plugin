@@ -47,10 +47,10 @@ try{
  cl_check(!str_contains(wp_json_encode($s),$key)&&$s['key_cipher']!==$key,'key encrypted in client option');
  cl_check(!in_array($wpdb->get_var($wpdb->prepare('SELECT autoload FROM %i WHERE option_name=%s',$wpdb->options,License::OPTION)),array('yes','on','auto-on','auto'),true),'secret option not autoloaded');
  cl_check(array_keys($payloads[0])===array('license_key','product_slug','installation_id','site_url','plugin_version','wordpress_version','php_version'),'activation sends only documented licensing fields');
- cl_check($payloads[0]['plugin_version']==='0.9.0'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
+ cl_check($payloads[0]['plugin_version']==='0.9.1'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
  $_GET=array('tab'=>'license');ob_start();(new Settings())->render();$html=ob_get_clean();
  cl_check(str_contains($html,'Check License Now')&&str_contains($html,'Deactivate License')&&str_contains($html,'License Status'),'License tab renders actions and status');
- cl_check(!str_contains($html,$key)&&str_contains($html,'value="" maxlength="100"'),'raw stored key absent from HTML');
+ cl_check(!str_contains($html,$key)&&str_contains($html,'License Active</strong>')&&str_contains($html,'value="NTL1-****-'.substr($key,-8).'" disabled')&&!str_contains($html,'>Activate License</button>'),'active license is clear and masked; raw stored key absent from HTML');
  cl_check(str_contains($html,'admin-post.php')&&!str_contains($html,'action="'.admin_url('options.php').'"'),'License has independent protected form');
  if($dir=getenv('BRP_LICENSE_FIXTURE_DIR')){file_put_contents($dir.'/license-client.html',$html);}
  $before=$calls;License::entitlement();License::allows_new();PublicBooking::shortcode();PublicBooking::shortcode();cl_check($calls===$before,'frontend requests do not remotely validate');
