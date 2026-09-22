@@ -7,7 +7,9 @@ use BikeRentalPlugin\{License, LicenseAdmin, Settings, PublicBooking, Reservatio
 $checks=0;$calls=0;$saved_license=License::state();$saved_home=get_option('home');$saved_install=get_option(License::INSTALLATION);$payloads=array();$saved_settings=Settings::get();$saved_capacity=\BikeRentalPlugin\Fleet::capacity();
 function cl_check($ok,$text){if(!$ok){throw new RuntimeException('FAIL: '.$text);}++$GLOBALS['checks'];echo "PASS: $text\n";}
 function cl_worker($input){
- $process=proc_open(array(PHP_BINARY,'-c',php_ini_loaded_file(),__DIR__.'/license-controller-worker.php'),array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w')),$pipes);
+ $controller=getenv('NTLC_CONTROLLER_REPO');$worker=$controller?realpath($controller.'/tests/license-controller-worker.php'):false;
+ if(!$worker||str_starts_with(strtolower($worker),strtolower(dirname(__DIR__).DIRECTORY_SEPARATOR))){throw new RuntimeException('Set NTLC_CONTROLLER_REPO to the separate standalone checkout.');}
+ $process=proc_open(array(PHP_BINARY,'-c',php_ini_loaded_file(),$worker),array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w')),$pipes);
  if(!is_resource($process)){throw new RuntimeException('Worker unavailable.');}fwrite($pipes[0],wp_json_encode($input));fclose($pipes[0]);$out=stream_get_contents($pipes[1]);fclose($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[2]);$exit=proc_close($process);
  $result=json_decode($out,true);if($exit||null===$result){throw new RuntimeException('Controller worker failed (no secrets printed).');}return $result;
 }
@@ -53,6 +55,8 @@ try{
  if($dir=getenv('BRP_LICENSE_FIXTURE_DIR')){file_put_contents($dir.'/license-client.html',$html);}
  $before=$calls;License::entitlement();License::allows_new();PublicBooking::shortcode();PublicBooking::shortcode();cl_check($calls===$before,'frontend requests do not remotely validate');
  cl_check(!is_wp_error(cl_admin('validate')),'D: manual check works');
+ cl_worker(array('operation'=>'product-state','product_slug'=>'bike-rental-plugin','status'=>'inactive'));$paused=cl_admin('validate');cl_check(!is_wp_error($paused)&&$paused['code']==='license_suspended'&&!License::state()['valid'],'standalone inactive product parsed as definitive suspension by unchanged client');
+ cl_worker(array('operation'=>'product-state','product_slug'=>'bike-rental-plugin','status'=>'active'));cl_admin('validate');cl_check(License::entitlement()==='valid','standalone product reactivation restores unchanged client');
  $s=License::state();$s['key_cipher']='unreadable-after-salt-change';update_option(License::OPTION,$s,false);
  cl_check(!is_wp_error(cl_admin('activate',$key))&&License::entitlement()==='valid','re-enter original key recovers encrypted storage without losing activation');
  $input=cl_fields();$input['status']='suspended';cl_worker(array('operation'=>'save','input'=>$input,'id'=>$license_id));$r=cl_admin('validate');

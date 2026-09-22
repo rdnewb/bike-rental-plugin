@@ -1,5 +1,11 @@
 # Changelog
 
+## Repository extraction — client remains 0.9.0
+
+- Move authoritative controller runtime, tests, worker/bootstrap and server documentation to the standalone `rdnewb/nt-license-controller` repository (controller 0.2.0/schema 2).
+- Retain every packaged client file unchanged, including License/LicenseAdmin, product identifier, endpoint override, encrypted cache, schedule, grace and enforcement behavior. No client version/schema bump.
+- Point cross-repository integration tests at an explicit external controller checkout; add client-only release packaging and update developer documentation.
+
 ## 0.9.0 / NT License Controller 0.1.0 - Licensing Phase 1
 
 - Add a separately packaged, product-independent WordPress controller with schema 1 license/activation/event tables, manually issued monthly/annual/lifetime keys, status and expiration administration, atomic activation limits and retained installation history.
