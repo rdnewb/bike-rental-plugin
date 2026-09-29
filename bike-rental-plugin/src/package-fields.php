@@ -42,7 +42,7 @@ $promo = $product->get_meta( Packages::PROMO, true, 'edit' );
 			<label for="brp-rental-active"><?php esc_html_e( 'Rental Active', 'bike-rental-plugin' ); ?></label>
 			<input type="hidden" name="brp_package[active]" value="no">
 			<input type="checkbox" class="checkbox" id="brp-rental-active" name="brp_package[active]" value="yes" <?php checked( $active ); ?>>
-			<span class="description"><?php esc_html_e( 'Include in the future rental package list when published with valid duration and regular price. Public rental booking is not implemented yet.', 'bike-rental-plugin' ); ?></span>
+			<span class="description"><?php esc_html_e( 'Include in public booking when published with a valid duration and price.', 'bike-rental-plugin' ); ?></span>
 		</p>
 	</div>
 	<p class="form-field"><?php esc_html_e( 'Use the standard product title, Regular price, tax fields, description, and image. Use Advanced > Menu order for display order. Sale prices and promotional labels do not change the package reader’s regular price. Rental Active does not change ordinary WooCommerce storefront purchasing.', 'bike-rental-plugin' ); ?></p>

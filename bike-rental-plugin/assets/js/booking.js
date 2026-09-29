@@ -136,7 +136,7 @@
             expiry.setAttribute('aria-live', 'off');
             const tick = () => {
                 if (['pending_waivers', 'confirmed', 'active', 'completed'].includes(hold.reservation_status)) {
-                    clearInterval(timer); expiry.textContent = 'Reservation status: ' + hold.reservation_status; return;
+                    clearInterval(timer); expiry.textContent = 'Reservation status: ' + ({ pending_waivers: 'Pending Waivers', confirmed: 'Confirmed', active: 'Active', completed: 'Completed' })[hold.reservation_status]; return;
                 }
                 const seconds = Math.max(0, Math.ceil((remaining - (performance.now() - began)) / 1000));
                 if (!hold.reserved || !seconds) {

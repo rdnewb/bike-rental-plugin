@@ -34,7 +34,7 @@ ob_start(); $admin->reservations(); $html = ob_get_clean();
 verify_missing( str_contains( $html, 'activate WooCommerce' ) && str_contains( $html, $row['reference'] ), 'missing-WooCommerce list renders existing records and setup guidance' );
 $_GET = array( 'id' => $id );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
-verify_missing( str_contains( $html, '83.27' ), 'reservation detail renders without WooCommerce' );
+verify_missing( str_contains( $html, $row['reference'] ) && str_contains( $html, 'Occupied start (local)' ) && ! str_contains( $html, 'Current reservation snapshot' ), 'reservation detail renders without WooCommerce' );
 verify_missing( 'Verification Cycle Shop' === Settings::get()['business_name'], 'settings remain available without WooCommerce' );
 $calendar = \BikeRentalPlugin\AdminCalendar::load( substr( $row['occupied_start_utc'], 0, 10 ) );
 verify_missing( ! is_wp_error( $calendar ) && ! $calendar['orders'], 'calendar loads gracefully without WooCommerce customer data' );

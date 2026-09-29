@@ -204,10 +204,16 @@ $_GET = array();
 ob_start(); $admin->fleet(); $html = ob_get_clean();
 verify( str_contains( $html, 'Total rentable bikes' ) && str_contains( $html, 'Disabled' ) && str_contains( $html, 'name="_wpnonce"' ), 'Fleet page renders persisted records and real nonce forms' );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
-verify( str_contains( $html, 'Create manual test reservation' ) && str_contains( $html, $reservation['reference'] ), 'reservation list and active package create form render' );
+verify( str_contains( $html, 'Create Reservation' ) && str_contains( $html, $reservation['reference'] ), 'reservation list and active package create form render' );
 $_GET = array( 'id' => $id );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
-verify( str_contains( $html, '83.27' ) && str_contains( $html, 'Occupied start (local)' ) && str_contains( $html, 'Revision' ), 'detail renders original snapshot, occupied interval, and revision' );
+verify( str_contains( $html, 'Occupied start (local)' ) && str_contains( $html, 'name="revision"' ) && ! str_contains( $html, 'Current reservation snapshot' ) && ! str_contains( $html, '<pre' ), 'detail renders business interval and hidden revision without raw snapshot' );
+verify( '83.27' === json_decode( Reservations::read( $id )['snapshot'], true )['price'], 'rendering preserves the original stored snapshot price' );
+foreach ( array( 'test_reservation', 'create_test_reservation', 'sample_reservation', 'demo_reservation' ) as $operation ) {
+ $before_count = Database::listing( 'reservations' )['total'];
+ bad( $admin->dispatch( form_data( $operation, 0, $input ) ), 'no generator operation: ' . $operation );
+ verify( $before_count === Database::listing( 'reservations' )['total'], 'rejected generator inserts no reservation' );
+}
 $wpdb->update( $r, array( 'issue_code' => '<script>alert(1)</script>' ), array( 'id' => $id ) );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
 verify( ! str_contains( $html, '<script>alert(1)</script>' ) && str_contains( $html, '&lt;script&gt;' ), 'stored detail values escaped' );

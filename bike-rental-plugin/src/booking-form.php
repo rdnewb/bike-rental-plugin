@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
 	$description = wp_kses( wpautop( strip_shortcodes( $description ) ), array( 'p' => array(), 'br' => array(), 'strong' => array(), 'b' => array(), 'em' => array(), 'i' => array(), 'ul' => array(), 'ol' => array(), 'li' => array() ) );
 ?>
 <article class="brp-card<?php if ( $selected ) { echo ' brp-selected'; } ?>" data-package-id="<?php echo esc_attr( $card['product_id'] ); ?>" data-package-slug="<?php echo esc_attr( $product->get_slug() ); ?>" aria-labelledby="<?php echo esc_attr( $heading ); ?>"<?php if ( $preselected && ! $selected ) { echo ' hidden'; } ?>>
-<div class="brp-card-image"><?php if ( $image ) { echo wp_kses( $image, array( 'img' => array_fill_keys( array( 'src', 'srcset', 'sizes', 'width', 'height', 'alt', 'class', 'loading', 'decoding', 'fetchpriority' ), true ) ) ); } else { ?><span class="brp-image-fallback" role="img" aria-label="No rental photo available">Rental photo coming soon</span><?php } ?></div>
+<div class="brp-card-image"><?php if ( $image ) { echo wp_kses( $image, array( 'img' => array_fill_keys( array( 'src', 'srcset', 'sizes', 'width', 'height', 'alt', 'class', 'loading', 'decoding', 'fetchpriority' ), true ) ) ); } else { ?><span class="brp-image-fallback" role="img" aria-label="No rental photo available">No rental photo available</span><?php } ?></div>
 <div class="brp-card-content">
 <?php if ( $card['promotional_label'] ) : ?><p class="brp-promo"><?php echo esc_html( $card['promotional_label'] ); ?></p><?php endif; ?>
 <h3 id="<?php echo esc_attr( $heading ); ?>"><?php echo esc_html( $card['name'] ); ?></h3>

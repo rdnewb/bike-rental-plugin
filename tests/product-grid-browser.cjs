@@ -120,6 +120,11 @@ async function fillRiders(page) {
         check(await page.locator('.brp-form').isVisible() && await page.locator('[name=package_id]').inputValue() === '', 'start over returns to unselected grid');
         check(await page.locator('.brp-details').isHidden() && await page.locator('.brp-select[aria-pressed=true]').count() === 0, 'restart clears selected semantics and hides booking controls');
         const setPrevious = () => page.evaluate(() => sessionStorage.setItem('brp-booking:http://127.0.0.1:33319/api//booking', 'removed-hold-fixture'));
+        for (const [status, label] of Object.entries({ pending_waivers: 'Pending Waivers', confirmed: 'Confirmed', active: 'Active', completed: 'Completed' })) {
+            restoredStatus = status; await setPrevious(); await load(false);
+            await page.waitForFunction(() => document.querySelector('.brp-expiry').textContent.startsWith('Reservation status:'));
+            check(await page.locator('.brp-expiry').innerText() === 'Reservation status: ' + label, 'restored receipt uses friendly status: ' + status);
+        }
         restoredStatus = 'cancelled'; await setPrevious(); await load(false);
         await page.waitForFunction(() => document.querySelector('.brp-status').textContent.includes('cancelled'));
         check(await page.locator('.brp-form').isVisible() && await page.locator('.brp-result').isHidden(), 'removed hold returns directly to product grid without old receipt');

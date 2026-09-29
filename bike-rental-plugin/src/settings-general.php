@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 		<div class="notice notice-warning inline"><p><?php esc_html_e( 'WordPress is using a fixed offset or an unrecognized timezone. Choose a named city timezone in WordPress Settings > General so future rentals can follow daylight saving changes. This plugin has not changed your timezone.', 'bike-rental-plugin' ); ?></p></div>
 	<?php endif; ?>
 	<h2><?php esc_html_e( 'Dependencies and integrations', 'bike-rental-plugin' ); ?></h2>
-	<p><?php esc_html_e( 'Available means an active plugin or runtime identifier was detected. It does not verify configuration, licensing, or compatibility. WooCommerce is needed for later rental checkout; the foundation remains usable without it.', 'bike-rental-plugin' ); ?></p>
+	<p><?php esc_html_e( 'Available means an active plugin or runtime identifier was detected. It does not verify configuration, licensing, or compatibility. WooCommerce is required for rental packages and checkout.', 'bike-rental-plugin' ); ?></p>
 	<table class="widefat striped">
 		<thead><tr><th scope="col"><?php esc_html_e( 'Component', 'bike-rental-plugin' ); ?></th><th scope="col"><?php esc_html_e( 'Status', 'bike-rental-plugin' ); ?></th><th scope="col"><?php esc_html_e( 'Integration', 'bike-rental-plugin' ); ?></th><th scope="col"><?php esc_html_e( 'Detection details', 'bike-rental-plugin' ); ?></th></tr></thead>
 		<tbody>
@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
 			<tr>
 				<th scope="row"><?php echo esc_html( $dependency['label'] ); ?></th>
 				<td><?php echo esc_html( $dependency['available'] ? __( 'Available', 'bike-rental-plugin' ) : __( 'Missing', 'bike-rental-plugin' ) ); ?></td>
-				<td><?php esc_html_e( 'Not yet integration tested', 'bike-rental-plugin' ); ?></td>
+				<td><?php esc_html_e( 'Check provider settings', 'bike-rental-plugin' ); ?></td>
 				<td>
 				<?php if ( ! $dependency['installed'] ) : ?>
 					<?php echo esc_html( $dependency['runtime'] ? __( 'Runtime identifier detected.', 'bike-rental-plugin' ) : __( 'No recognized installation detected.', 'bike-rental-plugin' ) ); ?>

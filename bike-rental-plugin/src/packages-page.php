@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 	<?php if ( current_user_can( 'publish_products' ) ) : ?>
 		<p><a class="button" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=product' ) ); ?>"><?php esc_html_e( 'Add product', 'bike-rental-plugin' ); ?></a></p>
 	<?php endif; ?>
-	<p><?php esc_html_e( 'Prices are regular prices as entered; this overview does not calculate taxes. Display order uses WooCommerce Advanced > Menu order. Inactive packages remain listed here for editing. No rental booking is available yet.', 'bike-rental-plugin' ); ?></p>
+	<p><?php esc_html_e( 'Prices are regular prices as entered; this overview does not calculate taxes. Display order uses WooCommerce Advanced > Menu order. Inactive packages remain listed here for editing. Published active packages with valid settings are available for booking.', 'bike-rental-plugin' ); ?></p>
 	<table class="widefat striped">
 		<thead><tr>
 			<?php foreach ( array( __( 'Package Name', 'bike-rental-plugin' ), __( 'Regular Price', 'bike-rental-plugin' ), __( 'Duration', 'bike-rental-plugin' ), __( 'Promotional Label', 'bike-rental-plugin' ), __( 'Rental Active', 'bike-rental-plugin' ), __( 'Product Status', 'bike-rental-plugin' ), __( 'Display Order', 'bike-rental-plugin' ), __( 'Edit', 'bike-rental-plugin' ) ) as $heading ) : ?>

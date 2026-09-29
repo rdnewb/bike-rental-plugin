@@ -23,7 +23,7 @@ final class WaiverUI {
 	public static function customer_url( $order ) { return add_query_arg( array( 'brp_riders' => $order->get_id(), 'key' => $order->get_order_key() ), home_url( '/' ) ); }
 	public static function notice( $row ) {
 		$p = Waivers::progress( $row ); if ( ! $p['required'] ) { return ''; }
-		$text = Waivers::terminal( $row ) ? 'Reservation status: ' . $row['status'] . '. Waiver records are retained.' : ( ! $p['complete'] ? Waivers::NOTICE : ( in_array( $row['status'], array( 'confirmed', 'active' ), true ) ? 'All required rider waivers have been completed. Your reservation is confirmed.' : 'All required rider waivers have been completed. Payment/confirmation is still being verified.' ) );
+		$text = Waivers::terminal( $row ) ? 'Reservation status: ' . Reservations::status_label( $row['status'] ) . '. Waiver records are retained.' : ( ! $p['complete'] ? Waivers::NOTICE : ( in_array( $row['status'], array( 'confirmed', 'active' ), true ) ? 'All required rider waivers have been completed. Your reservation is confirmed.' : 'All required rider waivers have been completed. Payment/confirmation is still being verified.' ) );
 		return '<div class="brp-waiver-notice" role="status"><p><strong>' . esc_html( $text ) . '</strong></p><p>Waivers completed: ' . (int) $p['done'] . ' of ' . (int) $p['total'] . '</p></div>';
 	}
 	public static function order_section( $id ) {
@@ -104,7 +104,7 @@ final class WaiverUI {
 		if ( ! Settings::can_manage() ) { return; } $p = Waivers::progress( $row ); $roster = Waivers::roster( $row );
 		echo '<h2>Riders and waivers</h2><p><strong>Waivers: ' . esc_html( $p['label'] ) . '</strong></p>'; if ( is_wp_error( $roster ) ) { echo '<p>Rider records unavailable.</p>'; return; }
 		foreach ( $roster as $r ) {
-			echo '<details><summary>Rider ' . (int) $r['sequence_number'] . ' — ' . esc_html( $r['legal_name'] ?: 'Information needed' ) . ' — ' . esc_html( $r['waiver_status'] ?? ( $p['required'] ? 'Pending' : 'Not Required' ) ) . '</summary><dl>';
+			echo '<details><summary>Rider ' . (int) $r['sequence_number'] . ' — ' . esc_html( $r['legal_name'] ?: 'Information needed' ) . ' — ' . esc_html( Reservations::status_label( $r['waiver_status'] ?? ( $p['required'] ? 'Pending' : 'Not Required' ) ) ) . '</summary><dl>';
 			foreach ( array( 'age', 'rider_type', 'email', 'guardian_name', 'guardian_email', 'guardian_relationship', 'provider', 'provider_submission_id', 'last_invited_at', 'completed_at', 'override_reason', 'override_user_id' ) as $key ) { echo '<dt>' . esc_html( ucwords( str_replace( '_', ' ', $key ) ) ) . '</dt><dd>' . esc_html( $r[ $key ] ?? '—' ) . '</dd>'; } echo '</dl>';
 			if ( $r['waiver_id'] && ! Waivers::terminal( $row ) && ! in_array( $r['waiver_status'], array( 'completed', 'exempt' ), true ) ) {
 				foreach ( array( 'resend' => 'Resend Waiver Email', 'exempt' => 'Waiver Exempt — record exception' ) as $op => $label ) {

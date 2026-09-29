@@ -17,7 +17,7 @@ $peak = max( array_column( $data['usage'], 'peak_existing_usage' ) );
 <label for="brp-calendar-status">Reservation status</label>
 <select id="brp-calendar-status" name="status">
 <?php foreach ( array_merge( array( 'all' ), Reservations::STATUSES ) as $value ) : ?>
-<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $value, $status ); ?>><?php echo esc_html( 'all' === $value ? 'All statuses' : ucfirst( $value ) ); ?></option>
+<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $value, $status ); ?>><?php echo esc_html( 'all' === $value ? 'All statuses' : Reservations::status_label( $value ) ); ?></option>
 <?php endforeach; ?></select> <button class="button" type="submit">Apply filter</button>
 </form>
 <p>Bars show occupied time, including buffers. Each row is one reservation or quantity block. Daily totals always include all inventory claims, regardless of the status filter. Negative availability indicates an inventory conflict.</p>
@@ -31,7 +31,7 @@ $peak = max( array_column( $data['usage'], 'peak_existing_usage' ) );
 $events = array();
 foreach ( $data['rows'] as $row ) {
 	$snapshot = json_decode( $row['snapshot'], true ); $order = $data['orders'][ $row['order_id'] ] ?? array();
-	$state = ucfirst( $row['status'] );
+	$state = Reservations::status_label( $row['status'] );
 	if ( 'hold' === $row['status'] ) { $state .= $row['hold_expires_at'] > $data['now'] ? ' — expires ' . AdminCalendar::time( $row['hold_expires_at'] ) : ' — expired; no inventory claim'; }
 	if ( Availability::FOREVER === $row['effective_end'] ) { $state .= ' — overdue; blocking until returned'; }
 	$events[] = array(

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0 - Production release cleanup
+
+- Remove raw reservation snapshot and request/session metadata from administration; preserve stored snapshots and revision-safe edits.
+- Retain inventory-validated manual bookings as Create Reservation, with no generated sample data.
+- Replace development wording with operational labels, including readable reservation and waiver statuses.
+- Remove the raw waiver diagnostics panel; retain provider diagnostics and opt-in boolean support records.
+- Keep payment/Square processing, waiver behavior, license enforcement, and schema 2 unchanged.
+- Package only the rental plugin; NT License Controller remains separate.
+
 ## 0.9.2 — Production license enforcement
 
 - Default new-booking license enforcement ON, overridden only by BRP_LICENSE_ENFORCE in wp-config.php. Remove the filter and environment/development bypass.
@@ -18,7 +27,7 @@
 - Retain every packaged client file unchanged, including License/LicenseAdmin, product identifier, endpoint override, encrypted cache, schedule, grace and enforcement behavior. No client version/schema bump.
 - Point cross-repository integration tests at an explicit external controller checkout; add client-only release packaging and update developer documentation.
 
-## 0.9.0 / NT License Controller 0.1.0 - Licensing Phase 1
+## 0.9.0 / NT License Controller 0.1.0 - Licensing
 
 - Add a separately packaged, product-independent WordPress controller with schema 1 license/activation/event tables, manually issued monthly/annual/lifetime keys, status and expiration administration, atomic activation limits and retained installation history.
 - Add HTTPS activation/validation/deactivation REST endpoints, hashed controller keys, bounded event retention, basic IP/key throttling and non-sensitive machine-readable responses.
@@ -72,7 +81,7 @@
 - Add administrator-only Advanced Custom CSS with a deliberately restricted flat-rule grammar, supported visual properties and per-instance ID scoping. Reject scripts, HTML, external URLs/imports, global selectors and unsupported syntax; preserve CSS during shop manager saves/resets.
 - Add branding-only restore defaults, defensive output fallbacks, real WordPress sanitization/permission/media tests, Chromium layout/interaction checks and manual acceptance instructions. Keep all booking/payment/deposit/calendar logic and schema 1 unchanged; no waiver integration.
 
-## 0.7.0 — Milestone 7A deep links and weekly calendar
+## 0.7.0 — Booking deep links and weekly calendar
 
 - Resolve `?rental=product-slug` (numeric product ID fallback) against the server-validated active rental catalog. Initially show the selected card with booking controls, and reveal the full grid through keyboard-accessible Change Rental. Invalid/ineligible links fall back safely. Manual selection updates the URL without reloading; owned hold recovery remains intact.
 - Add Bike Rentals > Calendar with WordPress-local weekly navigation, status filters, one occupied-interval bar per reservation or quantity block, text/status styling, linked details, and batched WooCommerce customer/order reads.
@@ -86,14 +95,14 @@
 - Restore a fresh booking grid for cancelled receipts, including browser Back/Forward cache visits. Retain normal expiration for navigation away and untransferred holds. Disable Undo for removed rental items so rebooking uses current availability.
 - Add real Woo cart/Store API/restoration tests, duplicate-removal and payment/removal races, and browser recovery checks. Keep schema 1; no deposit or waiver work.
 
-## 0.6.1 — Milestone 6A product-selection UX
+## 0.6.1 — Product selection
 
 - Replace the public rental dropdown with server-rendered responsive product cards, using WooCommerce featured thumbnails, safe short descriptions, formatted prices, and existing duration/promotion metadata.
 - Add keyboard-accessible selection, visible and programmatic selected states, image fallbacks, and progressive booking controls. Keep the hidden package ID synchronized with the existing availability/hold/checkout requests.
 - Scope neutral styling to the shortcode; support three/two/one columns according to container space and contain long descriptions without losing keyboard access.
 - Add real WordPress/WooCommerce card-rendering checks and local Chromium interaction/layout tests. Payment, deposit, reservation, Square, and schema logic are unchanged; real test-site/Divi checks remain pending.
 
-## 0.6.0 — Milestone 6A Full Payment checkout
+## 0.6.0 — Full Payment checkout
 
 - Replace the hold placeholder with a protected WooCommerce Checkout Block transfer. Reuse the existing reservation, lock its quantity, and reject direct/stale/forged rental purchases, coupons, and mixed rental carts.
 - Add generic `payment_mode` settings: Full Payment by default; Deposit is guarded with no silent fallback or required deposit extension. Snapshot the mode at checkout transfer and preserve it on later global/package changes.
@@ -105,7 +114,7 @@
 ## 0.5.4 — 12-hour start-time dropdown
 
 - Display public start-time options as 12-hour labels with AM/PM, including correct midnight/noon labels. Keep the submitted `HH:MM` values and scheduling behavior unchanged.
-- Bump the asset version to refresh the booking script after deployment. Schema remains 1; no Milestone 6 work.
+- Bump the asset version to refresh the booking script after deployment. Schema remains 1.
 - Verify JavaScript syntax and seven actual option-label/value cases, including midnight/noon; all 208 foundation/package checks pass. After SFTP update, select a package/date and confirm AM/PM labels in the browser. Full inventory suites were not rerun for this display-only change.
 
 ## 0.5.3 — Generic calendar duration and independent pickup
@@ -114,7 +123,7 @@
 - Keep one inclusive `start date + (duration amount - 1)` calculation for every valid configured calendar duration. No package/day-specific scheduling branches; the existing package editor supports 1–365 days.
 - Preserve Day 1 hours, increment, notice, horizon, valid local-time/positive-interval checks, and authoritative buffered inventory allocation. Remove the now-incorrect calendar pickup-hours warning and update settings guidance.
 - Add a 49-case matrix covering every weekday and durations 1–7 with closed other weekdays, pickup outside delivery hours, UTC/buffers, real holds, capacity, and rejected starts. Also test 8/14/30/90/365 days, invalid durations, one-day edge cases, and unchanged hourly endpoint rules.
-- This approved policy supersedes the calendar final-day restrictions tested in 0.5.2; existing snapshots/settings and schema 1 are retained. Milestone 6 has not started.
+- This approved policy supersedes the calendar final-day restrictions tested in 0.5.2; existing snapshots/settings and schema 1 are retained.
 - Pass 1,411 automated checks, including 602 new matrix checks, and syntax validation for all 34 PHP files. Browser/Divi verification remains pending test-site deployment.
 
 ## 0.5.2 — Calendar-day rejection diagnostics and settings guidance
@@ -124,14 +133,14 @@
 - Warn administrators when the configured calendar-day pickup time falls outside an open day's operating hours, and explain final included day and AM/PM entry. Reject unknown duration metadata explicitly in the scheduling helper.
 - Preserve the already-correct start + (days - 1) calculation, final-day-only pickup validation, open endpoints, closed intermediate days, and separate occupied buffers. No hourly scheduling policy change or schema change.
 - Reproduce 20 valid calendar starts at 17:00 pickup versus zero at 05:00 pickup with 08:00–18:00 hours; exact deployed-site settings remain unconfirmed. See the calendar verification report before attributing the live issue to that configuration.
-- Pass 809 automated checks, including 65 new calendar checks and all 744 prior checks. All 33 PHP files pass syntax validation. No Milestone 6 work or remote deployment.
+- Pass 809 automated checks, including 65 new calendar checks and all 744 prior checks. All 33 PHP files pass syntax validation. No remote deployment.
 
 ## 0.5.1 — Active reservation timing correction
 
 - Limit in-progress Active reservations to their scheduled occupied interval. Only after the occupied end (including turnaround) has passed do they become open-ended until staff records completion. Use the same locked database UTC clock for availability reads and proposed allocations.
 - Reject Active creation, status changes, and schedule edits before the scheduled rental start with a clear validation message. Preparation time does not permit early activation.
 - Reject premature Completed records; Active to Completed records an actual return, including early returns. Preserve actual-return turnaround blocks and no-op/revision protection.
-- Explain statuses in administration and document handling of legacy future Active records and overdue conflicts with existing bookings. No automatic record migration, schema change, or Milestone 6 work.
+- Explain statuses in administration and document handling of legacy future Active records and overdue conflicts with existing bookings. No automatic record migration, schema change.
 - Pass 744 automated checks, including 54 new Active timing checks and all 45 real multiprocess concurrency checks; all 32 PHP files pass syntax validation. Test-site browser/Divi verification remains pending deployment.
 
 ## 0.5.0 — Public rental selection and temporary guest holds
@@ -142,7 +151,7 @@
 - Reuse M4 sweep/capacity locking for guest allocations. Capture current selling prices, retain 15-minute expiry and five-minute cleanup, and allow one live public hold per guest session.
 - Show association indicators in administration without secrets. Keep schema 1 and all prior administrative editing behavior.
 - Verify 690 checks, including 74 public-booking and 45 real multiprocess concurrency checks, plus actual local HTTP behavior and JavaScript syntax. Visual/mobile/keyboard/Divi acceptance remains pending; UI tools had no browser available.
-- Stop before Milestone 6: no cart/order creation, checkout redirect, Square calls, deposits, waivers, customer emails, or admin calendar enhancements.
+- At this release: no cart/order creation, checkout redirect, Square calls, deposits, waivers, customer emails, or admin calendar enhancements.
 
 ## 0.4.0 — Shared fleet availability and double-booking protection
 
@@ -154,7 +163,7 @@
 - Keep active rentals allocated until staff completes them; positive captured turnaround becomes a dated quantity block at actual return.
 - Add admin-only availability testing, hold expiry display/confirmation, and clear conflict feedback while preserving package snapshots, revisions, protected fields, permissions, and nonces.
 - Verify 611 checks, including 40 real simultaneous-process concurrency checks, with unchanged schema version 1. Dedicated-site SFTP/browser acceptance remains pending.
-- Milestone 5 has not started. Public booking, checkout, Square, deposits, waivers, calendar, and emails remain deferred.
+- Public booking, checkout, Square, deposits, waivers, calendar, and emails remain deferred.
 
 ## 0.3.1 — Correct administrative reservation editing
 
@@ -194,4 +203,4 @@
 - Allow administrators and users with WooCommerce management capability to manage settings.
 - Show configured timezone, foundation readiness, and detected dependencies separately from integration testing.
 - Preserve options across activation, file updates, deactivation, and uninstall.
-- Keep public booking, packages, inventory, payment, and waiver processing outside this milestone.
+- Keep public booking, packages, inventory, payment, and waiver processing outside this release.

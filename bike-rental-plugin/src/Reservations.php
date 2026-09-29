@@ -4,6 +4,9 @@ namespace BikeRentalPlugin;
 defined( 'ABSPATH' ) || exit;
 
 final class Reservations {
+	/** Human-readable display only; persisted status values stay unchanged. */
+	public static function status_label( $status ) { return ucwords( str_replace( '_', ' ', (string) $status ) ); }
+
 	const HOLD_MINUTES = 15;
 	const STATUSES = array( 'hold', 'confirmed', 'active', 'completed', 'cancelled', 'expired', 'pending_waivers' );
 	const TRANSITIONS = array(
@@ -81,7 +84,7 @@ final class Reservations {
 	private static function create_request( $input, $request_key, $session_hash, $booking = null ) {
 		$gate = Database::gate();
 		if ( is_wp_error( $gate ) ) { return $gate; }
-		if ( ! is_string( $request_key ) || ! preg_match( '/^[a-zA-Z0-9_-]{1,64}$/D', $request_key ) || ! is_string( $session_hash ) || ! preg_match( '/^[a-f0-9]{64}$/D', $session_hash ) || ! is_array( $input ) || ! Database::positive( $input['package_product_id'] ?? null ) || ! Database::positive( $input['quantity'] ?? null ) ) { return Database::error( 'request', 'Invalid hold request key, session hash, package, or quantity.' ); }
+		if ( ! is_string( $request_key ) || ! preg_match( '/^[a-zA-Z0-9_-]{1,64}$/D', $request_key ) || ! is_string( $session_hash ) || ! preg_match( '/^[a-f0-9]{64}$/D', $session_hash ) || ! is_array( $input ) || ! Database::positive( $input['package_product_id'] ?? null ) || ! Database::positive( $input['quantity'] ?? null ) ) { return Database::error( 'request', 'Invalid reservation request. Reload the booking form and check the package and quantity.' ); }
 		$interval = RentalTime::interval( $input['start'] ?? null, $input['end'] ?? null );
 		if ( is_wp_error( $interval ) ) { return $interval; }
 		if ( ! in_array( $input['status'] ?? null, self::STATUSES, true ) ) { return Database::error( 'status', 'Invalid reservation status.' ); }
@@ -98,7 +101,7 @@ final class Reservations {
 		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE request_key = %s FOR UPDATE', Database::table( 'reservations' ), $identity['request_key'] ), ARRAY_A );
 		if ( $wpdb->last_error ) { return Database::retry_error(); }
 		if ( ! $row ) { return null; }
-		if ( ! hash_equals( (string) $row['request_hash'], $identity['request_hash'] ) || ! hash_equals( (string) $row['session_hash'], $identity['session_hash'] ) ) { return Database::error( 'idempotency', 'This request key already belongs to different rental details or a different session. Use a new key for a new request.' ); }
+		if ( ! hash_equals( (string) $row['request_hash'], $identity['request_hash'] ) || ! hash_equals( (string) $row['session_hash'], $identity['session_hash'] ) ) { return Database::error( 'idempotency', 'This booking request has changed. Reload the form to start a new reservation.' ); }
 		return $row;
 	}
 
@@ -112,7 +115,7 @@ final class Reservations {
 		$status = $input['status'] ?? 'hold';
 		if ( ! in_array( $status, self::STATUSES, true ) ) { return Database::error( 'status', 'Invalid reservation status.' ); }
 		$validated = Settings::validate( Settings::get() );
-		if ( $validated['errors'] ) { return Database::error( 'settings', 'Repair rental settings before creating test reservations.' ); }
+		if ( $validated['errors'] ) { return Database::error( 'settings', 'Review rental settings before creating reservations.' ); }
 		$settings = $validated['values'];
 		$buffers = array_intersect_key( $settings, array_flip( array( 'preparation_buffer', 'turnaround_buffer' ) ) );
 		$data = self::schedule( $input, 2147483647, $buffers );

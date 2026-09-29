@@ -120,8 +120,11 @@ verify( null === $cleared['issue_code'], 'empty issue code stored as NULL' );
 $_GET = array( 'id' => $edit_id );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
 foreach ( array( 'package_product_id', 'quantity', 'start', 'end', 'status', 'issue_code', 'revision', '_wpnonce' ) as $field ) { verify( str_contains( $html, 'name="' . $field . '"' ), 'detail renders edit control/security field: ' . $field ); }
-verify( str_contains( $html, 'Save reservation' ) && str_contains( $html, 'Read-only reservation details' ) && str_contains( $html, 'Current reservation snapshot (read-only)' ), 'detail clearly separates editable controls and read-only system values for terminal records' );
-verify( str_contains( $html, 'Availability conflict checking is enforced under the shared inventory lock.' ), 'visible enforced availability notice rendered' );
+verify( str_contains( $html, 'Save reservation' ) && str_contains( $html, 'Read-only reservation details' ) && ! str_contains( $html, 'Current reservation snapshot (read-only)' ), 'detail clearly separates editable controls and read-only system values for terminal records' );
+verify( str_contains( $html, 'Availability is checked when saving.' ), 'visible enforced availability notice rendered' );
+verify( $cleared['snapshot'] === Reservations::read( $edit_id )['snapshot'], 'render keeps the current snapshot stored unchanged' );
+foreach ( array( 'Current reservation snapshot', 'Request association:', 'Session association:', '<pre' ) as $private ) { verify( ! str_contains( $html, $private ), 'private presentation removed: ' . $private ); }
+foreach ( array( 'request_hash', 'session_hash' ) as $private ) { if ( ! empty( $cleared[$private] ) ) { verify( ! str_contains( $html, $cleared[$private] ), 'stored hash not rendered: ' . $private ); } }
 foreach ( array( 'reference', 'created_at', 'updated_at', 'snapshot', 'order_id', 'order_item_id', 'request_hash', 'session_hash' ) as $field ) { verify( ! str_contains( $html, 'name="' . $field . '"' ), 'protected value has no editable form control: ' . $field ); }
 set_transient( 'brp_data_notice_1', array( 'error' => false, 'message' => 'Rental data saved.' ), 60 );
 ob_start(); $admin->reservations(); $html = ob_get_clean();

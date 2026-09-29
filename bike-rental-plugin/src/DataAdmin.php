@@ -1,5 +1,5 @@
 <?php
-/** Native admin-only test tools; no public routes or booking workflow. */
+/** Authorized fleet, reservation, and availability management. */
 namespace BikeRentalPlugin;
 defined( 'ABSPATH' ) || exit;
 
@@ -16,7 +16,7 @@ final class DataAdmin {
 		add_submenu_page( Settings::PAGE, __( 'Fleet', 'bike-rental-plugin' ), __( 'Fleet', 'bike-rental-plugin' ), Settings::capability(), self::FLEET, array( $this, 'fleet' ) );
 		add_submenu_page( Settings::PAGE, __( 'Reservations', 'bike-rental-plugin' ), __( 'Reservations', 'bike-rental-plugin' ), Settings::capability(), self::RESERVATIONS, array( $this, 'reservations' ) );
 		add_submenu_page( Settings::PAGE, __( 'Calendar', 'bike-rental-plugin' ), __( 'Calendar', 'bike-rental-plugin' ), Settings::capability(), AdminCalendar::PAGE, array( AdminCalendar::class, 'render' ) );
-		add_submenu_page( Settings::PAGE, __( 'Availability test', 'bike-rental-plugin' ), __( 'Availability test', 'bike-rental-plugin' ), Settings::capability(), self::AVAILABILITY, array( $this, 'availability' ) );
+		add_submenu_page( Settings::PAGE, __( 'Availability', 'bike-rental-plugin' ), __( 'Availability', 'bike-rental-plugin' ), Settings::capability(), self::AVAILABILITY, array( $this, 'availability' ) );
 	}
 
 	/** Independently testable mutation boundary. All IDs remain untrusted here. */
@@ -83,7 +83,7 @@ final class DataAdmin {
 		}
 		$gate = Database::gate();
 		if ( is_wp_error( $gate ) ) { $this->error( $gate ); echo '</div>'; return false; }
-		echo '<p>' . esc_html__( 'Milestone 4 administration tools. Shared fleet availability is enforced when saving. Payment collection and fulfillment readiness are not implemented.', 'bike-rental-plugin' ) . '</p>';
+		echo '<p>' . esc_html__( 'Manage reservations and shared fleet availability.', 'bike-rental-plugin' ) . '</p>';
 		echo '<p>' . esc_html__( 'Input and display timezone:', 'bike-rental-plugin' ) . ' <strong>' . esc_html( wp_timezone_string() ) . '</strong>. ' . esc_html__( 'Use unambiguous local times; clock gaps and repeated daylight-saving times are rejected.', 'bike-rental-plugin' ) . '</p>';
 		return true;
 	}
@@ -102,7 +102,7 @@ final class DataAdmin {
 	}
 	private function statuses( $value, $allowed ) {
 		echo '<p><label>' . esc_html__( 'Status', 'bike-rental-plugin' ) . '<br><select name="status">';
-		foreach ( $allowed as $status ) { echo '<option value="' . esc_attr( $status ) . '"'; selected( $value, $status ); echo '>' . esc_html( $status ) . '</option>'; }
+		foreach ( $allowed as $status ) { echo '<option value="' . esc_attr( $status ) . '"'; selected( $value, $status ); echo '>' . esc_html( Reservations::status_label( $status ) ) . '</option>'; }
 		echo '</select></label></p>';
 		echo '<p class="description">' . esc_html__( 'Hold: temporary pre-booking. Confirmed: booked, not started. Active: bikes picked up, allowed only at or after the scheduled start. Completed: rental ended or bikes actually returned; choosing Completed for an Active rental records the return, including an early return. Cancelled / Expired: no inventory claim.', 'bike-rental-plugin' ) . '</p>';
 	}
@@ -139,7 +139,7 @@ final class DataAdmin {
 	}
 
 	public function availability() {
-		if ( ! $this->begin( __( 'Availability test', 'bike-rental-plugin' ) ) ) { return; }
+		if ( ! $this->begin( __( 'Availability', 'bike-rental-plugin' ) ) ) { return; }
 		echo '<p>' . esc_html__( 'Enter the occupied interval, including preparation and turnaround. This result is a point-in-time check; saving a reservation rechecks under the inventory lock. Active rentals use their scheduled occupied interval until its end has passed, then block indefinitely until completed. Completed returns with turnaround create a temporary block.', 'bike-rental-plugin' ) . '</p>';
 		$this->form( 'availability_test' );
 		$this->field( 'start', __( 'Occupied start (local)', 'bike-rental-plugin' ), '', 'datetime-local' );
