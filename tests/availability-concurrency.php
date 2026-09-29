@@ -63,13 +63,13 @@ for ( $round = 1; $round <= 3; ++$round ) {
 	race_check( Database::listing( 'reservations' )['total'] === 1, 'only one last-bike row exists' );
 }
 reset_race( 3 );
-$a = Reservations::create( array_replace( $input, array( 'start' => '2036-06-14T09:00', 'end' => '2036-06-14T11:00' ) ) );
-$b = Reservations::create( array_replace( $input, array( 'start' => '2036-06-16T09:00', 'end' => '2036-06-16T11:00' ) ) );
+$a = \BrpReservationFixture::create( array_replace( $input, array( 'start' => '2036-06-14T09:00', 'end' => '2036-06-14T11:00' ) ) );
+$b = \BrpReservationFixture::create( array_replace( $input, array( 'start' => '2036-06-16T09:00', 'end' => '2036-06-16T11:00' ) ) );
 $results = run_race( array( array( 'operation' => 'edit', 'id' => $a['id'], 'revision' => 1, 'input' => array_replace( $input, array( 'quantity' => 2 ) ) ), array( 'operation' => 'edit', 'id' => $b['id'], 'revision' => 1, 'input' => array_replace( $input, array( 'quantity' => 2 ) ) ) ), 'Two edits competing for one interval' );
 race_check( count( array_filter( array_column( $results, 'success' ) ) ) === 1 && in_array( 'brp_conflict', array_column( $results, 'code' ), true ), 'simultaneous edits cannot oversell' );
 race_check( Availability::check( '2036-06-15 13:00:00', '2036-06-15 15:00:00' )['peak_existing_usage'] === 2, 'losing edit preserves prior interval' );
 reset_race( 3 );
-$a = Reservations::create( $input );
+$a = \BrpReservationFixture::create( $input );
 $jobs = array( array( 'operation' => 'edit', 'id' => $a['id'], 'revision' => 1, 'input' => array_replace( $input, array( 'quantity' => 2 ) ) ), array( 'operation' => 'edit', 'id' => $a['id'], 'revision' => 1, 'input' => array_replace( $input, array( 'quantity' => 3 ) ) ) );
 $results = run_race( $jobs, 'Same reservation revision race' );
 race_check( count( array_filter( array_column( $results, 'success' ) ) ) === 1 && in_array( 'brp_revision', array_column( $results, 'code' ), true ), 'concurrent same-row edit rejects stale revision' );
@@ -104,7 +104,7 @@ race_check( Database::listing( 'reservations' )['total'] === 1, 'public REST rac
 // Milestone 6A: the same row lock serializes late money, new bookings and duplicate payment callbacks.
 foreach ( array( false, true ) as $reverse ) {
 	reset_race( 1 );
-	$late = Reservations::create_hold( $input, 'late-payment-race', hash( 'sha256', 'concurrent-session' ) );
+	$late = \BrpReservationFixture::create_hold( $input, 'late-payment-race', hash( 'sha256', 'concurrent-session' ) );
 	$wpdb->update( Database::table( 'reservations' ), array( 'status' => 'expired', 'hold_expires_at' => '2000-01-01 00:00:00', 'order_id' => 900001, 'order_item_id' => 900002 ), array( 'id' => $late['id'] ) );
 	$late = Reservations::read( $late['id'] );
 	$jobs = array( array( 'operation' => 'payment', 'id' => $late['id'], 'order_id' => 900001, 'fingerprint' => \BikeRentalPlugin\CheckoutReservation::fingerprint( $late ) ), array( 'operation' => 'create', 'input' => $input ) );
@@ -115,7 +115,7 @@ foreach ( array( false, true ) as $reverse ) {
 	race_check( $after['status'] === 'confirmed' || ( $after['status'] === 'expired' && $after['issue_code'] === 'payment_inventory_conflict' ), 'late payment either confirms or records staff exception' );
 }
 reset_race( 1 );
-$hold = Reservations::create_hold( $input, 'checkout-claim-race', hash( 'sha256', 'concurrent-session' ) );
+$hold = \BrpReservationFixture::create_hold( $input, 'checkout-claim-race', hash( 'sha256', 'concurrent-session' ) );
 $hold = \BikeRentalPlugin\Waivers::save_roster( $hold['id'], brp_test_riders( $hold['quantity'] ), $hold['revision'] );
 $fingerprint = \BikeRentalPlugin\CheckoutReservation::fingerprint( $hold );
 $jobs = array( array( 'operation' => 'checkout_begin', 'id' => $hold['id'], 'order_id' => 900001, 'item_id' => 900002, 'fingerprint' => $fingerprint ), array( 'operation' => 'checkout_begin', 'id' => $hold['id'], 'order_id' => 900003, 'item_id' => 900004, 'fingerprint' => $fingerprint ) );
@@ -129,7 +129,7 @@ race_check( $results[0]['success'] && $results[1]['success'] && $after['status']
 // Cart cancellation uses that same lock; payment-first preserves confirmation, removal-first needs review.
 foreach ( array( false, true ) as $reverse ) {
 	reset_race( 1 );
-	$hold = Reservations::create_hold( $input, 'cart-payment-race', hash( 'sha256', 'concurrent-session' ) );
+	$hold = \BrpReservationFixture::create_hold( $input, 'cart-payment-race', hash( 'sha256', 'concurrent-session' ) );
 	$order = wc_create_order(); $order->update_meta_data( '_brp_reservation_id', $hold['id'] ); $order->save();
 	try {
 		$wpdb->update( Database::table( 'reservations' ), array( 'order_id' => $order->get_id(), 'order_item_id' => 900002 ), array( 'id' => $hold['id'] ) );
@@ -142,7 +142,7 @@ foreach ( array( false, true ) as $reverse ) {
 	} finally { $order->delete( true ); }
 }
 reset_race( 1 );
-$hold = Reservations::create_hold( $input, 'duplicate-cart-remove', hash( 'sha256', 'concurrent-session' ) );
+$hold = \BrpReservationFixture::create_hold( $input, 'duplicate-cart-remove', hash( 'sha256', 'concurrent-session' ) );
 $job = array( 'operation' => 'cart_release', 'id' => $hold['id'], 'product_id' => $pid, 'fingerprint' => \BikeRentalPlugin\CheckoutReservation::fingerprint( $hold ) );
 $results = run_race( array( $job, $job ), 'Duplicate cart removal' );
 $after = Reservations::read( $hold['id'] );

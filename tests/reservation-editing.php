@@ -15,7 +15,7 @@ $admin = new DataAdmin();
 $edit_settings = \BikeRentalPlugin\Settings::get();
 $edit_settings['preparation_buffer'] = 0; $edit_settings['turnaround_buffer'] = 0;
 update_option( \BikeRentalPlugin\Settings::OPTION, $edit_settings );
-$original = good( Reservations::create( $input ), 'editing fixture created' );
+$original = good( \BrpReservationFixture::create( $input ), 'editing fixture created' );
 $edit_id = $original['id'];
 $table = Database::table( 'reservations' );
 // Establish older timestamps without sleeping or changing the application's clock.

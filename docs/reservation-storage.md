@@ -1,5 +1,7 @@
 # Reservation storage — version 0.5.0
 
+> Historical developer record. Version 1.0.1 removes direct admin reservation creation and replaces block inputs. For current staff workflows and verification, see [1.0.1 UX release](production-ux-1.0.1.md).
+
 Milestone 5 public selection uses the existing allocation services. Plugin version **0.5.0**; schema remains **1** in `brp_db_version`. No columns, tables, or indexes changed. The custom plugin alone owns rental capacity. Product/payment gateway stock has no role in these tables. See [M4 allocation evidence](availability-verification.md) and [current public booking verification](public-booking-verification.md).
 
 ## Tables and indexes

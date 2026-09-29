@@ -58,27 +58,9 @@ if ( $order && ( current_user_can( 'manage_options' ) || current_user_can( 'edit
 ?>
 </td></tr></tbody></table>
 <p><a href="<?php echo esc_url( self::url( self::RESERVATIONS ) ); ?>"><?php esc_html_e( 'Back to reservations', 'bike-rental-plugin' ); ?></a></p>
-<?php else : ?>
-<h2><?php esc_html_e( 'Create Reservation', 'bike-rental-plugin' ); ?></h2>
-<p><?php esc_html_e( 'Enter the agreed start and end times for this manual booking. Holds expire after 15 minutes. Saving checks fleet availability. Review payment and waiver readiness before releasing bikes.', 'bike-rental-plugin' ); ?></p>
+<?php endif; ?>
+<p><?php esc_html_e( 'To create a new reservation, use the public booking page so rider, payment, and waiver information is collected consistently.', 'bike-rental-plugin' ); ?></p>
 <?php
-$packages = function_exists( 'wc_get_product' ) && class_exists( Packages::class ) ? Packages::get_active_packages() : array();
-if ( ! $packages ) : ?>
-<p><?php esc_html_e( 'To create reservations, activate WooCommerce and publish an active rental package with a valid duration and regular price.', 'bike-rental-plugin' ); ?></p>
-<?php else :
-$this->form( 'reservation_create' );
-?>
-<p><label><?php esc_html_e( 'Rental package', 'bike-rental-plugin' ); ?><br><select name="package_product_id" required>
-<?php foreach ( $packages as $package ) : ?><option value="<?php echo esc_attr( $package['product_id'] ); ?>"><?php echo esc_html( $package['name'] . ' — ' . $package['price'] . ' ' . $package['currency'] ); ?></option><?php endforeach; ?>
-</select></label></p>
-<?php
-$this->field( 'quantity', __( 'Quantity', 'bike-rental-plugin' ), 1, 'number' );
-$this->field( 'start', __( 'Start (local)', 'bike-rental-plugin' ), '', 'datetime-local' );
-$this->field( 'end', __( 'End (local)', 'bike-rental-plugin' ), '', 'datetime-local' );
-$this->statuses( 'hold', Reservations::STATUSES );
-$this->end_form( __( 'Create Reservation', 'bike-rental-plugin' ) );
-endif;
-endif;
 $listing = Database::listing( 'reservations', $_GET['paged'] ?? 1 );
 if ( is_wp_error( $listing ) ) { $this->error( $listing ); return; }
 ?>

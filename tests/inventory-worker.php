@@ -16,8 +16,8 @@ function public_worker_hold( $job ) {
 	return $response->get_status() >= 400 ? new WP_Error( 'brp_public_' . $response->get_status(), $response->get_data()['message'] ) : $response->get_data();
 }
 $result = match ( $job['operation'] ) {
-	'create' => \BikeRentalPlugin\Reservations::create( $job['input'] ),
-	'hold' => \BikeRentalPlugin\Reservations::create_hold( $job['input'], $job['key'], hash( 'sha256', 'concurrent-session' ) ),
+	'create' => \BrpReservationFixture::create( $job['input'] ),
+	'hold' => \BrpReservationFixture::create_hold( $job['input'], $job['key'], hash( 'sha256', 'concurrent-session' ) ),
 	'edit' => \BikeRentalPlugin\Reservations::update( $job['id'], $job['input'], $job['revision'] ),
 	'capacity' => \BikeRentalPlugin\Fleet::set_capacity( $job['quantity'] ),
 	'block' => \BikeRentalPlugin\Fleet::save_block( $job['input'] ),

@@ -133,7 +133,7 @@ public_check( '09:00' === substr( $buffer_hold['rental_start'], 11 ) && '13:00' 
 $product->update_meta_data( Packages::ACTIVE, 'no' ); $product->save();
 public_check( 400 === public_request( 'holds', array_replace( $hold_input, array( 'request_key' => 'removed-package' ) ), $session['token'] )->get_status(), 'hold revalidates package after earlier availability lookup' );
 $product->update_meta_data( Packages::ACTIVE, 'yes' ); $product->save();
-public_check( is_wp_error( Reservations::create_hold( array(), 'direct-anonymous', hash( 'sha256', 'bad' ) ) ), 'public scope never leaks authorization into ordinary service calls' );
+public_check( is_wp_error( \BrpReservationFixture::create_hold( array(), 'direct-anonymous', hash( 'sha256', 'bad' ) ) ), 'public scope never leaks authorization into ordinary service calls' );
 $css = file_get_contents( dirname( __DIR__ ) . '/bike-rental-plugin/assets/css/booking.css' );
 public_check( ! preg_match( '/^\s*(?!\.brp-booking)[^\s}][^{]*\{/m', $css ) && ! preg_match( '/#[a-f0-9]{3,8}\b/i', $css ), 'CSS is scoped with no brand colors' );
 public_check( ! str_contains( $html, 'request_hash' ) && ! str_contains( $html, 'session_hash' ), 'shortcode contains no session secrets' );

@@ -42,11 +42,11 @@ foreach ( $data['rows'] as $row ) {
 	);
 }
 foreach ( $data['blocks'] as $block ) {
-	$events[] = array( 'key' => 'block-' . $block['id'], 'style' => 'block', 'title' => 'Inventory block', 'name' => $block['reason'], 'quantity' => $block['quantity'], 'state' => 'Quantity blocked', 'customer' => '', 'order' => '', 'url' => DataAdmin::url( DataAdmin::FLEET, $block['id'] ), 'start' => $block['start_utc'], 'end' => $block['end_utc'] ?? Availability::FOREVER, 'rental' => '', 'issue' => '' );
+	$events[] = array( 'key' => 'block-' . $block['id'], 'style' => 'block', 'title' => 'Inventory block', 'name' => $block['reason'], 'quantity' => $block['quantity'], 'state' => 'Quantity blocked', 'customer' => '', 'order' => '', 'url' => DataAdmin::url( DataAdmin::FLEET, $block['id'] ), 'start' => $block['start_utc'], 'end' => $block['end_utc'] ?? Availability::FOREVER, 'rental' => '', 'issue' => '', 'block_interval' => BlockInput::interval_label( $block ) );
 }
 foreach ( $events as $event ) :
 	$left = AdminCalendar::position( $event['start'], $days ); $right = AdminCalendar::position( $event['end'], $days );
-	$interval = AdminCalendar::time( $event['start'] ) . ' – ' . ( Availability::FOREVER === $event['end'] ? 'Until released / returned' : AdminCalendar::time( $event['end'] ) );
+	$interval = $event['block_interval'] ?? AdminCalendar::time( $event['start'] ) . ' – ' . ( Availability::FOREVER === $event['end'] ? 'Until released / returned' : AdminCalendar::time( $event['end'] ) );
 	$description = $event['title'] . ', ' . $event['name'] . ', ' . $event['quantity'] . ' bikes, ' . $event['state'] . '. Occupied: ' . $interval;
 ?>
 <div class="brp-calendar-row brp-calendar-event brp-calendar-<?php echo esc_attr( $event['style'] ); ?><?php if ( $event['issue'] ) { echo ' brp-calendar-exception'; } ?>" data-event="<?php echo esc_attr( $event['key'] ); ?>">

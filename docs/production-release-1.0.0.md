@@ -1,5 +1,7 @@
 # Bike Rental Plugin 1.0.0 production cleanup
 
+> Historical developer record. Version 1.0.1 removes direct admin reservation creation and replaces block inputs. For current staff workflows and verification, see [1.0.1 UX release](production-ux-1.0.1.md).
+
 Release work on `main`, 2026-09-29. Runtime 1.0.0; schema 2 unchanged. No push or deployment. The cleanup and local package are complete; deployment acceptance and the unavailable integration suites remain outstanding.
 
 ## Changes and preservation

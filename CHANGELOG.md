@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 - Simplified availability blocks and public-only booking creation
+
+- Remove the admin reservation creation form/action and its two creation-only service entry points. Existing reservation edits, status changes, deletion safeguards, and rider/order management remain.
+- Direct staff to public booking for consistent rider, payment, and waiver collection.
+- Share block create/edit controls across Availability and Fleet: date-only fields, configured-increment AM/PM dropdowns, quantity, required reason, and All Day.
+- Interpret all-day end dates inclusively with a next-midnight exclusive boundary; preserve DST, multi-day and indefinite intervals, existing off-grid edit values, and existing locked capacity validation.
+- Display All Day labels in lists/calendar without adding stored fields. Keep schema 2 and public booking/payment/waiver/licensing behavior unchanged.
+- Move historical reservation fixture creation wrappers into guarded repository-only test support; preserve existing regression and concurrency coverage.
+
 ## 1.0.0 - Production release cleanup
 
 - Remove raw reservation snapshot and request/session metadata from administration; preserve stored snapshots and revision-safe edits.

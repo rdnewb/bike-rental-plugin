@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -13,10 +13,10 @@ Offer active WooCommerce rental packages through [bike_rental_booking]. Customer
 choose dates and quantity, provide rider information, and continue from a temporary
 inventory hold to Full Payment checkout through WooCommerce Square.
 
-Manage real manual reservations, revision-safe edits, fleet capacity, blocks, a weekly
+Manage existing reservations, revision-safe edits, fleet capacity, blocks, a weekly
 calendar, order links, rider rosters, waiver progress, and eligible record deletion.
-Manual reservations require staff-entered dates and inventory validation; they do not
-collect payment. Package and pricing snapshots remain stored for booking integrity.
+New reservations are created through the public booking flow, including staff-assisted
+bookings. Package and pricing snapshots remain stored for booking integrity.
 
 Settings include General, Booking Form Branding, Waivers, and License. Branding supports
 text, colors, logos, and scoped CSS. Direct package links use ?rental=product-slug on
@@ -43,7 +43,7 @@ Deposit checkout requires a compatible provider and is otherwise blocked.
 7. Configure the signing page, provider, field mappings, and invitation templates if required.
 8. Verify booking, payment, email delivery, signing, and staff workflows before accepting bookings.
 
-Normal initialization verifies schema 2. Version 1.0.0 requires no schema change.
+Normal initialization verifies schema 2. Version 1.0.1 requires no schema change.
 Deactivation, uninstall, and complete-folder updates preserve stored data.
 
 == Frequently Asked Questions ==
@@ -53,19 +53,35 @@ Replace wp-content/plugins/bike-rental-plugin/ relative to your WordPress root d
 a maintenance window. Do not upload repository tests, tooling, or NT License Controller.
 
 = Can staff create reservations? =
-Yes. Use Reservations > Create Reservation with an active package and agreed dates.
-Availability, date/status validation, and inventory locking apply. Review payment and
-waiver readiness before releasing bikes.
+Yes. Use the public booking page to collect riders, checkout payment, and waivers
+consistently. Reservations administration manages existing bookings only.
 
 = Are raw reservation snapshots displayed? =
 No. They remain stored internally; staff see operational reservation details.
 
+= How do I block unavailable bikes? =
+Use Availability > Add Availability Block, or the same controls under Fleet. Enter
+start/end dates, AM/PM times, quantity, and reason. Time choices follow Booking Time
+Increment in the WordPress timezone. The same controls edit existing blocks.
+
+All Day includes every selected date: December 24 through 26 ends at midnight on
+December 27. Equal dates block one day. Times are disabled for All Day. DST follows
+local calendar boundaries. Timed blocks can span multiple dates; end must follow start.
+No end date preserves indefinite blocks until disabled. Quantity cannot exceed fleet
+capacity or available inventory. Lists and Calendar show All Day or AM/PM ranges.
+
 == Changelog ==
+
+= 1.0.1 =
+* Remove direct admin reservation creation; staff use public booking.
+* Add shared date-only fields, AM/PM time choices, and inclusive All Day blocks.
+* Preserve block editing, indefinite blocks, locking, capacity, and schema 2.
+
 
 = 1.0.0 =
 * Prepare the production interface with clear booking and administration wording.
 * Remove raw snapshot/session metadata and the raw waiver diagnostics panel.
-* Retain validated manual reservations, useful availability checks, and recovery tools.
+* Retain useful availability checks and recovery tools.
 * Preserve schema 2, payment processing, waivers, licensing, and existing records.
 
 = 0.9.2 =

@@ -57,20 +57,6 @@ final class Reservations {
 		) );
 	}
 
-	public static function create( $input ) {
-		if ( is_array( $input ) && 'hold' === ( $input['status'] ?? 'hold' ) ) {
-			return self::create_hold( $input, $input['request_key'] ?? wp_generate_uuid4(), hash( 'sha256', 'admin:' . get_current_user_id() ) );
-		}
-		if ( is_array( $input ) && isset( $input['request_key'] ) ) { return self::create_request( $input, $input['request_key'], hash( 'sha256', 'admin:' . get_current_user_id() ) ); }
-		return self::create_record( $input );
-	}
-
-	/** Server-derived intent hash; only hashes, never raw session identifiers, are stored. */
-	public static function create_hold( $input, $request_key, $session_hash ) {
-		if ( is_array( $input ) ) { $input['status'] = 'hold'; }
-		return self::create_request( $input, $request_key, $session_hash );
-	}
-
 	/** Called only by the protected public controller, never with browser-supplied endpoints/prices. */
 	public static function create_booking_hold( $input, $request_key, $session_hash ) {
 		$booking = BookingSchedule::prepare( $input );

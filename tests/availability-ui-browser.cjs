@@ -1,0 +1,58 @@
+/* Real PHP-rendered admin controls, local-only browser interactions. No WordPress/database claim. */
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const dir = process.env.BRP_BLOCK_FIXTURE_DIR;
+if (!dir) throw new Error('Run availability-ui.php with BRP_BLOCK_FIXTURE_DIR first');
+let checks = 0;
+const check = (ok, label) => { assert.ok(ok, label); ++checks; console.log('PASS:', label); };
+(async () => {
+    const browser = await chromium.launch({ channel: process.env.BRP_BROWSER_CHANNEL || 'chrome', headless: true });
+    try {
+        const page = await browser.newPage();
+        const errors = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        const load = async (file) => {
+            await page.setContent('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px system-ui;margin:20px}input,select,button{font:inherit;padding:5px}table{width:100%}fieldset{border:1px solid #bbb;padding:12px;max-width:400px}</style></head><body>' + fs.readFileSync(path.join(dir, file), 'utf8') + '</body></html>');
+            await page.addScriptTag({ path: path.join(__dirname, '../bike-rental-plugin/assets/js/block-admin.js') });
+        };
+        await load('blocks.html');
+        const form = page.locator('form').filter({ has: page.locator('[name=operation][value=block_create]') });
+        const group = form.locator('.brp-block-dates');
+        const start = group.locator('[name=start_time]');
+        const end = group.locator('[name=end_time]');
+        check(await form.count() === 1 && await page.locator('[name=operation][value=reservation_create]').count() === 0, 'only block creation is offered');
+        check(await group.locator('[name=start_date]').getAttribute('type') === 'date' && await group.locator('[name=end_date]').getAttribute('type') === 'date', 'separate native date controls');
+        check(await start.locator('option[value="13:30"]').innerText() === '1:30 PM', 'afternoon label uses AM/PM');
+        await group.locator('[name=start_date]').fill('2030-10-10');
+        await group.locator('[name=end_date]').fill('2030-10-12');
+        await start.selectOption('09:00'); await end.selectOption('14:00');
+        await form.locator('[name=reason]').fill('Maintenance');
+        check(await form.evaluate((el) => el.checkValidity()), 'complete timed form satisfies browser validation');
+        await group.locator('[name=all_day]').check();
+        check(await start.isDisabled() && await end.isDisabled(), 'All Day disables both time dropdowns');
+        check(await group.locator('[name=end_date]').isEnabled(), 'All Day retains inclusive end date');
+        check(await form.evaluate((el) => !new FormData(el).has('start_time') && !new FormData(el).has('end_time') && new FormData(el).get('all_day') === '1'), 'disabled times are omitted from all-day submission');
+        const diagnostic = page.locator('form').filter({ has: page.locator('[name=operation][value=availability_test]') });
+        check(await diagnostic.locator('[name=start_time]').isEnabled(), 'all-day toggle affects only its own form');
+        await group.locator('[name=all_day]').uncheck();
+        check(await start.isEnabled() && await end.isEnabled() && await start.inputValue() === '09:00', 'timed values survive toggling');
+        await group.locator('[name=no_end]').check();
+        check(await end.isDisabled() && await group.locator('[name=end_date]').isDisabled() && await start.isEnabled(), 'indefinite blocks disable only end controls');
+        await group.locator('[name=all_day]').check();
+        check(!await group.locator('[name=no_end]').isChecked() && await group.locator('[name=end_date]').isEnabled(), 'all-day and indefinite choices are mutually exclusive');
+        await page.setViewportSize({ width: 1280, height: 960 });
+        await page.screenshot({ path: path.join(dir, 'blocks-desktop.png') });
+        await page.setViewportSize({ width: 375, height: 812 });
+        check(await group.evaluate((el) => el.getBoundingClientRect().width <= 375), 'date controls fit narrow viewport');
+        await load('edit-block.html');
+        const edit = page.locator('form').filter({ has: page.locator('[name=operation][value=block_update]') });
+        check(await edit.locator('[name=all_day]').isChecked() && await edit.locator('[name=end_date]').inputValue() === '2030-12-26', 'existing all-day interval loads inclusive dates');
+        check(await edit.locator('[name=start_time]').isDisabled() && await edit.locator('[name=end_time]').isDisabled(), 'existing all-day edit starts with disabled times');
+        await edit.locator('[name=all_day]').focus(); await page.keyboard.press('Space');
+        check(await edit.locator('[name=start_time]').isEnabled(), 'keyboard can switch to timed editing');
+        check(errors.length === 0, 'no browser JavaScript errors');
+        console.log(`${checks} availability UI browser checks passed.`);
+    } finally { await browser.close(); }
+})().catch((error) => { console.error(error); process.exitCode = 1; });

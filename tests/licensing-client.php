@@ -42,12 +42,12 @@ try{
  $r=cl_admin('activate',$key);cl_check(!is_wp_error($r)&&$r['valid'],'B: activation through real separate controller REST');
  cl_check(cl_worker(array('operation'=>'used','id'=>$license_id))===1,'C: controller tracks activation');
  $s=License::state();cl_check($s['valid']&&License::entitlement()==='valid'&&$s['last_valid_at']>0,'valid activation caches entitlement');
- $rental=Reservations::create(array('package_product_id'=>$product->save(),'quantity'=>1,'start'=>'2020-01-01T09:00','end'=>'2020-01-01T13:00','status'=>'active'));
+ $rental=\BrpReservationFixture::create(array('package_product_id'=>$product->save(),'quantity'=>1,'start'=>'2020-01-01T09:00','end'=>'2020-01-01T13:00','status'=>'active'));
  cl_check(!is_wp_error($rental),'valid license permits rental creation before later suspension');
  cl_check(!str_contains(wp_json_encode($s),$key)&&$s['key_cipher']!==$key,'key encrypted in client option');
  cl_check(!in_array($wpdb->get_var($wpdb->prepare('SELECT autoload FROM %i WHERE option_name=%s',$wpdb->options,License::OPTION)),array('yes','on','auto-on','auto'),true),'secret option not autoloaded');
  cl_check(array_keys($payloads[0])===array('license_key','product_slug','installation_id','site_url','plugin_version','wordpress_version','php_version'),'activation sends only documented licensing fields');
- cl_check($payloads[0]['plugin_version']==='1.0.0'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
+ cl_check($payloads[0]['plugin_version']==='1.0.1'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
  $_GET=array('tab'=>'license');ob_start();(new Settings())->render();$html=ob_get_clean();
  cl_check(str_contains($html,'Check License Now')&&str_contains($html,'Deactivate License')&&str_contains($html,'License Status'),'License tab renders actions and status');
  cl_check(!str_contains($html,'Controller URL')&&!str_contains($html,License::endpoint())&&!str_contains($html,'Daily validation sends'),'License tab omits controller URL and transmission description');
@@ -66,7 +66,7 @@ try{
  cl_check(PublicBooking::shortcode()==='<p>'.License::PUBLIC_MESSAGE.'</p>'&&!str_contains(strtolower(PublicBooking::shortcode()),'license'),'public message contains no licensing details');
  foreach(array('packages','times','availability') as $route){$response=PublicBooking::handle(new WP_REST_Request('GET','/bike-rental/v1/'.$route));$json=$response->get_data();cl_check($response->get_status()===503&&str_contains(wp_json_encode($json),'Online booking is temporarily unavailable')&&!str_contains(strtolower(wp_json_encode($json)),'license'),'enforced public REST guard: '.$route);}
  $finished=Reservations::mark_completed($rental['id'],$rental['revision']);cl_check(!is_wp_error($finished)&&$finished['status']==='completed','existing active rental can complete under invalid enforced license');
- $blocked=Reservations::create(array('status'=>'confirmed'));cl_check(is_wp_error($blocked)&&$blocked->get_error_code()==='brp_booking_disabled','service guard blocks new admin reservations too');
+ $blocked=\BrpReservationFixture::create(array('status'=>'confirmed'));cl_check(is_wp_error($blocked)&&$blocked->get_error_code()==='brp_booking_disabled','shared allocation service retains its license guard');
  $GLOBALS['license_outage']=true;cl_admin('validate');cl_check(!License::allows_new(),'definite suspension does not acquire grace on later outage');$GLOBALS['license_outage']=false;
  $input['status']='active';cl_worker(array('operation'=>'save','input'=>$input,'id'=>$license_id));cl_admin('validate');cl_check(License::allows_new(),'G: reactivation restores entitlement');
  $before=License::state()['grace_until'];$GLOBALS['license_outage']=true;$r=cl_admin('validate');cl_check(is_wp_error($r)&&License::entitlement()==='grace'&&License::allows_new(),'L-M: outage keeps previously valid operations during grace');

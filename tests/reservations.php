@@ -11,6 +11,7 @@ if ( ! $wp_root || ! is_file( $wp_root . '/wp-load.php' ) ) { throw new RuntimeE
 require $wp_root . '/wp-load.php';
 if ( 'brp_m3_disposable' !== DB_NAME || '127.0.0.1:33316' !== DB_HOST || 'm3_' !== $wpdb->prefix ) { throw new RuntimeException( "Refusing non-disposable database.\n" ); }
 require_once dirname( __DIR__ ) . '/bike-rental-plugin/bike-rental-plugin.php';
+require_once __DIR__ . '/reservation-fixture.php';
 
 use BikeRentalPlugin\Database;
 use BikeRentalPlugin\DataAdmin;
@@ -111,10 +112,10 @@ bad( Fleet::disable_block( 1 ), 'block disable cannot disable capacity row' );
 bad( Fleet::block( '2 OR 1=1' ), 'query-string ID injection rejected' );
 
 $input = array( 'package_product_id' => $product_id, 'quantity' => 2, 'start' => '2030-06-16T09:00', 'end' => '2030-06-16T13:00', 'status' => 'hold' );
-$reservation = good( Reservations::create( $input ), 'manual reservation created' );
+$reservation = good( \BrpReservationFixture::create( $input ), 'manual reservation created' );
 $id = $reservation['id'];
 verify( preg_match( '/^BRP-[0-9]{8}-[A-F0-9]{16}$/D', $reservation['reference'] ), 'human-readable collision-resistant reference format' );
-$another = good( Reservations::create( array_replace( $input, array( 'start' => '2020-06-16T09:00', 'end' => '2020-06-16T13:00' ) ) ), 'second independent started test reservation created' );
+$another = good( \BrpReservationFixture::create( array_replace( $input, array( 'start' => '2020-06-16T09:00', 'end' => '2020-06-16T13:00' ) ) ), 'second independent started test reservation created' );
 verify( $another['reference'] !== $reservation['reference'], 'references unique across reservations' );
 verify( '2030-06-16 13:00:00' === $reservation['start_utc'] && '2030-06-16 17:00:00' === $reservation['end_utc'], 'reservation UTC storage' );
 verify( '2030-06-16 12:45:00' === $reservation['occupied_start_utc'] && '2030-06-16 17:30:00' === $reservation['occupied_end_utc'], 'occupied interval incorporates snapshotted preparation and turnaround buffers' );
@@ -127,17 +128,17 @@ $product->update_meta_data( Packages::AMOUNT, 6 );
 $product->save();
 verify( '97.43' === Packages::get_package( $product_id )['price'] && 6 === Packages::get_package( $product_id )['duration_amount'], 'real WooCommerce product price and duration changed' );
 verify( $reservation['snapshot'] === Reservations::read( $id )['snapshot'], 'later product edits never rewrite original snapshot' );
-foreach ( array( 0, -1, '1 OR 1=1', array(), 2147483647 ) as $package_id ) { bad( Reservations::create( array_replace( $input, array( 'package_product_id' => $package_id ) ) ), 'invalid package rejected: ' . wp_json_encode( $package_id ) ); }
+foreach ( array( 0, -1, '1 OR 1=1', array(), 2147483647 ) as $package_id ) { bad( \BrpReservationFixture::create( array_replace( $input, array( 'package_product_id' => $package_id ) ) ), 'invalid package rejected: ' . wp_json_encode( $package_id ) ); }
 $product->update_meta_data( Packages::ACTIVE, 'no' ); $product->save();
-bad( Reservations::create( $input ), 'inactive package rejected for new reservation' );
+bad( \BrpReservationFixture::create( $input ), 'inactive package rejected for new reservation' );
 $product->update_meta_data( Packages::ACTIVE, 'yes' ); $product->set_status( 'draft' ); $product->save();
-bad( Reservations::create( $input ), 'unpublished package rejected' );
+bad( \BrpReservationFixture::create( $input ), 'unpublished package rejected' );
 $product->set_status( 'publish' ); $product->set_regular_price( '' ); $product->save();
-bad( Reservations::create( $input ), 'unset regular price rejected' );
+bad( \BrpReservationFixture::create( $input ), 'unset regular price rejected' );
 $product->set_regular_price( '97.43' ); $product->save();
-foreach ( array( 0, -1, 11, '2.5', true, array() ) as $quantity ) { bad( Reservations::create( array_replace( $input, array( 'quantity' => $quantity ) ) ), 'invalid reservation quantity rejected: ' . wp_json_encode( $quantity ) ); }
-foreach ( array( '', '2030-06-16T08:00', $input['start'], '2030-06-16T25:00', array() ) as $end ) { bad( Reservations::create( array_replace( $input, array( 'end' => $end ) ) ), 'invalid reservation interval rejected: ' . wp_json_encode( $end ) ); }
-bad( Reservations::create( array_replace( $input, array( 'status' => 'paid' ) ) ), 'payment status not introduced as reservation status' );
+foreach ( array( 0, -1, 11, '2.5', true, array() ) as $quantity ) { bad( \BrpReservationFixture::create( array_replace( $input, array( 'quantity' => $quantity ) ) ), 'invalid reservation quantity rejected: ' . wp_json_encode( $quantity ) ); }
+foreach ( array( '', '2030-06-16T08:00', $input['start'], '2030-06-16T25:00', array() ) as $end ) { bad( \BrpReservationFixture::create( array_replace( $input, array( 'end' => $end ) ) ), 'invalid reservation interval rejected: ' . wp_json_encode( $end ) ); }
+bad( \BrpReservationFixture::create( array_replace( $input, array( 'status' => 'paid' ) ) ), 'payment status not introduced as reservation status' );
 $updated = good( Reservations::update( $id, array_replace( $input, array( 'quantity' => 3, 'end' => '2030-06-16T14:00' ) ), 1 ), 'reservation schedule and quantity updated' );
 verify( 2 === (int) $updated['revision'] && 3 === (int) $updated['quantity'] && '2030-06-16 18:00:00' === $updated['end_utc'], 'schedule edit persists and increments revision' );
 verify( '83.27' === json_decode( $updated['snapshot'], true )['price'] && '2030-06-16T14:00' === json_decode( $updated['snapshot'], true )['local_end'] && 3 === json_decode( $updated['snapshot'], true )['quantity'], 'schedule edit refreshes current snapshot while preserving agreed package price' );
@@ -156,7 +157,7 @@ $active = good( Reservations::mark_active( $another['id'], 2 ), 'confirmed reser
 bad( Reservations::cancel( $another['id'], 3 ), 'active rental requires completion rather than cancellation' );
 $completed = good( Reservations::mark_completed( $another['id'], 3 ), 'active rental completed' );
 verify( 'completed' === Reservations::read( $another['id'] )['status'], 'completed reservation retained' );
-$expiring = good( Reservations::create( $input ), 'test hold created for expiry transition' );
+$expiring = good( \BrpReservationFixture::create( $input ), 'test hold created for expiry transition' );
 good( Reservations::change_status( $expiring['id'], 'expired', 1 ), 'hold can be explicitly marked expired' );
 verify( Reservations::STATUSES === array( 'hold', 'confirmed', 'active', 'completed', 'cancelled', 'expired', 'pending_waivers' ), 'seven lifecycle statuses including pending waivers' );
 
@@ -180,7 +181,7 @@ $before_capacity = Fleet::capacity();
 bad( $admin->dispatch( array( 'operation' => 'capacity', 'id' => '0', 'quantity' => 8 ) ), 'missing nonce rejected' );
 bad( $admin->dispatch( form_data( 'capacity', 0, array( 'quantity' => 8, '_wpnonce' => 'invalid' ) ) ), 'invalid nonce rejected by real WordPress verifier' );
 bad( $admin->dispatch( form_data( 'block_disable', $block['id'], array( '_wpnonce' => wp_create_nonce( 'brp_block_disable_1' ) ) ) ), 'nonce bound to operation and record' );
-bad( $admin->dispatch( form_data( 'reservation_create', 0, array_merge( $input, array( 'timezone' => 'UTC' ) ) ) ), 'timezone changed while form open rejected' );
+bad( $admin->dispatch( form_data( 'block_create', 0, array_merge( $input, array( 'timezone' => 'UTC' ) ) ) ), 'timezone changed while form open rejected' );
 verify( $before_capacity === Fleet::capacity(), 'invalid forms do not mutate capacity' );
 good( $admin->dispatch( form_data( 'capacity', 0, array( 'quantity' => 10 ) ) ), 'valid real nonce authorizes capacity mutation' );
 bad( $admin->dispatch( form_data( 'block_disable', '2 OR 1=1' ) ), 'admin ID injection rejected' );
@@ -190,7 +191,7 @@ wp_set_current_user( 0 );
 bad( $admin->dispatch( $nonce_before_logout ), 'unauthorized user cannot use otherwise valid form' );
 bad( Fleet::set_capacity( 8 ), 'unauthorized internal capacity write denied' );
 bad( Fleet::save_block( $block_input ), 'unauthorized internal block write denied' );
-bad( Reservations::create( $input ), 'unauthorized internal reservation create denied' );
+bad( \BrpReservationFixture::create( $input ), 'unauthorized internal reservation create denied' );
 bad( Reservations::cancel( $id, 4 ), 'unauthorized status mutation denied' );
 bad( Reservations::read( $id ), 'unauthorized reservation read denied' );
 wp_set_current_user( 1 );
@@ -204,12 +205,12 @@ $_GET = array();
 ob_start(); $admin->fleet(); $html = ob_get_clean();
 verify( str_contains( $html, 'Total rentable bikes' ) && str_contains( $html, 'Disabled' ) && str_contains( $html, 'name="_wpnonce"' ), 'Fleet page renders persisted records and real nonce forms' );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
-verify( str_contains( $html, 'Create Reservation' ) && str_contains( $html, $reservation['reference'] ), 'reservation list and active package create form render' );
+verify( ! str_contains( $html, 'Create Reservation' ) && str_contains( $html, 'use the public booking page' ) && str_contains( $html, $reservation['reference'] ), 'reservation list and public booking guidance render' );
 $_GET = array( 'id' => $id );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
 verify( str_contains( $html, 'Occupied start (local)' ) && str_contains( $html, 'name="revision"' ) && ! str_contains( $html, 'Current reservation snapshot' ) && ! str_contains( $html, '<pre' ), 'detail renders business interval and hidden revision without raw snapshot' );
 verify( '83.27' === json_decode( Reservations::read( $id )['snapshot'], true )['price'], 'rendering preserves the original stored snapshot price' );
-foreach ( array( 'test_reservation', 'create_test_reservation', 'sample_reservation', 'demo_reservation' ) as $operation ) {
+foreach ( array( 'reservation_create', 'test_reservation', 'create_test_reservation', 'sample_reservation', 'demo_reservation' ) as $operation ) {
  $before_count = Database::listing( 'reservations' )['total'];
  bad( $admin->dispatch( form_data( $operation, 0, $input ) ), 'no generator operation: ' . $operation );
  verify( $before_count === Database::listing( 'reservations' )['total'], 'rejected generator inserts no reservation' );
@@ -264,7 +265,7 @@ $wpdb = new BRP_Failing_Wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST );
 $wpdb->set_prefix( 'm3_' );
 $wpdb->failure = 'COMMIT';
 $before_rows = $real_db->get_var( $real_db->prepare( 'SELECT COUNT(*) FROM %i', $r ) );
-bad( Reservations::create( array_replace( $input, array( 'status' => 'confirmed' ) ) ), 'commit failure reported to caller' );
+bad( \BrpReservationFixture::create( array_replace( $input, array( 'status' => 'confirmed' ) ) ), 'commit failure reported to caller' );
 verify( 1 === $wpdb->reservation_inserts && $before_rows === $real_db->get_var( $real_db->prepare( 'SELECT COUNT(*) FROM %i', $r ) ), 'failed commit rolls back a verified successful reservation insert' );
 $wpdb->failure = 'GET_LOCK'; update_option( Database::OPTION, '0' ); Database::install();
 verify( '0' === get_option( Database::OPTION ) && get_option( Database::ERROR ), 'lock failure never records successful schema version' );

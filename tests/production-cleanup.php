@@ -57,18 +57,18 @@ namespace {
  pc_check( \BikeRentalPlugin\Database::$row === $row, 'render leaves stored snapshot and reservation untouched (API double)' );
  foreach ( array( 'Save reservation', 'BRP-EXISTING', 'Pending Waivers', 'name="revision" value="9"', 'name="_wpnonce"', 'name="quantity"', 'name="start"', 'name="end"', 'name="status"' ) as $expected ) { pc_check( str_contains( $html, $expected ), 'existing record retains ' . $expected ); }
  $_GET = array(); ob_start(); $admin->reservations(); $html = ob_get_clean();
- pc_check( str_contains( $html, 'Create Reservation' ) && str_contains( $html, 'value="reservation_create"' ), 'manual reservation form uses existing production operation' );
- pc_check( str_contains( $html, 'name="start" type="datetime-local" value="" required' ) && str_contains( $html, 'name="end" type="datetime-local" value="" required' ), 'manual booking requires explicit dates without fake defaults' );
- pc_check( ! preg_match( '/test reservation|milestone/i', $html ), 'manual booking has production wording' );
+ pc_check( ! str_contains( $html, 'Create Reservation' ) && ! str_contains( $html, 'value="reservation_create"' ), 'admin direct-create form removed' );
+ pc_check( str_contains( $html, 'use the public booking page' ) && str_contains( $html, 'BRP-EXISTING' ), 'staff guidance and existing list render' );
+ pc_check( ! method_exists( \BikeRentalPlugin\Reservations::class, 'create' ) && ! method_exists( \BikeRentalPlugin\Reservations::class, 'create_hold' ), 'admin-only service entry points removed' );
  $admin->menus(); $admin->register_hooks();
  pc_check( in_array( 'Availability', array_column( $menus, 2 ), true ), 'operational availability diagnostic retained' );
  pc_check( ! preg_match( '/test|demo|sample/i', implode( ' ', array_column( $menus, 2 ) ) ), 'menus contain operational labels' );
- foreach ( array( 'test_reservation', 'reservation_test', 'create_test_reservation', 'sample_reservation', 'demo_reservation' ) as $operation ) {
+ foreach ( array( 'reservation_create', 'test_reservation', 'reservation_test', 'create_test_reservation', 'sample_reservation', 'demo_reservation' ) as $operation ) {
   $result = $admin->dispatch( array( 'operation' => $operation ) );
   pc_check( is_wp_error( $result ) && $result->code === 'operation' && \BikeRentalPlugin\Database::$row === $row, 'unsupported generator operation rejected: ' . $operation );
  }
  $allowed = false;
- pc_check( is_wp_error( $admin->dispatch( array( 'operation' => 'reservation_create' ) ) ), 'manual creation still requires authorization' );
+ pc_check( is_wp_error( $admin->dispatch( array( 'operation' => 'reservation_create' ) ) ), 'removed operation remains denied to unauthorized users' );
  try { ob_start(); $admin->reservations(); ob_end_clean(); pc_check( false, 'unauthorized page rejected' ); } catch ( RuntimeException $e ) { ob_end_clean(); pc_check( str_contains( $e->getMessage(), 'permission' ), 'unauthorized detail rejected' ); }
  $runtime = dirname( __DIR__ ) . '/bike-rental-plugin'; $source = '';
  foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $runtime, FilesystemIterator::SKIP_DOTS ) ) as $file ) { $source .= file_get_contents( $file->getPathname() ); }

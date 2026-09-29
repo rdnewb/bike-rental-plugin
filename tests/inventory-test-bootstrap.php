@@ -8,6 +8,7 @@ if ( DB_NAME !== 'brp_m3_disposable' || DB_HOST !== '127.0.0.1:33316' || $wpdb->
 // Non-licensing fixtures explicitly opt out; licensing integration exercises the production default.
 if ( ! defined( 'BRP_TEST_REAL_LICENSING' ) && ! defined( 'BRP_LICENSE_ENFORCE' ) ) { define( 'BRP_LICENSE_ENFORCE', false ); }
 require_once dirname( __DIR__ ) . '/bike-rental-plugin/bike-rental-plugin.php';
+require_once __DIR__ . '/reservation-fixture.php';
 wp_set_current_user( 1 );
 \BikeRentalPlugin\Plugin::boot();
 \BikeRentalPlugin\Plugin::load_packages();
