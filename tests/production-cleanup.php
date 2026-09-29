@@ -61,7 +61,7 @@ namespace {
  pc_check( str_contains( $html, 'use the public booking page' ) && str_contains( $html, 'BRP-EXISTING' ), 'staff guidance and existing list render' );
  pc_check( ! method_exists( \BikeRentalPlugin\Reservations::class, 'create' ) && ! method_exists( \BikeRentalPlugin\Reservations::class, 'create_hold' ), 'admin-only service entry points removed' );
  $admin->menus(); $admin->register_hooks();
- pc_check( in_array( 'Availability', array_column( $menus, 2 ), true ), 'operational availability diagnostic retained' );
+ pc_check( in_array( 'Availability', array_column( $menus, 2 ), true ), 'availability block management navigation retained' );
  pc_check( ! preg_match( '/test|demo|sample/i', implode( ' ', array_column( $menus, 2 ) ) ), 'menus contain operational labels' );
  foreach ( array( 'reservation_create', 'test_reservation', 'reservation_test', 'create_test_reservation', 'sample_reservation', 'demo_reservation' ) as $operation ) {
   $result = $admin->dispatch( array( 'operation' => $operation ) );

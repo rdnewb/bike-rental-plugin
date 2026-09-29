@@ -203,7 +203,9 @@ wp_set_current_user( 1 );
 
 $_GET = array();
 ob_start(); $admin->fleet(); $html = ob_get_clean();
-verify( str_contains( $html, 'Total rentable bikes' ) && str_contains( $html, 'Disabled' ) && str_contains( $html, 'name="_wpnonce"' ), 'Fleet page renders persisted records and real nonce forms' );
+verify( str_contains( $html, 'Total rentable bikes' ) && str_contains( $html, 'Manage Availability Blocks' ) && ! str_contains( $html, 'value="block_create"' ) && str_contains( $html, 'name="_wpnonce"' ), 'Fleet page retains capacity and real nonce without duplicate blocks' );
+ob_start(); $admin->availability(); $html = ob_get_clean();
+verify( str_contains( $html, 'Disabled' ) && str_contains( $html, 'Add Availability Block' ) && ! str_contains( $html, 'availability_test' ), 'Availability retains existing block records without checker' );
 ob_start(); $admin->reservations(); $html = ob_get_clean();
 verify( ! str_contains( $html, 'Create Reservation' ) && str_contains( $html, 'use the public booking page' ) && str_contains( $html, $reservation['reference'] ), 'reservation list and public booking guidance render' );
 $_GET = array( 'id' => $id );

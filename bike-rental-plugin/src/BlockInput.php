@@ -39,14 +39,14 @@ final class BlockInput {
 	}
 
 	/** Called after capability, nonce and timezone checks; never trusts legacy start/end fields. */
-	public static function normalize( $input, $block = null, $allow_indefinite = true ) {
+	public static function normalize( $input, $block = null ) {
 		if ( ! is_array( $input ) ) { return Database::error( 'input', 'Invalid block input.' ); }
 		foreach ( array( 'all_day', 'no_end' ) as $flag ) {
 			if ( ! in_array( $input[ $flag ] ?? '0', array( '0', '1' ), true ) ) { return Database::error( 'input', 'Invalid date option.' ); }
 		}
 		$all_day = '1' === ( $input['all_day'] ?? '0' );
 		$no_end = '1' === ( $input['no_end'] ?? '0' );
-		if ( $no_end && ( ! $allow_indefinite || $all_day ) ) { return Database::error( 'interval', 'All Day requires an end date. Choose either All Day or No end date.' ); }
+		if ( $no_end && $all_day ) { return Database::error( 'interval', 'All Day requires an end date. Choose either All Day or No end date.' ); }
 		$start_date = self::date( $input['start_date'] ?? null );
 		$end_date = $no_end ? null : self::date( $input['end_date'] ?? null );
 		if ( ! $start_date || ( ! $no_end && ! $end_date ) ) { return Database::error( 'date', 'Enter valid start and end dates (year 1001-9998).' ); }
@@ -59,7 +59,7 @@ final class BlockInput {
 		}
 		$input['start'] = $start_date->format( 'Y-m-d' ) . 'T' . ( $all_day ? '00:00' : $input['start_time'] );
 		$input['end'] = $no_end ? '' : ( $all_day ? $end_date->modify( '+1 day' )->format( 'Y-m-d' ) . 'T00:00' : $end_date->format( 'Y-m-d' ) . 'T' . $input['end_time'] );
-		$interval = RentalTime::interval( $input['start'], $input['end'], $allow_indefinite );
+		$interval = RentalTime::interval( $input['start'], $input['end'], true );
 		return is_wp_error( $interval ) ? $interval : $input;
 	}
 
@@ -69,7 +69,7 @@ final class BlockInput {
 		return $v['start_date'] . ' ' . self::time_label( $v['start_time'] ) . ' - ' . ( $v['no_end'] ? __( 'Indefinite', 'bike-rental-plugin' ) : $v['end_date'] . ' ' . self::time_label( $v['end_time'] ) );
 	}
 
-	public static function render( $block = null, $allow_indefinite = true ) {
+	public static function render( $block = null ) {
 		$v = self::values( $block );
 		wp_enqueue_script( 'brp-block-admin', plugins_url( 'assets/js/block-admin.js', dirname( __DIR__ ) . '/bike-rental-plugin.php' ), array(), Plugin::VERSION, true );
 		echo '<fieldset class="brp-block-dates"><legend>' . esc_html__( 'Dates and times', 'bike-rental-plugin' ) . '</legend>';
@@ -82,7 +82,7 @@ final class BlockInput {
 			echo '</select></label></p>';
 		}
 		echo '<p><label><input type="checkbox" name="all_day" value="1"' . ( $v['all_day'] ? ' checked' : '' ) . '> All Day</label></p>';
-		if ( $allow_indefinite ) { echo '<p><label><input type="checkbox" name="no_end" value="1"' . ( $v['no_end'] ? ' checked' : '' ) . '> No end date (until disabled)</label></p>'; }
+		echo '<p><label><input type="checkbox" name="no_end" value="1"' . ( $v['no_end'] ? ' checked' : '' ) . '> No end date (until disabled)</label></p>';
 		echo '<p class="description">All Day includes every selected date, from local midnight on the start date to midnight after the end date. Times use ' . esc_html( wp_timezone_string() ) . '.</p></fieldset>';
 	}
 }

@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -43,7 +43,7 @@ Deposit checkout requires a compatible provider and is otherwise blocked.
 7. Configure the signing page, provider, field mappings, and invitation templates if required.
 8. Verify booking, payment, email delivery, signing, and staff workflows before accepting bookings.
 
-Normal initialization verifies schema 2. Version 1.0.1 requires no schema change.
+Normal initialization verifies schema 2. Version 1.0.2 requires no schema change.
 Deactivation, uninstall, and complete-folder updates preserve stored data.
 
 == Frequently Asked Questions ==
@@ -60,7 +60,7 @@ consistently. Reservations administration manages existing bookings only.
 No. They remain stored internally; staff see operational reservation details.
 
 = How do I block unavailable bikes? =
-Use Availability > Add Availability Block, or the same controls under Fleet. Enter
+Use Availability > Add Availability Block. Fleet manages total bike capacity. Enter
 start/end dates, AM/PM times, quantity, and reason. Time choices follow Booking Time
 Increment in the WordPress timezone. The same controls edit existing blocks.
 
@@ -71,6 +71,10 @@ No end date preserves indefinite blocks until disabled. Quantity cannot exceed f
 capacity or available inventory. Lists and Calendar show All Day or AM/PM ranges.
 
 == Changelog ==
+
+= 1.0.2 =
+Fleet now links to dedicated Availability block management. Removed the separate
+admin availability checker. Allocation and business services unchanged; schema 2.
 
 = 1.0.1 =
 * Remove direct admin reservation creation; staff use public booking.

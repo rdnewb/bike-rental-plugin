@@ -34,8 +34,7 @@ const check = (ok, label) => { assert.ok(ok, label); ++checks; console.log('PASS
         check(await start.isDisabled() && await end.isDisabled(), 'All Day disables both time dropdowns');
         check(await group.locator('[name=end_date]').isEnabled(), 'All Day retains inclusive end date');
         check(await form.evaluate((el) => !new FormData(el).has('start_time') && !new FormData(el).has('end_time') && new FormData(el).get('all_day') === '1'), 'disabled times are omitted from all-day submission');
-        const diagnostic = page.locator('form').filter({ has: page.locator('[name=operation][value=availability_test]') });
-        check(await diagnostic.locator('[name=start_time]').isEnabled(), 'all-day toggle affects only its own form');
+        check(await page.locator('[name=operation][value=availability_test]').count() === 0 && !/check availability/i.test(await page.innerText('body')), 'Availability checker is absent');
         await group.locator('[name=all_day]').uncheck();
         check(await start.isEnabled() && await end.isEnabled() && await start.inputValue() === '09:00', 'timed values survive toggling');
         await group.locator('[name=no_end]').check();
@@ -52,6 +51,9 @@ const check = (ok, label) => { assert.ok(ok, label); ++checks; console.log('PASS
         check(await edit.locator('[name=start_time]').isDisabled() && await edit.locator('[name=end_time]').isDisabled(), 'existing all-day edit starts with disabled times');
         await edit.locator('[name=all_day]').focus(); await page.keyboard.press('Space');
         check(await edit.locator('[name=start_time]').isEnabled(), 'keyboard can switch to timed editing');
+        await load('fleet.html');
+        check(await page.locator('form').count() === 1 && await page.locator('[name=operation][value=capacity]').count() === 1 && await page.locator('.brp-block-dates').count() === 0, 'Fleet offers only its capacity form');
+        check((await page.getByRole('link', { name: 'Manage Availability Blocks' }).getAttribute('href')).includes('page=brp-availability'), 'Fleet navigation opens Availability');
         check(errors.length === 0, 'no browser JavaScript errors');
         console.log(`${checks} availability UI browser checks passed.`);
     } finally { await browser.close(); }

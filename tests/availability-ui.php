@@ -8,9 +8,9 @@ namespace BikeRentalPlugin {
   public static function get() { return array( 'time_increment' => $GLOBALS['increment'] ); }
   public static function can_manage() { return $GLOBALS['allowed']; }
  }
- class Plugin { const VERSION = '1.0.1'; }
+ class Plugin { const VERSION = '1.0.2'; }
  class Database {
-  public static $blocks = array(); public static $locked = false; public static $locks = 0;
+  public static $capacity = 10; public static $blocks = array(); public static $locked = false; public static $locks = 0;
   public static function error( $code, $text ) { return new \WP_Error( $code, $text ); }
   public static function gate() { return true; }
   public static function positive( $v ) { return ( is_int( $v ) || is_string( $v ) ) && preg_match( '/\A[1-9][0-9]*\z/', (string) $v ) && $v <= 2147483647; }
@@ -19,11 +19,11 @@ namespace BikeRentalPlugin {
   public static function in_transaction() { return self::$locked; }
   public static function locked( $callback ) {
    if ( ! Settings::can_manage() ) { return self::error( 'permission', 'Denied' ); }
-   ++self::$locks; self::$locked = true; try { return $callback( 10 ); } finally { self::$locked = false; }
+   ++self::$locks; self::$locked = true; try { return $callback( self::$capacity ); } finally { self::$locked = false; }
   }
-  public static function read( $table, $id ) { return $id == 1 ? array( 'record_type' => 'capacity', 'quantity' => 10, 'active' => 1 ) : ( self::$blocks[$id] ?? self::error( 'missing', 'Missing block' ) ); }
+  public static function read( $table, $id ) { return $id == 1 ? array( 'record_type' => 'capacity', 'quantity' => self::$capacity, 'active' => 1 ) : ( self::$blocks[$id] ?? self::error( 'missing', 'Missing block' ) ); }
   public static function insert( $table, $data ) { $id = ++$GLOBALS['wpdb']->insert_id; self::$blocks[$id] = $data + array( 'id' => $id ); return 1; }
-  public static function update( $table, $data, $where ) { self::$blocks[$where['id']] = array_replace( self::$blocks[$where['id']], $data ); return 1; }
+  public static function update( $table, $data, $where ) { if ( $where['id'] == 1 ) { self::$capacity = $data['quantity']; return 1; } self::$blocks[$where['id']] = array_replace( self::$blocks[$where['id']], $data ); return 1; }
   public static function listing( $table, $page ) { return array( 'rows' => array_values( self::$blocks ), 'page' => 1, 'total' => count( self::$blocks ) ); }
  }
  foreach ( array( 'RentalTime', 'Availability', 'Fleet', 'BlockInput', 'DataAdmin', 'Reservations', 'AdminCalendar' ) as $class ) { require dirname( __DIR__ ) . '/bike-rental-plugin/src/' . $class . '.php'; }
@@ -110,12 +110,20 @@ namespace {
  $zone = 'Asia/Kathmandu'; $v = BlockInput::normalize( au_form() ); $i = RentalTime::interval( $v['start'], $v['end'] );
  au_check( $i['start_utc'] === '2030-10-10 03:15:00', 'timezone is configurable, including fractional offsets' );
  $zone = 'America/New_York'; $_GET = array(); ob_start(); $admin->availability(); $html = ob_get_clean();
- foreach ( array( 'type="date" name="start_date"', 'type="date" name="end_date"', '<select name="start_time"', '<select name="end_time"', '9:00 AM', '9:30 AM', 'All Day', 'Add Block', 'Quantity of Bikes', 'Reason', 'Check availability' ) as $text ) { au_check( str_contains( $html, $text ), 'availability page renders ' . $text ); }
+ foreach ( array( 'type="date" name="start_date"', 'type="date" name="end_date"', '<select name="start_time"', '<select name="end_time"', '9:00 AM', '9:30 AM', 'All Day', 'Add Block', 'Quantity of Bikes', 'Reason', 'Add Availability Block' ) as $text ) { au_check( str_contains( $html, $text ), 'availability page renders ' . $text ); }
  au_check( ! str_contains( $html, 'datetime-local' ), 'availability has no combined date/time controls' );
- $_GET = array( 'id' => $all['id'] ); ob_start(); $admin->fleet(); $edit_html = ob_get_clean();
- au_check( str_contains( $edit_html, 'Edit block' ) && str_contains( $edit_html, 'value="2030-12-26"' ) && str_contains( $edit_html, 'name="all_day" value="1" checked' ), 'Fleet edit loads inclusive dates and all-day state' );
+ $_GET = array( 'id' => $all['id'] ); ob_start(); $admin->availability(); $edit_html = ob_get_clean();
+ au_check( str_contains( $edit_html, 'Edit block' ) && str_contains( $edit_html, 'value="2030-12-26"' ) && str_contains( $edit_html, 'name="all_day" value="1" checked' ), 'Availability edit loads inclusive dates and all-day state' );
  au_check( str_contains( $edit_html, '<select name="start_time" disabled' ) && str_contains( $edit_html, '<select name="end_time" disabled' ), 'all-day edit renders disabled time dropdowns' );
+ $_GET = array(); ob_start(); $admin->fleet(); $fleet_html = ob_get_clean();
+ au_check( ! str_contains( $fleet_html, 'Add Availability Block' ) && ! str_contains( $fleet_html, 'value="block_create"' ) && ! str_contains( $fleet_html, 'brp-block-dates' ), 'Fleet contains no duplicate block controls' );
+ au_check( str_contains( $fleet_html, 'Total rentable bikes' ) && str_contains( $fleet_html, 'value="capacity"' ) && str_contains( $fleet_html, 'Manage Availability Blocks' ) && str_contains( $fleet_html, 'page=brp-availability' ), 'Fleet retains capacity form and links to Availability' );
+ au_check( ! is_wp_error( $admin->dispatch( au_form( array( 'operation' => 'capacity', '_wpnonce' => 'valid-brp_capacity_0', 'quantity' => '12' ) ) ) ) && Fleet::capacity() === 12, 'Fleet capacity action persists through actual service' );
+ au_check( ! is_wp_error( $admin->dispatch( au_form( array( 'operation' => 'capacity', '_wpnonce' => 'valid-brp_capacity_0', 'quantity' => '10' ) ) ) ) && Fleet::capacity() === 10, 'Fleet capacity can decrease to valid commitments' );
+ au_check( ! str_contains( strtolower( $html ), 'check availability' ) && ! str_contains( $html, 'availability_test' ), 'Availability has no checker heading or form' );
+ au_check( str_contains( $html, 'Updated' ) && str_contains( $html, 'Disabled' ) && str_contains( $html, '9:17 AM' ), 'existing edited and disabled blocks remain visible' );
  $before = Database::$blocks;
+ au_check( is_wp_error( $admin->dispatch( au_form( array( 'operation' => 'availability_test', '_wpnonce' => 'valid-brp_availability_test_0' ) ) ) ) && Database::$blocks === $before, 'removed checker action rejects even valid nonce without mutation' );
  au_check( is_wp_error( $admin->dispatch( array( 'operation' => 'reservation_create' ) ) ) && Database::$blocks === $before, 'removed admin create operation rejected' );
  $allowed = false;
  au_check( is_wp_error( $admin->dispatch( au_form() ) ), 'block mutation still requires authorization' );
@@ -129,8 +137,9 @@ namespace {
   ob_start(); require dirname( __DIR__ ) . '/bike-rental-plugin/src/calendar-page.php'; $calendar_html = ob_get_clean();
   au_check( str_contains( $calendar_html, BlockInput::interval_label( $calendar_block ) ), 'calendar renders actual block interval label' );
   au_check( str_contains( $calendar_html, 'data-event="block-' . $calendar_block['id'] . '"' ) && str_contains( $calendar_html, 'Peak reserved:' ), 'calendar retains block bar and capacity totals' );
+  au_check( str_contains( $calendar_html, 'page=brp-availability' ) && ! str_contains( $calendar_html, 'page=brp-fleet' ), 'calendar block edit links open Availability' );
   au_check( Database::$blocks === $before_calendar, 'calendar remains read-only' );
  }
- if ( getenv( 'BRP_BLOCK_FIXTURE_DIR' ) ) { $dir = getenv( 'BRP_BLOCK_FIXTURE_DIR' ); if ( ! is_dir( $dir ) ) { mkdir( $dir, 0777, true ); } file_put_contents( $dir . '/blocks.html', $html ); file_put_contents( $dir . '/edit-block.html', $edit_html ); }
+ if ( getenv( 'BRP_BLOCK_FIXTURE_DIR' ) ) { $dir = getenv( 'BRP_BLOCK_FIXTURE_DIR' ); if ( ! is_dir( $dir ) ) { mkdir( $dir, 0777, true ); } file_put_contents( $dir . '/fleet.html', $fleet_html ); file_put_contents( $dir . '/blocks.html', $html ); file_put_contents( $dir . '/edit-block.html', $edit_html ); }
  echo "$checks availability UI checks passed. In-memory database/API doubles; not a real concurrency test.\n";
 }

@@ -127,9 +127,7 @@ foreach ( array( array( '', '2035-01-01 00:00:00', 1 ), array( '2035-01-01 00:00
 bad( Availability::check( '2035-01-01 00:00:00', '2035-01-02 00:00:00', 1, '1 OR 1=1' ), 'invalid exclusion ID rejected' );
 wp_set_current_user( 0 ); bad( capacity_at(), 'unauthorized availability check denied' ); wp_set_current_user( 1 );
 $admin = new DataAdmin();
-bad( $admin->dispatch( array( 'operation' => 'availability_test', 'id' => 0 ) ), 'availability tester requires nonce' );
-$tool = good( $admin->dispatch( form_data( 'availability_test', 0, array( 'start_date' => '2035-06-15', 'start_time' => '09:00', 'end_date' => '2035-06-15', 'end_time' => '13:00', 'quantity' => 1 ) ) ), 'admin availability tool invokes shared engine' );
-verify( false === $tool['fits'] && 0 === $tool['available_quantity'], 'admin tool reports fits and remaining quantity' );
+bad( $admin->dispatch( form_data( 'availability_test', 0, array() ) ), 'removed admin checker action rejected even with a valid nonce' );
 clear_inventory();
 $real_db = $wpdb;
 $wpdb = new BRP_Failing_Wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST ); $wpdb->set_prefix( 'm3_' ); $wpdb->failure = 'INSERT INTO';

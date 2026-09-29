@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Bike Rental Plugin
  * Description: Rental packages, fleet records, and reservation storage for a reusable WooCommerce bicycle rental extension.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Requires at least: 6.6
  * Requires PHP: 8.3
  * Text Domain: bike-rental-plugin

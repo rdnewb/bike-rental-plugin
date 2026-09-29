@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 - Simplified Fleet and Availability administration
+
+- Fleet retains capacity settings and links to dedicated Availability block management.
+- Removed the separate admin availability checker, its operation and result handling.
+- Calendar block links open Availability; timed, all-day, multi-day and indefinite blocks retain creation/editing/listing.
+- Removed duplicate-page return routing and checker-only input options. Shared JavaScript remains for block controls.
+- Availability, fleet storage/capacity, reservations, public booking, waivers, payments and licensing services are unchanged. Schema remains 2.
+
 ## 1.0.1 - Simplified availability blocks and public-only booking creation
 
 - Remove the admin reservation creation form/action and its two creation-only service entry points. Existing reservation edits, status changes, deletion safeguards, and rider/order management remain.

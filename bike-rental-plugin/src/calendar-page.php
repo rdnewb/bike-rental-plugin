@@ -42,7 +42,7 @@ foreach ( $data['rows'] as $row ) {
 	);
 }
 foreach ( $data['blocks'] as $block ) {
-	$events[] = array( 'key' => 'block-' . $block['id'], 'style' => 'block', 'title' => 'Inventory block', 'name' => $block['reason'], 'quantity' => $block['quantity'], 'state' => 'Quantity blocked', 'customer' => '', 'order' => '', 'url' => DataAdmin::url( DataAdmin::FLEET, $block['id'] ), 'start' => $block['start_utc'], 'end' => $block['end_utc'] ?? Availability::FOREVER, 'rental' => '', 'issue' => '', 'block_interval' => BlockInput::interval_label( $block ) );
+	$events[] = array( 'key' => 'block-' . $block['id'], 'style' => 'block', 'title' => 'Inventory block', 'name' => $block['reason'], 'quantity' => $block['quantity'], 'state' => 'Quantity blocked', 'customer' => '', 'order' => '', 'url' => DataAdmin::url( DataAdmin::AVAILABILITY, $block['id'] ), 'start' => $block['start_utc'], 'end' => $block['end_utc'] ?? Availability::FOREVER, 'rental' => '', 'issue' => '', 'block_interval' => BlockInput::interval_label( $block ) );
 }
 foreach ( $events as $event ) :
 	$left = AdminCalendar::position( $event['start'], $days ); $right = AdminCalendar::position( $event['end'], $days );
