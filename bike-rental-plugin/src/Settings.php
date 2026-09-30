@@ -84,7 +84,8 @@ final class Settings {
 	}
 
 	public function add_menu() {
-		add_menu_page( __( 'Bike Rental Plugin', 'bike-rental-plugin' ), __( 'Bike Rentals', 'bike-rental-plugin' ), self::capability(), self::PAGE, array( $this, 'render' ), 'dashicons-location-alt' );
+		// WooCommerce registers at 55.5; core handles numeric position collisions.
+		add_menu_page( __( 'Bike Rental Plugin', 'bike-rental-plugin' ), __( 'Bike Rentals', 'bike-rental-plugin' ), self::capability(), self::PAGE, array( $this, 'render' ), 'dashicons-location-alt', 56 );
 		add_submenu_page( self::PAGE, __( 'Bike Rental Plugin Settings', 'bike-rental-plugin' ), __( 'Settings', 'bike-rental-plugin' ), self::capability(), self::PAGE, array( $this, 'render' ) );
 	}
 

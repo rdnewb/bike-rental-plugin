@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3 - Higher admin menu placement
+
+- Set Bike Rentals menu position to 56, just after WooCommerce's registered 55.5. WordPress handles numeric collisions; other menu ordering can affect visual adjacency.
+- Preserve all submenu registrations, capabilities, page slugs, callbacks and the existing icon. No business logic or schema changes (schema 2).
+
 ## 1.0.2 - Simplified Fleet and Availability administration
 
 - Fleet retains capacity settings and links to dedicated Availability block management.

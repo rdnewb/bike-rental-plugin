@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -43,7 +43,7 @@ Deposit checkout requires a compatible provider and is otherwise blocked.
 7. Configure the signing page, provider, field mappings, and invitation templates if required.
 8. Verify booking, payment, email delivery, signing, and staff workflows before accepting bookings.
 
-Normal initialization verifies schema 2. Version 1.0.2 requires no schema change.
+Normal initialization verifies schema 2. Version 1.0.3 requires no schema change.
 Deactivation, uninstall, and complete-folder updates preserve stored data.
 
 == Frequently Asked Questions ==
@@ -71,6 +71,10 @@ No end date preserves indefinite blocks until disabled. Quantity cannot exceed f
 capacity or available inventory. Lists and Calendar show All Day or AM/PM ranges.
 
 == Changelog ==
+
+= 1.0.3 =
+Move Bike Rentals to explicit admin menu position 56, near WooCommerce.
+Submenus, permissions, icon and schema 2 are unchanged.
 
 = 1.0.2 =
 Fleet now links to dedicated Availability block management. Removed the separate
