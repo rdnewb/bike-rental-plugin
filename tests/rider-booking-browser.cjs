@@ -1,3 +1,4 @@
+const { fillLocation } = require('./booking-browser-helpers.cjs');
 /* Real booking markup and JS; isolated API fixtures, no remote checkout or emails. */
 const { chromium } = require('playwright');
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
@@ -32,7 +33,8 @@ const check = (v, text) => { assert.ok(v, text); checks++; console.log('PASS:', 
    });
    await page.goto('http://127.0.0.1:33319/booking');await page.addScriptTag({path:path.join(__dirname,'../bike-rental-plugin/assets/js/booking.js')});
    await page.locator(`[data-package-id="${fixture.ids[0]}"] .brp-select`).click();await page.locator('[name=date]').fill('2032-09-20');await page.locator('[name=date]').dispatchEvent('change');
-   await page.waitForFunction(()=>!document.querySelector('[name=time]').disabled);await page.locator('[name=time]').selectOption('09:00');await page.waitForFunction(()=>!document.querySelector('.brp-submit').disabled);
+   await page.waitForFunction(()=>!document.querySelector('.brp-submit').disabled);await page.waitForFunction(()=>!document.querySelector('.brp-submit').disabled);
+   await fillLocation(page);
    check(await page.locator('.brp-riders fieldset').count()===1,`${width}: one bike one rider`);
    await page.locator('.brp-submit').click();check(!calls.some(c=>c.name==='holds'),`${width}: missing rider blocks hold`);
    await page.locator('[name=quantity]').fill('3');check(await page.locator('.brp-riders fieldset').count()===3,`${width}: three bikes three riders`);

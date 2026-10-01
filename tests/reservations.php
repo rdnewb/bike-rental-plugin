@@ -10,6 +10,7 @@ $wp_root = getenv( 'BRP_TEST_WP_ROOT' );
 if ( ! $wp_root || ! is_file( $wp_root . '/wp-load.php' ) ) { throw new RuntimeException( "Set BRP_TEST_WP_ROOT to disposable WordPress.\n" ); }
 require $wp_root . '/wp-load.php';
 if ( 'brp_m3_disposable' !== DB_NAME || '127.0.0.1:33316' !== DB_HOST || 'm3_' !== $wpdb->prefix ) { throw new RuntimeException( "Refusing non-disposable database.\n" ); }
+if ( ! defined( 'BRP_LICENSE_ENFORCE' ) ) { define( 'BRP_LICENSE_ENFORCE', false ); } // Explicit disposable non-licensing fixture.
 require_once dirname( __DIR__ ) . '/bike-rental-plugin/bike-rental-plugin.php';
 require_once __DIR__ . '/reservation-fixture.php';
 

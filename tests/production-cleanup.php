@@ -21,6 +21,7 @@ namespace BikeRentalPlugin {
  class ReservationCleanup { public static function render( $row ) {} }
  class RentalTime { public static function display( $value, $input = false ) { return $value ?? ''; } }
  class AdminCalendar { const PAGE = 'brp-calendar'; }
+ require dirname( __DIR__ ) . '/bike-rental-plugin/src/RentalLocation.php';
  require dirname( __DIR__ ) . '/bike-rental-plugin/src/Reservations.php';
  require dirname( __DIR__ ) . '/bike-rental-plugin/src/DataAdmin.php';
 }

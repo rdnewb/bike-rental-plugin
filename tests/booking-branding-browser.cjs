@@ -1,3 +1,4 @@
+const { fillLocation } = require('./booking-browser-helpers.cjs');
 /* Real PHP-rendered markup + shipped CSS/JS. Local-only mock booking transport. */
 const { chromium } = require('playwright');
 const fs = require('node:fs');
@@ -14,6 +15,7 @@ const base = 'http://127.0.0.1:33319';
 let checks = 0;
 const check = (ok, label) => { assert.ok(ok, label); checks++; console.log('PASS:', label); };
 async function fillRiders(page) {
+ await fillLocation(page);
  const sections = page.locator('.brp-riders fieldset');
  for(let i=0;i<await sections.count();i++) {
   await sections.nth(i).locator('[data-field=legal_name]').fill('Fixture Rider '+(i+1));
@@ -92,9 +94,9 @@ async function fillRiders(page) {
         }
         check(await page.locator('.brp-logo').getAttribute('alt') === 'Generic rental mark', 'logo existing alternative text preserved');
         await page.locator('[name=date]').fill('2032-03-08'); await page.locator('[name=date]').dispatchEvent('change');
-        await page.waitForFunction(() => !document.querySelector('[name=time]').disabled);
-        check(await page.locator('[name=time] option').last().textContent() === '1:30 PM', 'start-time labels unchanged');
-        await page.locator('[name=time]').selectOption('09:00'); await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
+        await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
+        check(await page.locator('[name=time]').count() === 0, 'date-only booking has no time dropdown');
+         await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
         await page.locator('[name=quantity]').fill('2'); await fillRiders(page); await page.locator('.brp-submit').click(); await page.locator('.brp-checkout').click(); await page.waitForURL('**/checkout');
         const hold = calls.filter((c) => c.name === 'holds').at(-1), checkout = calls.filter((c) => c.name === 'checkout').at(-1);
         check(hold.input.package_id === String(packages[2].product_id) && hold.input.quantity === '2', 'branded form holds the newly selected package and quantity');

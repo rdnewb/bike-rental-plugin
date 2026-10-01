@@ -14,6 +14,33 @@
         const restart = root.querySelector('.brp-restart');
         const checkout = root.querySelector('.brp-checkout');
         const riders = root.querySelector('.brp-riders');
+        const disclaimer = root.querySelector('.brp-time-disclaimer');
+        const locationFields = root.querySelector('.brp-location');
+        const locationRules = JSON.parse(locationFields?.dataset.rules || '{}');
+        const readLocation = () => Object.fromEntries(Array.from(locationFields?.querySelectorAll('[data-location]') || [], (input) => [input.dataset.location, input.disabled ? '' : input.value]));
+        const updateCountry = () => {
+            if (!locationFields) return;
+            const rules = locationRules[fields.location_country.value];
+            const oldState = locationFields.querySelector('[data-location="state"]');
+            const states = rules?.states || {};
+            const state = document.createElement(Object.keys(states).length ? 'select' : 'input');
+            for (const attr of ['id', 'name', 'data-location', 'autocomplete']) state.setAttribute(attr, oldState.getAttribute(attr));
+            if (state.tagName === 'SELECT') {
+                state.add(new Option('Select state/province', ''));
+                Object.entries(states).forEach(([code, name]) => state.add(new Option(name, code)));
+            } else { state.type = 'text'; state.maxLength = 240; }
+            oldState.replaceWith(state);
+            for (const key of ['state', 'postcode']) {
+                const input = locationFields.querySelector(`[data-location="${key}"]`);
+                input.required = Boolean(rules?.[key]?.required);
+                input.disabled = Boolean(rules?.[key]?.hidden);
+                input.closest('label').hidden = input.disabled;
+                if (input.disabled) input.value = '';
+            }
+        };
+        fields.location_country?.addEventListener('change', updateCountry); updateCountry();
+        locationFields?.addEventListener('input', () => { requestKey = ''; store(''); });
+        locationFields?.addEventListener('change', () => { requestKey = ''; store(''); });
         const readRiders = () => Object.fromEntries(Array.from(riders.children, (section, index) => [index + 1,
             Object.fromEntries(Array.from(section.querySelectorAll('input'), (input) => [input.dataset.field, input.value]))]));
         const renderRiders = () => {
@@ -106,17 +133,19 @@
             const p = document.createElement('p'); p.append(document.createTextNode('Price per bike: '));
             const span = document.createElement('span'); span.innerHTML = item.price_html; p.append(span); target.append(p);
         };
-        const timeLabel = (value) => {
-            const [hour, minute] = value.split(':');
-            return `${Number(hour) % 12 || 12}:${minute} ${Number(hour) < 12 ? 'AM' : 'PM'}`;
+        const dateLabel = (value) => {
+            const [date, time] = value.split('T');
+            if (!time) return date;
+            const [hour, minute] = time.split(':');
+            return `${date} ${Number(hour) % 12 || 12}:${minute} ${Number(hour) < 12 ? 'AM' : 'PM'}`;
         };
-        const dateLabel = (value) => value.replace('T', ' ');
         const resetSelection = () => {
             generation++; selection = null; submit.disabled = true; fields.quantity.disabled = true;
             root.removeAttribute('aria-busy');
+            if (disclaimer) disclaimer.hidden = true;
             summary.replaceChildren(); requestKey = ''; store('');
         };
-        const selectionInput = () => ({ package_id: fields.package_id.value, date: fields.date.value, time: fields.time.value });
+        const selectionInput = () => ({ package_id: fields.package_id.value, date: fields.date.value });
         const showHold = (hold) => {
             if (hold.reservation_status === 'cancelled') {
                 resetBooking(false);
@@ -129,6 +158,7 @@
             line(receipt, 'Reference', hold.reference); line(receipt, 'Package', hold.package.name);
             line(receipt, 'Bikes', hold.quantity); line(receipt, 'Start', dateLabel(hold.rental_start));
             line(receipt, 'Pickup / end', dateLabel(hold.rental_end)); line(receipt, 'Timezone', hold.timezone); price(receipt, hold.package);
+            if (hold.rental_location) line(receipt, 'Drop Off / Pick Up Location', hold.rental_location);
             line(receipt, 'Hold expires', new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(hold.expires_at)) + ' (your device time)');
             message(hold.message + (hold.waiver_notice ? ' ' + hold.waiver_notice : ''));
             const remaining = new Date(hold.expires_at).getTime() - new Date(hold.server_time).getTime();
@@ -161,16 +191,21 @@
             finally { checkout.disabled = false; }
         };
         checkout.addEventListener('click', goCheckout);
-        const loadTimes = async () => {
-            resetSelection(); fields.time.disabled = true; fields.time.replaceChildren(new Option('Choose a date first', ''));
+        const loadDate = async () => {
+            resetSelection();
             if (!fields.package_id.value || !fields.date.value || !fields.date.checkValidity()) return;
-            const current = generation; message('Checking available start times…'); root.setAttribute('aria-busy', 'true');
+            const current = generation; message('Checking availability...'); root.setAttribute('aria-busy', 'true');
             try {
-                const data = await api('times', { package_id: fields.package_id.value, date: fields.date.value });
+                const data = await api('availability', selectionInput());
                 if (current !== generation) return;
-                fields.time.replaceChildren(new Option('Select a start time', ''));
-                data.times.forEach((item) => fields.time.add(new Option(timeLabel(item.time), item.time)));
-                fields.time.disabled = !data.times.length; message(data.message);
+                selection = data;
+                if (disclaimer) disclaimer.hidden = false;
+                fields.quantity.max = String(data.available_quantity);
+                fields.quantity.value = String(Math.max(1, Math.min(Number(fields.quantity.value), data.available_quantity)));
+                fields.quantity.disabled = !data.available_quantity; submit.disabled = !data.available_quantity;
+                renderRiders();
+                line(summary, 'Start', dateLabel(data.rental_start)); line(summary, 'Pickup / end', dateLabel(data.rental_end));
+                line(summary, 'Timezone', data.timezone); price(summary, data.package); message(data.message);
             } catch (error) { if (current === generation) message(error.message); }
             finally { if (current === generation) root.removeAttribute('aria-busy'); }
         };
@@ -181,8 +216,8 @@
             root.dataset.selectionSource = 'manual';
             syncUrl(card.dataset.packageSlug);
             details.hidden = false; fields.date.disabled = false;
-            loadTimes();
-            if (!fields.date.value) message('Rental selected. Choose your start date and time.');
+            loadDate();
+            if (!fields.date.value) message('Rental selected. Choose your start date.');
             fields.date.focus();
         }));
         changeRental.addEventListener('click', () => {
@@ -191,28 +226,12 @@
             cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
             message('Choose a different rental, or continue with your selected rental.');
         });
-        fields.date.addEventListener('change', loadTimes);
-        fields.time.addEventListener('change', async () => {
-            resetSelection(); if (!fields.time.value) return;
-            const current = generation; message('Checking availability…'); root.setAttribute('aria-busy', 'true');
-            try {
-                const data = await api('availability', selectionInput());
-                if (current !== generation) return;
-                selection = data;
-                fields.quantity.max = String(data.available_quantity);
-                fields.quantity.value = String(Math.max(1, Math.min(Number(fields.quantity.value), data.available_quantity)));
-                fields.quantity.disabled = !data.available_quantity; submit.disabled = !data.available_quantity;
-                renderRiders();
-                line(summary, 'Start', dateLabel(data.rental_start)); line(summary, 'Pickup / end', dateLabel(data.rental_end));
-                line(summary, 'Timezone', data.timezone); price(summary, data.package); message(data.message);
-            } catch (error) { if (current === generation) message(error.message); }
-            finally { if (current === generation) root.removeAttribute('aria-busy'); }
-        });
+        fields.date.addEventListener('change', loadDate);
         fields.quantity.addEventListener('input', () => { requestKey = ''; store(''); submit.disabled = !selection || !fields.quantity.checkValidity(); renderRiders(); });
         form.addEventListener('submit', async (event) => {
             event.preventDefault(); if (!selection || !form.reportValidity()) return;
             if (!requestKey) { const bytes = crypto.getRandomValues(new Uint8Array(24)); requestKey = Array.from(bytes, (v) => v.toString(16).padStart(2, '0')).join(''); }
-            const input = { ...selectionInput(), quantity: fields.quantity.value, request_key: requestKey, riders: readRiders() };
+            const input = { ...selectionInput(), quantity: fields.quantity.value, request_key: requestKey, riders: readRiders(), rental_location: readLocation() };
             store(requestKey); submit.disabled = true; fields[0].disabled = true; message('Reserving your bikes…');
             try { const identity = await session(); const hold = await api('holds', input, true, identity.token); showHold(hold); }
             catch (error) { message(error.message); }
@@ -223,7 +242,7 @@
             riders.replaceChildren();
             fields.package_id.value = ''; updateCards(); details.hidden = true;
             filtered = false; showCards(); changeRental.hidden = true; syncUrl(''); root.dataset.selectionSource = 'none';
-            fields.time.disabled = true; fields.date.disabled = true;
+            fields.date.disabled = true; updateCountry();
             if (focus) cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
             message('Choose a package to check availability again.');
         };
@@ -260,7 +279,7 @@
                 root.querySelector('.brp-empty').hidden = visible;
                 fields.date.min = data.min_date; fields.date.max = data.max_date;
                 message(visible ? 'Choose a rental to get started.' : packages.length ? 'Rental options have changed. Refresh this page to see the latest packages.' : 'No rental packages are currently available. Please check back soon or contact us.');
-                if (filtered) message('Rental selected from your link. Choose your start date and time.');
+                if (filtered) message('Rental selected from your link. Choose your start date.');
                 await restoreHold();
             } catch (error) { message(error.message); }
         })();

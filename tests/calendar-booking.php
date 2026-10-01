@@ -52,8 +52,8 @@ calendar_check( 200 === $public->get_status() && $expected === array_column( $ti
 calendar_check( ! in_array( '18:00', array_column( $times['times'], 'time' ), true ), 'existing exclusive closing boundary for starts remains unchanged' );
 $diag = PublicBooking::diagnose_times( $input );
 calendar_check( 20 === count( $diag['diagnostics']['candidates'] ) && array( 'available' ) === array_values( array_unique( array_column( $diag['diagnostics']['candidates'], 'reason' ) ) ), 'protected diagnostics identify each successful candidate' );
-$display = calendar_request( 'availability', $input + array( 'time' => '17:30' ) )->get_data();
-calendar_check( $end_date . 'T17:00' === $display['rental_end'], 'late start may run overnight to Wednesday pickup instead of fitting into Monday' );
+$display = calendar_request( 'availability', $input )->get_data();
+calendar_check( $end_date . 'T17:00' === $display['rental_end'], 'fixed opening start runs overnight to Wednesday pickup instead of fitting into Monday' );
 calendar_check( ! array_intersect( array( 'diagnostics', 'candidates', 'reason', 'database_utc', 'occupied_start_utc' ), array_keys( $times ) ), 'public times omit internal diagnostic fields' );
 calendar_check( 400 === calendar_request( 'times', $input + array( 'diagnose' => true ) )->get_status(), 'public query cannot enable diagnostics' );
 wp_set_current_user( 0 ); $denied = PublicBooking::diagnose_times( $input ); wp_set_current_user( 1 );
@@ -103,7 +103,7 @@ $buffered = $settings; $buffered['preparation_buffer'] = 30; $buffered['turnarou
 $diag = calendar_times( $input, $buffered ); $schedule = $diag['diagnostics']['candidates'][0]['schedule'];
 calendar_check( 20 === count( $diag['times'] ) && $date . 'T08:00' === $schedule['local_start'] && $end_date . 'T17:00' === $schedule['local_end'], 'buffers outside operating hours do not reject calendar schedules or change endpoints' );
 calendar_check( RentalTime::from_local( $date . 'T07:30' ) === $schedule['occupied_start_utc'] && RentalTime::from_local( $end_date . 'T18:00' ) === $schedule['occupied_end_utc'], 'occupied interval captures buffers separately in UTC' );
-$display = calendar_request( 'availability', $input + array( 'time' => '08:00' ) )->get_data();
+$display = calendar_request( 'availability', $input )->get_data();
 calendar_check( $end_date . 'T17:00' === $display['rental_end'] && ! isset( $display['occupied_end_utc'] ), 'public display retains unbuffered final date/time' );
 $block = Fleet::save_block( array( 'quantity' => 10, 'start' => $end_date . 'T17:30', 'end' => $end_date . 'T18:00', 'reason' => 'Test turnaround overlap', 'active' => 1 ) );
 calendar_check( ! is_wp_error( $block ), 'test block outside customer period created' );

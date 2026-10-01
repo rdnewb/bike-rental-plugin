@@ -55,6 +55,11 @@ final class ReservationCleanup {
 			foreach ( $rows as $row ) {
 				$eligible = self::eligible( $row ); if ( is_wp_error( $eligible ) ) { continue; }
 				foreach ( array( 'waivers', 'riders' ) as $table ) { if ( false === Database::delete( $table, array( 'reservation_id' => $row['id'] ) ) ) { return Database::retry_error(); } }
+				$snapshot = json_decode( $row['snapshot'], true );
+				if ( is_array( $snapshot ) && isset( $snapshot['rental_location'] ) ) {
+					unset( $snapshot['rental_location'] );
+					if ( 1 !== Database::update( 'reservations', array( 'snapshot' => wp_json_encode( $snapshot ), 'revision' => (int) $row['revision'] + 1, 'updated_at' => Database::now() ), array( 'id' => $row['id'], 'revision' => $row['revision'] ) ) ) { return Database::retry_error(); }
+				}
 				++$count;
 			} return array( 'count' => $count, 'cursor' => count( $rows ) === 50 ? (int) end( $rows )['id'] : 0 );
 		} ) );

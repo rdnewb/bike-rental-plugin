@@ -37,20 +37,25 @@ defined( 'ABSPATH' ) || exit;
 </section>
 <input name="package_id" type="hidden" value="<?php echo esc_attr( $preselected ?: '' ); ?>">
 <div class="brp-details"<?php if ( ! $preselected ) { echo ' hidden'; } ?>>
-<h2>2. Choose Date / Time</h2>
+<h2>2. Choose Start Date</h2>
 <label for="<?php echo esc_attr( $uid ); ?>-date">Start date</label>
 <input id="<?php echo esc_attr( $uid ); ?>-date" name="date" type="date" required disabled>
-<label for="<?php echo esc_attr( $uid ); ?>-time">Start time</label>
-<select id="<?php echo esc_attr( $uid ); ?>-time" name="time" required disabled><option value="">Choose a date first</option></select>
+<?php $disclaimer = BookingContent::disclaimer(); if ( trim( wp_strip_all_tags( $disclaimer ) ) ) : ?>
+<section class="brp-time-disclaimer" aria-labelledby="<?php echo esc_attr( $uid ); ?>-times" role="region" hidden><h3 id="<?php echo esc_attr( $uid ); ?>-times">Drop Off / Pick Up Times</h3><?php echo wpautop( $disclaimer ); ?></section>
+<?php endif; ?>
 <h2>3. Choose Quantity</h2>
 <label for="<?php echo esc_attr( $uid ); ?>-quantity">Number of bikes</label>
 <input id="<?php echo esc_attr( $uid ); ?>-quantity" name="quantity" type="number" inputmode="numeric" min="1" step="1" value="1" required disabled>
+<?php RentalLocation::form( $uid ); ?>
 <h2>4. Rider Information</h2>
 <p>Enter one rider per bike. Adults sign their own waiver; a parent or guardian signs for each minor. Waiver invitations are sent after successful payment.</p>
 <div class="brp-riders"></div>
 <h2>5. Review / Temporary Reservation</h2>
 <div class="brp-summary" aria-live="polite"></div>
-<button class="brp-submit" type="submit" disabled>Reserve bikes</button>
+<?php $policy = BookingContent::policy(); if ( trim( wp_strip_all_tags( $policy ) ) ) : ?>
+<section class="brp-policy" aria-labelledby="<?php echo esc_attr( $uid ); ?>-policy"><h3 id="<?php echo esc_attr( $uid ); ?>-policy">Refund &amp; Returns Policy</h3><div class="brp-policy-content" role="region" aria-label="Refund and Returns Policy content" tabindex="0"><?php echo $policy; ?></div></section>
+<?php endif; ?>
+<button class="brp-submit" type="submit" disabled>Reserve Bikes</button>
 <p>Your selection is checked again before a temporary hold is created. Then continue to checkout.</p>
 </div>
 </fieldset>
@@ -62,5 +67,5 @@ defined( 'ABSPATH' ) || exit;
 <button class="brp-checkout" type="button" hidden>Continue to checkout</button>
 <button class="brp-restart" type="button" hidden>Start over</button>
 </section>
-<noscript>Please enable JavaScript to check rental times and reserve bikes.</noscript>
+<noscript>Please enable JavaScript to check rental dates and reserve bikes.</noscript>
 </section>

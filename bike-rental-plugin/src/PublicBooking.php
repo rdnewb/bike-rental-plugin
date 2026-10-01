@@ -36,7 +36,7 @@ final class PublicBooking {
 		}
 		$limit = GuestSession::limit( 'holds' === $route );
 		if ( is_wp_error( $limit ) ) { return self::reply( $limit ); }
-		$allowed = match ( $route ) { 'packages', 'session' => array(), 'times' => array( 'package_id', 'date' ), 'availability' => array( 'package_id', 'date', 'time' ), 'holds' => array( 'package_id', 'date', 'time', 'quantity', 'request_key', 'riders' ), 'hold-status', 'checkout' => array( 'request_key' ), default => array() };
+		$allowed = match ( $route ) { 'packages', 'session' => array(), 'times' => array( 'package_id', 'date' ), 'availability' => array( 'package_id', 'date' ), 'holds' => array( 'package_id', 'date', 'quantity', 'request_key', 'riders', 'rental_location' ), 'hold-status', 'checkout' => array( 'request_key' ), default => array() };
 		$input = $request->get_params();
 		unset( $input['rest_route'] );
 		if ( array_diff( array_keys( $input ), $allowed ) || array_diff( $allowed, array_keys( $input ) ) ) { return self::reply( BookingSchedule::error( 'Please complete the requested booking fields.' ) ); }
@@ -63,9 +63,9 @@ final class PublicBooking {
 			$message = 'Online rental selection is temporarily unavailable. Please try again.';
 			$status = 503;
 			if ( 'brp_booking_disabled' === $code ) { $message = License::PUBLIC_MESSAGE; }
-			if ( in_array( $code, array( 'brp_rider', 'brp_selection', 'brp_session', 'brp_existing_hold', 'brp_idempotency', 'brp_rate', 'brp_checkout' ), true ) ) { $message = $result->get_error_message(); $status = $result->get_error_data()['status'] ?? 400; }
+			if ( in_array( $code, array( 'brp_location', 'brp_rider', 'brp_selection', 'brp_session', 'brp_existing_hold', 'brp_idempotency', 'brp_rate', 'brp_checkout' ), true ) ) { $message = $result->get_error_message(); $status = $result->get_error_data()['status'] ?? 400; }
 			if ( 'brp_booking_disabled' === $code ) { $message = License::PUBLIC_MESSAGE; }
-			if ( 'brp_conflict' === $code ) { $message = sprintf( 'Only %d bikes are available. Please choose another time or quantity.', max( 0, $result->get_error_data()['available_quantity'] ?? 0 ) ); $status = 409; }
+			if ( 'brp_conflict' === $code ) { $message = sprintf( 'Only %d bikes are available. Please choose another date or quantity.', max( 0, $result->get_error_data()['available_quantity'] ?? 0 ) ); $status = 409; }
 			if ( in_array( $code, array( 'brp_quantity', 'brp_request' ), true ) ) { $message = 'Please check your bike quantity and rental selection.'; $status = 400; }
 			$result = array( 'valid' => false, 'message' => $message );
 		}
@@ -146,7 +146,7 @@ final class PublicBooking {
 		$s = $booking['schedule'];
 		$result = Availability::check( $s['occupied_start_utc'], $s['occupied_end_utc'] );
 		if ( is_wp_error( $result ) ) { return $result; }
-		return array( 'valid' => true, 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'available_quantity' => max( 0, $result['available_quantity'] ), 'package' => self::package_view( $booking['package'] ), 'message' => $result['fits'] ? sprintf( '%d bikes are available.', $result['available_quantity'] ) : 'No bikes are available for that time.' );
+		return array( 'valid' => true, 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'available_quantity' => max( 0, $result['available_quantity'] ), 'package' => self::package_view( $booking['package'] ), 'message' => $result['fits'] ? sprintf( '%d bikes are available.', $result['available_quantity'] ) : 'No bikes are available for that date.' );
 	}
 	private static function session() {
 		$identity = GuestSession::start();
@@ -176,7 +176,7 @@ final class PublicBooking {
 		$live = 'hold' === $row['status'] && $row['hold_expires_at'] > $now;
 		$message = $live ? self::next_step_message() : 'Your temporary reservation has expired or is no longer held. Bikes are not reserved by this form.';
 		if ( in_array( $row['status'], array( 'pending_waivers', 'confirmed', 'active', 'completed' ), true ) ) { $message = 'Reservation status: ' . Reservations::status_label( $row['status'] ) . '. Check your order confirmation or contact the shop for details.'; }
-		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => $row['hold_expires_at'] ? str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z' : null, 'waiver_notice' => trim( wp_strip_all_tags( WaiverUI::notice( $row ) ) ), 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
+		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => $row['hold_expires_at'] ? str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z' : null, 'rental_location' => RentalLocation::text( RentalLocation::from_row( $row ) ), 'waiver_notice' => trim( wp_strip_all_tags( WaiverUI::notice( $row ) ) ), 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
 	}
 	public static function next_step_message() { return __( 'Your bikes are temporarily reserved. Continue to checkout to complete payment.', 'bike-rental-plugin' ); }
 	/** Resolve only against the same server-validated catalog rendered by the form. */

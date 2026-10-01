@@ -25,10 +25,21 @@ final class BookingSchedule {
 		$settings = self::settings();
 		if ( is_wp_error( $package ) ) { return $package; }
 		if ( is_wp_error( $settings ) ) { return $settings; }
-		$schedule = self::calculate( $package, $input['date'] ?? null, $input['time'] ?? null, $settings );
+		$schedule = self::for_date( $package, $input['date'] ?? null, $settings );
 		if ( is_wp_error( $schedule ) ) { return $schedule; }
 		return array( 'package' => $package, 'settings' => $settings, 'schedule' => $schedule, 'input' => array( 'package_product_id' => $package['product_id'], 'start' => $schedule['local_start'], 'end' => $schedule['local_end'], 'quantity' => $input['quantity'] ?? 1, 'status' => 'hold' ) );
 	}
+	/** One standard start per date: the configured opening time in the WordPress timezone. */
+ public static function for_date( $package, $date, $settings, $now = null ) {
+  if ( ! is_string( $date ) || ! preg_match( '/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/', $date ) || is_wp_error( RentalTime::from_local( $date . 'T12:00' ) ) ) { return self::error( 'Please select a valid start date.', 'invalid_start_date' ); }
+  $day = strtolower( ( new \DateTimeImmutable( $date . ' 12:00', wp_timezone() ) )->format( 'l' ) );
+  $result = self::calculate( $package, $date, $settings['weekly_hours'][$day]['start'], $settings, $now );
+  if ( is_wp_error( $result ) ) {
+   $reason = $result->get_error_data()['reason'] ?? 'selection';
+   if ( in_array( $reason, array( 'invalid_start_time', 'invalid_pickup_time', 'minimum_notice' ), true ) ) { return self::error( 'The scheduled rental is unavailable on this date. Choose another date or contact the rental provider.', $reason ); }
+  }
+  return $result;
+ }
 	/** Start horizon is inclusive in local dates; notice and hourly duration use elapsed UTC. */
 	public static function calculate( $package, $date, $time, $settings, $now = null ) {
 		if ( ! is_array( $package ) || ! in_array( $package['duration_type'] ?? null, array( 'hours', 'calendar_days' ), true ) || ! Database::positive( $package['duration_amount'] ?? null ) ) { return self::error( 'Please select an available rental package.', 'invalid_package_metadata' ); }

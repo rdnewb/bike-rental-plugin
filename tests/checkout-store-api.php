@@ -68,7 +68,17 @@ try {
 	scheck( count( array_unique( $created_orders ) ) === 1, 'retry creates exactly one Woo primary order' );
 	$order = wc_get_order( $after['order_id'] ); scheck( $order->get_total() === '64.17' && $order->get_total_tax() === '4.2', 'full Woo order and tax totals preserved through payment' );
 	scheck( $order->get_customer_id() === 0 && $order->get_shipping_address_1() === $address['address_1'], 'guest order retains Woo delivery address without account' );
-	$items = $order->get_items(); $item = reset( $items ); scheck( $item->get_meta( 'Rental Quantity' ) === '3' && str_contains( $item->get_meta( 'Rental Start' ), '9:00 AM' ), 'rental metadata persists through actual order construction' );
+	$items = $order->get_items(); $item = reset( $items ); scheck( $item->get_meta( 'Rental Quantity' ) === '3' && str_contains( $item->get_meta( 'Rental Start' ), '8:00 AM' ), 'rental metadata persists through actual order construction' );
+	$location = $order->get_meta( \BikeRentalPlugin\RentalLocation::META );
+ scheck( $location['address_1'] === brp_test_location()['address_1'], 'service location copied to separate structured order meta' );
+ scheck( $order->get_billing_address_1() === $billing['address_1'] && $order->get_billing_email() === $billing['email'] && $order->get_billing_address_1() !== $location['address_1'], 'Woo billing is retained and never overwritten by service location' );
+ wp_set_current_user(1); ob_start(); \BikeRentalPlugin\RentalLocation::order_admin($order); $admin_location=ob_get_clean();
+ scheck(str_contains($admin_location,'Drop Off / Pick Up Location')&&str_contains($admin_location,$location['address_1']), 'order admin renders formatted rental address');
+ wp_set_current_user(0); $_GET['key']=$order->get_order_key(); ob_start(); \BikeRentalPlugin\RentalLocation::order_customer($order->get_id()); $customer_location=ob_get_clean();
+ scheck(str_contains($customer_location,$location['address_1']), 'guest confirmation displays service location with matching order key');
+ $_GET['key']='wrong-key-123456';ob_start();\BikeRentalPlugin\RentalLocation::order_customer($order->get_id());$denied=ob_get_clean();unset($_GET['key']);
+ scheck($denied==='', 'wrong customer key cannot disclose order location');
+ foreach(array(false,true) as $plain){ob_start();\BikeRentalPlugin\RentalLocation::email($order,false,$plain,null);$mail=ob_get_clean();scheck(str_contains($mail,$location['address_1'])&&str_contains($mail,'Drop Off / Pick Up Location'),'location appears in customer email format '.($plain?'plain':'HTML'));}
 	scheck( PaymentMode::paid( $order ), 'payment lifecycle adapter recognizes fixture capture evidence' );
 	} else {
 	$fixture_decline = false;

@@ -63,6 +63,9 @@ final class Reservations {
 		if ( is_wp_error( $booking ) ) { return $booking; }
 		$riders = Waivers::validate_roster( $input['riders'] ?? null, $booking['input']['quantity'] );
 		if ( is_wp_error( $riders ) ) { return $riders; }
+		$location = RentalLocation::validate( $input['rental_location'] ?? null );
+		if ( is_wp_error( $location ) ) { return $location; }
+		$booking['input']['rental_location'] = $location;
 		$booking['input']['riders'] = $riders;
 		return self::create_request( $booking['input'], $request_key, $session_hash, $booking );
 	}
@@ -75,7 +78,7 @@ final class Reservations {
 		if ( is_wp_error( $interval ) ) { return $interval; }
 		if ( ! in_array( $input['status'] ?? null, self::STATUSES, true ) ) { return Database::error( 'status', 'Invalid reservation status.' ); }
 		$intent = array( (int) $input['package_product_id'], (int) $input['quantity'], $interval, wp_timezone_string(), $input['status'] );
-		if ( $booking ) { $intent[] = $input['riders']; }
+		if ( $booking ) { $intent[] = $input['riders']; $intent[] = $input['rental_location']; }
 		$identity = array( 'request_key' => strtolower( $request_key ), 'session_hash' => $session_hash, 'request_hash' => hash( 'sha256', wp_json_encode( $intent ) ) );
 		$existing = Database::locked( static fn() => self::existing_request( $identity ) );
 		if ( null !== $existing ) { return $existing; }
@@ -114,6 +117,7 @@ final class Reservations {
 		$snapshot['quantity'] = $data['quantity'];
 		$snapshot['status'] = $status;
 		$snapshot['waiver_policy'] = WaiverSettings::get();
+		if ( $booking ) { $snapshot['rental_location'] = $input['rental_location']; }
 		$data += array( 'package_product_id' => $package['product_id'], 'status' => $status, 'snapshot' => wp_json_encode( $snapshot ), 'revision' => 1, 'created_at' => gmdate( 'Y-m-d H:i:s' ), 'updated_at' => gmdate( 'Y-m-d H:i:s' ) );
 		if ( false === $data['snapshot'] ) { return Database::error( 'snapshot', 'Could not encode the package snapshot.' ); }
 		return Database::locked( static function ( $capacity ) use ( $data, $identity, $booking ) {
@@ -125,7 +129,7 @@ final class Reservations {
 				if ( 'hold' === $data['status'] ) { $data['hold_expires_at'] = RentalTime::shift( Database::now(), self::HOLD_MINUTES ); }
 			}
 			if ( $booking ) {
-				$check = BookingSchedule::calculate( $booking['package'], substr( $booking['input']['start'], 0, 10 ), substr( $booking['input']['start'], 11 ), $booking['settings'], Database::now() );
+				$check = BookingSchedule::for_date( $booking['package'], substr( $booking['input']['start'], 0, 10 ), $booking['settings'], Database::now() );
 				if ( is_wp_error( $check ) ) { return $check; }
 				$other = $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM %i WHERE session_hash = %s AND status = %s AND hold_expires_at > %s LIMIT 1 FOR UPDATE', Database::table( 'reservations' ), $identity['session_hash'], 'hold', Database::now() ) );
 				if ( $wpdb->last_error ) { return Database::retry_error(); }
@@ -173,8 +177,10 @@ final class Reservations {
 			$product = wc_get_product( (int) $package_id );
 			$price = $product ? $product->get_price( 'edit' ) : null;
 			if ( ! is_string( $price ) || ! preg_match( '/\A[0-9]+(?:\.[0-9]+)?\z/', $price ) ) { return Database::error( 'price', 'The replacement package must have a valid WooCommerce selling price.' ); }
+			$location = $snapshot['rental_location'] ?? null;
 			$payment_mode = $snapshot['payment_mode'] ?? null; $waiver_policy = $snapshot['waiver_policy'] ?? null;
 			$snapshot = array_intersect_key( $package, array_flip( array( 'product_id', 'name', 'price', 'currency', 'duration_type', 'duration_amount', 'promotional_label' ) ) );
+			if ( null !== $location ) { $snapshot['rental_location'] = $location; }
 			if ( null !== $payment_mode ) { $snapshot['payment_mode'] = $payment_mode; }
 			if ( null !== $waiver_policy ) { $snapshot['waiver_policy'] = $waiver_policy; }
 			$snapshot['price'] = $price;

@@ -42,7 +42,7 @@ endif;
 else : ?>
 <p><?php esc_html_e( 'Activate WooCommerce to validate and edit reservation packages. Stored details remain available below.', 'bike-rental-plugin' ); ?></p>
 <?php endif; ?>
-<?php WaiverUI::reservation_admin( $row ); ?>
+<?php echo RentalLocation::html( RentalLocation::from_row( $row ) ); WaiverUI::reservation_admin( $row ); ?>
 <h3><?php esc_html_e( 'Read-only reservation details', 'bike-rental-plugin' ); ?></h3>
 <p><?php esc_html_e( 'Reservation reference:', 'bike-rental-plugin' ); ?> <strong><?php echo esc_html( $row['reference'] ); ?></strong></p>
 <table class="widefat striped"><tbody>

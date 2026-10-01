@@ -6,6 +6,10 @@ defined( 'ABSPATH' ) || exit;
 final class Checkout {
 	private static $adding = false;
 	public static function register_hooks() {
+		add_action( 'woocommerce_admin_order_data_after_order_details', array( RentalLocation::class, 'order_admin' ), 30 );
+		add_action( 'woocommerce_thankyou', array( RentalLocation::class, 'order_customer' ), 30 );
+		add_action( 'woocommerce_view_order', array( RentalLocation::class, 'order_customer' ), 30 );
+		add_action( 'woocommerce_email_order_meta', array( RentalLocation::class, 'email' ), 30, 4 );
 		add_filter( 'woocommerce_add_to_cart_validation', array( self::class, 'allow_add' ), 100, 3 );
 		add_action( 'woocommerce_store_api_validate_add_to_cart', static function ( $product ) { if ( Packages::is_rental_package( $product ) ) { self::raise( CheckoutReservation::error() ); } }, 100 );
 		add_action( 'woocommerce_store_api_validate_cart_item', static function ( $product, $item ) { $row = self::validate_item( $item ); if ( is_wp_error( $row ) ) { self::raise( $row ); } }, 100, 2 );
@@ -115,6 +119,8 @@ final class Checkout {
 		if ( (int) $item->get_product_id() !== (int) $row['package_product_id'] || (string) $item->get_quantity() !== (string) $row['quantity'] ) { self::raise( CheckoutReservation::error() ); }
 		foreach ( array( 'reservation_id' => (int) $row['id'], 'reservation_reference' => $row['reference'], 'package_product_id' => (int) $row['package_product_id'], 'quantity' => (int) $row['quantity'], 'start_utc' => $row['start_utc'], 'end_utc' => $row['end_utc'], 'snapshot' => json_decode( $row['snapshot'], true ), 'fingerprint' => CheckoutReservation::fingerprint( $row ), 'payment_mode' => json_decode( $row['snapshot'], true )['payment_mode'] ) as $key => $value ) { $order->update_meta_data( '_brp_' . $key, $value ); }
 		foreach ( self::details( $row ) as $key => $value ) { $item->update_meta_data( $key, sanitize_text_field( (string) $value ) ); }
+		$location = RentalLocation::from_row( $row );
+		if ( $location ) { $order->update_meta_data( RentalLocation::META, $location ); }
 		$item->save(); $order->save();
 	}
 	public static function submit_order( $order ) {

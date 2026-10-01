@@ -4,7 +4,7 @@ use BikeRentalPlugin\{Database, Reservations, GuestSession, Checkout, Waivers, W
 if ( ! isset( $checks, $product, $wpf ) ) { throw new RuntimeException( 'Run tests/waivers.php.' ); }
 function refine_hold( $riders = null, $qty = 1 ) {
  wc_load_cart(); WC()->cart->empty_cart(); unset( $_COOKIE[GuestSession::cookie_name()] ); GuestSession::start();
- $input = array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $qty, 'date' => $GLOBALS['date'], 'time' => '09:00', 'riders' => $riders );
+ $input = array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $qty, 'date' => $GLOBALS['date'], 'time' => '09:00', 'rental_location' => brp_test_location(), 'riders' => $riders );
  return Database::public_booking( static fn() => Reservations::create_booking_hold( $input, bin2hex( random_bytes(16) ), GuestSession::identity()['hash'] ) );
 }
 function refine_terminal( $status = 'cancelled' ) {
@@ -26,10 +26,10 @@ foreach ( array(1,3) as $qty ) {
  $r=wok(refine_hold($rs,$qty),"quantity $qty valid hold"); $rows=Waivers::roster($r);
  wcheck(count($rows)===$qty,"quantity $qty roster exists before checkout");
  foreach($rows as $ri) { wcheck((int)$ri['reservation_id']===(int)$r['id'] && $ri['rider_type']==='adult' && !$ri['waiver_id'],'validated adult association and no unpaid request'); }
- $again=Database::public_booking(static fn()=>Reservations::create_booking_hold(array('package_id'=>$GLOBALS['product']->get_id(),'quantity'=>$qty,'date'=>$GLOBALS['date'],'time'=>'09:00','riders'=>$rs),$r['request_key'],GuestSession::identity()['hash']));
+ $again=Database::public_booking(static fn()=>Reservations::create_booking_hold(array('package_id'=>$GLOBALS['product']->get_id(),'quantity'=>$qty,'date'=>$GLOBALS['date'],'time'=>'09:00','rental_location'=>brp_test_location(),'riders'=>$rs),$r['request_key'],GuestSession::identity()['hash']));
  wcheck(!is_wp_error($again) && $again['id']===$r['id'],'identical roster retry reuses hold');
  $rs[1]['legal_name']='Different person';
- wbad(Database::public_booking(static fn()=>Reservations::create_booking_hold(array('package_id'=>$GLOBALS['product']->get_id(),'quantity'=>$qty,'date'=>$GLOBALS['date'],'time'=>'09:00','riders'=>$rs),$r['request_key'],GuestSession::identity()['hash'])),'same key with different roster rejected');
+ wbad(Database::public_booking(static fn()=>Reservations::create_booking_hold(array('package_id'=>$GLOBALS['product']->get_id(),'quantity'=>$qty,'date'=>$GLOBALS['date'],'time'=>'09:00','rental_location'=>brp_test_location(),'riders'=>$rs),$r['request_key'],GuestSession::identity()['hash'])),'same key with different roster rejected');
  $wpdb->update(Database::table('riders'),array('email'=>''),array('id'=>$rows[0]['id']));
  wbad(Checkout::transfer($r['request_key']),'invalid persisted roster blocks checkout');
  Reservations::cancel($r['id'],$r['revision']);

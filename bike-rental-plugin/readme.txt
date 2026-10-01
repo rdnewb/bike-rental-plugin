@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 1.0.3
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,8 +9,15 @@ Bicycle rental booking, shared fleet availability, reservation management, and r
 
 == Description ==
 
+Version 1.1.0 uses each start weekday's configured opening time automatically.
+General settings offer a Drop Off / Pick Up Time Disclaimer shown after date selection.
+The published WooCommerce Refund & Returns Policy appears above Reserve Bikes.
+Rental location is separate from Woo billing/shipping and appears for staff and
+relevant customers on orders, confirmations and order emails. Schema remains 2.
+
 Offer active WooCommerce rental packages through [bike_rental_booking]. Customers
-choose dates and quantity, provide rider information, and continue from a temporary
+choose a start date and quantity, provide a separate Drop Off / Pick Up Location
+and rider information, and continue from a temporary
 inventory hold to Full Payment checkout through WooCommerce Square.
 
 Manage existing reservations, revision-safe edits, fleet capacity, blocks, a weekly
@@ -71,6 +78,12 @@ No end date preserves indefinite blocks until disabled. Quantity cannot exceed f
 capacity or available inventory. Lists and Calendar show All Day or AM/PM ranges.
 
 == Changelog ==
+
+= 1.1.0 =
+Separate rental-service location, date-only booking at configured opening time,
+prominent configurable delivery/pickup disclaimer, and safely rendered Woo refund
+policy above Reserve Bikes. Preserve billing, payments, waivers, inventory and
+licensing. Schema 2 unchanged.
 
 = 1.0.3 =
 Move Bike Rentals to explicit admin menu position 56, near WooCommerce.

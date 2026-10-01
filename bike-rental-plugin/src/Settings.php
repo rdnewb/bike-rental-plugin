@@ -59,6 +59,7 @@ final class Settings {
 			'minimum_notice'      => 0,
 			'time_increment'      => 30,
 			'pickup_time'         => '17:00',
+			'dropoff_disclaimer'  => '',
 			'preparation_buffer'  => 0,
 			'turnaround_buffer'   => 0,
 			'weekly_hours'        => $hours,
@@ -106,6 +107,14 @@ final class Settings {
 		return 1 === preg_match( '/\A[0-9]+\z/', (string) $value ) && $value >= $min && $value <= $max;
 	}
 
+	/** Native select with explicit AM/PM labels; retain any previously configured minute. */
+ public static function time_control( $id, $name, $value ) {
+  $times = array(); for ( $minute = 0; $minute < 1440; $minute += 5 ) { $times[] = sprintf( '%02d:%02d', intdiv( $minute, 60 ), $minute % 60 ); }
+  if ( self::valid_time( $value ) ) { $times[] = $value; } $times = array_unique( $times ); sort( $times );
+  echo '<select required id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '">';
+  foreach ( $times as $time ) { $hour = (int) substr( $time, 0, 2 ); $label = ( $hour % 12 ?: 12 ) . substr( $time, 2 ) . ( $hour < 12 ? ' AM' : ' PM' ); echo '<option value="' . esc_attr( $time ) . '"' . selected( $value, $time, false ) . '>' . esc_html( $label ) . '</option>'; }
+  echo '</select>';
+ }
 	private static function valid_time( $value ) {
 		return is_string( $value ) && 1 === preg_match( '/\A(?:[01][0-9]|2[0-3]):[0-5][0-9]\z/', $value );
 	}
@@ -122,6 +131,9 @@ final class Settings {
 		if ( ! is_array( $input ) ) {
 			return array( 'values' => array(), 'errors' => array( __( 'Settings must be submitted as a complete form.', 'bike-rental-plugin' ) ) );
 		}
+		$disclaimer = $input['dropoff_disclaimer'] ?? '';
+		if ( ! is_string( $disclaimer ) || strlen( $disclaimer ) > 10000 ) { $errors[] = 'Drop Off / Pick Up Time Disclaimer must be text of at most 10000 bytes.'; }
+		else { $values['dropoff_disclaimer'] = BookingContent::clean( $disclaimer ); }
 		$name = $input['business_name'] ?? null;
 		$mode = $input['payment_mode'] ?? 'full'; // Existing installations have no payment field yet.
 		if ( ! in_array( $mode, array( 'full', 'deposit' ), true ) ) { $errors[] = __( 'Select Full Payment or Deposit payment mode.', 'bike-rental-plugin' ); }

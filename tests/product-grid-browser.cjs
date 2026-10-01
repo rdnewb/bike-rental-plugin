@@ -1,3 +1,4 @@
+const { fillLocation } = require('./booking-browser-helpers.cjs');
 /* Chromium UI regression using real PHP-rendered cards and mocked existing REST responses.
  * Run product-grid.php with BRP_GRID_FIXTURE_DIR first. No remote site or payments are used.
  */
@@ -15,6 +16,7 @@ const script = path.join(__dirname, '../bike-rental-plugin/assets/js/booking.js'
 let checks = 0;
 function check(value, label) { assert.ok(value, label); checks++; console.log('PASS:', label); }
 async function fillRiders(page) {
+ await fillLocation(page);
  const sections = page.locator('.brp-riders fieldset');
  for(let i=0;i<await sections.count();i++) {
   await sections.nth(i).locator('[data-field=legal_name]').fill('Fixture Rider '+(i+1));
@@ -44,6 +46,7 @@ async function fillRiders(page) {
                     if (slowTimes && input.package_id === String(fixture.ids[0])) await new Promise((resolve) => setTimeout(resolve, 250));
                     data = { times: [{ time: '09:00' }, { time: '13:30' }], message: 'Choose a start time.' };
                 }
+                if (name === 'availability' && slowTimes && input.package_id === String(fixture.ids[0])) await new Promise((resolve) => setTimeout(resolve, 250));
                 if (name === 'availability') data = { available_quantity: 3, rental_start: '2032-09-20T09:00', rental_end: '2032-09-22T17:00', timezone: 'America/New_York', package: catalog.find((p) => String(p.product_id) === input.package_id), message: '3 bikes are available.' };
                 if (name === 'session') data = { token: 'fixture-csrf' };
                 if (name === 'holds') data = { reserved: true, reservation_status: 'hold', reference: 'BRP-FIXTURE', package: catalog.find((p) => String(p.product_id) === input.package_id), quantity: input.quantity, rental_start: '2032-09-20T09:00', rental_end: '2032-09-22T17:00', timezone: 'America/New_York', expires_at: new Date(Date.now() + 900000).toISOString(), server_time: new Date().toISOString(), message: 'Your bikes are temporarily reserved.' };
@@ -92,22 +95,22 @@ async function fillRiders(page) {
         check(await page.locator('.brp-select[aria-pressed=true]').count() === 1 && await button(0).getAttribute('aria-pressed') === 'false', 'exactly one package selected');
         check(await card(2).locator('.brp-description').evaluate((el) => el.scrollHeight <= el.clientHeight + 1 && !el.hasAttribute('tabindex')), 'long description readable without nested scrolling');
         await page.locator('[name=date]').fill('2032-09-20'); await page.locator('[name=date]').dispatchEvent('change');
-        await page.waitForFunction(() => !document.querySelector('[name=time]').disabled);
-        check(calls.filter((c) => c.name === 'times').at(-1).input.package_id === String(fixture.ids[2]), 'time request uses selected calendar package');
-        check(await page.locator('[name=time] option').last().textContent() === '1:30 PM', '12-hour time labels preserved');
-        await page.locator('[name=time]').selectOption('09:00'); await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
+        await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
+        check(calls.filter((c) => c.name === 'availability').at(-1).input.package_id === String(fixture.ids[2]), 'date availability uses selected calendar package');
+        check(await page.locator('[name=time]').count() === 0, 'date-only booking has no time dropdown');
+         await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
         check(calls.filter((c) => c.name === 'availability').at(-1).input.package_id === String(fixture.ids[2]), 'availability uses selected package');
         await page.locator('[name=quantity]').fill('3');
         await page.addScriptTag({ path: script });
-        const before = calls.filter((c) => c.name === 'times').length;
+        const before = calls.filter((c) => c.name === 'availability').length;
         slowTimes = true;
         await button(0).click(); await button(3).click();
-        await page.waitForFunction(() => !document.querySelector('[name=time]').disabled);
+        await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
         await page.waitForTimeout(350);
-        check(calls.filter((c) => c.name === 'times').length === before + 2, 'reinitialization does not duplicate selection handlers');
+        check(calls.filter((c) => c.name === 'availability').length === before + 2, 'reinitialization does not duplicate selection handlers');
         check(await page.locator('[name=package_id]').inputValue() === String(fixture.ids[3]) && await page.locator('.brp-select[aria-pressed=true]').count() === 1, 'rapid package switching keeps latest selection');
-        check(await page.locator('.brp-summary').innerText() === '' && await page.locator('.brp-submit').isDisabled(), 'package change clears stale review and submission');
-        await page.locator('[name=time]').selectOption('09:00'); await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
+        check((await page.locator('.brp-summary').textContent()).includes(await page.evaluate(html => { const el=document.createElement('span'); el.innerHTML=html; return el.textContent; }, fixture.packages[3].price_html)) && await page.locator('.brp-submit').isEnabled(), 'package change refreshes date availability and review');
+         await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
         await fillRiders(page); await page.locator('.brp-submit').click(); await page.locator('.brp-checkout').click(); await page.waitForURL('**/checkout');
         const holds = calls.filter((c) => c.name === 'holds'), transfers = calls.filter((c) => c.name === 'checkout');
         check(holds.length === 1 && holds[0].input.package_id === String(fixture.ids[3]) && holds[0].input.quantity === '3', 'one hold uses selected package and quantity');
@@ -131,7 +134,7 @@ async function fillRiders(page) {
         check(await page.evaluate(() => sessionStorage.getItem('brp-booking:http://127.0.0.1:33319/api//booking')) === null, 'removed hold browser pointer is cleared');
         check(await page.locator('.brp-details').isHidden() && await page.locator('[name=package_id]').inputValue() === '', 'cancelled receipt resets selection and booking controls');
         await button(0).click(); await page.locator('[name=date]').fill('2032-09-20'); await page.locator('[name=date]').dispatchEvent('change');
-        await page.waitForFunction(() => !document.querySelector('[name=time]').disabled); await page.locator('[name=time]').selectOption('09:00');
+        await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled);
         await page.waitForFunction(() => !document.querySelector('.brp-submit').disabled); await fillRiders(page); await page.locator('.brp-submit').click(); await page.locator('.brp-checkout').click(); await page.waitForURL('**/checkout');
         check(calls.filter((c) => c.name === 'holds').length === 2 && calls.filter((c) => c.name === 'checkout').length === 2, 'fresh booking and checkout work after removed hold recovery');
         restoredStatus = 'hold'; await load(false); await page.locator('.brp-result').waitFor({ state: 'visible' });

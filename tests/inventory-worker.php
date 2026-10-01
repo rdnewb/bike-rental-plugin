@@ -11,7 +11,8 @@ function public_worker_hold( $job ) {
 	$identity = \BikeRentalPlugin\GuestSession::start();
 	$request = new WP_REST_Request( 'POST', '/bike-rental/v1/holds' );
 	$request->set_header( 'origin', home_url() ); $request->set_header( 'x-brp-request', '1' ); $request->set_header( 'x-brp-token', $identity['token'] );
-	foreach ( $job['input'] + array( 'request_key' => $job['key'], 'riders' => brp_test_riders( $job['input']['quantity'] ) ) as $key => $value ) { $request->set_param( $key, $value ); }
+	unset( $job['input']['time'] );
+	foreach ( $job['input'] + array( 'rental_location' => brp_test_location(), 'request_key' => $job['key'], 'riders' => brp_test_riders( $job['input']['quantity'] ) ) as $key => $value ) { $request->set_param( $key, $value ); }
 	$response = rest_get_server()->dispatch( $request );
 	return $response->get_status() >= 400 ? new WP_Error( 'brp_public_' . $response->get_status(), $response->get_data()['message'] ) : $response->get_data();
 }

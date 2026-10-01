@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Branding {
 	public static function defaults() {
-		return array( 'heading' => 'Choose Your Rental', 'intro' => '<p>Choose a rental below, then select your date, start time, and number of bikes.</p>', 'select_text' => 'Select Rental', 'selected_text' => 'Selected', 'change_text' => 'Change Rental', 'accent' => '', 'button_bg' => '', 'button_text' => '', 'selected_border' => '', 'card_bg' => '', 'card_text' => '', 'card_border' => '', 'radius' => 'default', 'logo_id' => 0, 'custom_css' => '' );
+		return array( 'heading' => 'Choose Your Rental', 'intro' => '<p>Choose a rental below, then select your start date and number of bikes.</p>', 'select_text' => 'Select Rental', 'selected_text' => 'Selected', 'change_text' => 'Change Rental', 'accent' => '', 'button_bg' => '', 'button_text' => '', 'selected_border' => '', 'card_bg' => '', 'card_text' => '', 'card_border' => '', 'radius' => 'default', 'logo_id' => 0, 'custom_css' => '' );
 	}
 	public static function colors() {
 		return array( 'accent' => 'Primary Accent Color', 'button_bg' => 'Primary Button Background Color', 'button_text' => 'Primary Button Text Color', 'selected_border' => 'Selected Package Border / Highlight Color', 'card_bg' => 'Card Background Color', 'card_text' => 'Product Card Text Color', 'card_border' => 'Card Border Color' );
@@ -15,6 +15,8 @@ final class Branding {
 	}
 	public static function radii() { return array( 'default' => 'Current defaults', 'square' => 'Square', 'slight' => 'Slightly Rounded', 'rounded' => 'Rounded', 'very' => 'Very Rounded' ); }
 	public static function intro( $text ) {
+		// Upgrade only the former stock wording; preserve all customized introductions.
+		if ( '<p>Choose a rental below, then select your date, start time, and number of bikes.</p>' === $text ) { $text = self::defaults()['intro']; }
 		$text = preg_replace( '~<(script|style|iframe|object)\b[^>]*>.*?</\1\s*>~is', '', $text );
 		return wp_kses( $text, array( 'p' => array(), 'strong' => array(), 'em' => array(), 'b' => array(), 'i' => array(), 'br' => array(), 'a' => array( 'href' => true, 'title' => true ) ) );
 	}

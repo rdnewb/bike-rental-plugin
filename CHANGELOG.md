@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 - Rental location and fixed-time booking
+
+- Collect a separate country-aware Drop Off / Pick Up Location before checkout; persist it in the reservation snapshot and `_brp_rental_location` WooCommerce order metadata. Display it in reservation/order administration, authorized customer confirmation and HTML/plain-text order emails. Billing/shipping addresses remain owned by WooCommerce.
+- Replace public start-time selection with the configured weekday opening time, preserving WordPress timezone/DST, inclusive calendar-day pickup, buffers, shared capacity and concurrent allocation guards.
+- Add a safe-formatted Drop Off / Pick Up Time Disclaimer in General, displayed prominently after valid date selection. Render scheduling settings with AM/PM labels and update only the former stock booking introduction.
+- Show the published WooCommerce refund/returns page immediately above Reserve Bikes using safe static content, without another editor or acceptance checkbox. Missing/unpublished/protected pages are omitted.
+- Retain location through administrative package edits and remove abandoned location data through the existing guarded retention cleanup. Schema remains 2; no migration, payment-provider, waiver-policy or licensing change.
+
 ## 1.0.3 - Higher admin menu placement
 
 - Set Bike Rentals menu position to 56, just after WooCommerce's registered 55.5. WordPress handles numeric collisions; other menu ordering can affect visual adjacency.

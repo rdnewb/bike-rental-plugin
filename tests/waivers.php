@@ -12,7 +12,7 @@ function wbad( $v, $label ) { wcheck( is_wp_error( $v ), $label ); }
 function wr( $id ) { return Database::public_booking( static fn() => Reservations::read( $id ) ); }
 function wh( $qty = 1, $pay = true, $riders = null ) {
  wc_load_cart(); WC()->cart->empty_cart(); unset( $_COOKIE[ GuestSession::cookie_name() ] ); GuestSession::start();
- $r = wok( Database::public_booking( static fn() => Reservations::create_booking_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $qty, 'riders' => $riders ?? ( 1 === $qty ? array( 1 => wadult() ) : ( 2 === $qty ? array( 1 => wadult(), 2 => wminor() ) : array( 1 => wadult(), 2 => wminor(), 3 => wminor( 'Minor Two' ) ) ) ), 'date' => $GLOBALS['date'], 'time' => '09:00' ), bin2hex( random_bytes( 16 ) ), GuestSession::identity()['hash'] ) ), 'create waiver fixture hold' );
+ $r = wok( Database::public_booking( static fn() => Reservations::create_booking_hold( array( 'package_id' => $GLOBALS['product']->get_id(), 'quantity' => $qty, 'rental_location' => brp_test_location(), 'riders' => $riders ?? ( 1 === $qty ? array( 1 => wadult() ) : ( 2 === $qty ? array( 1 => wadult(), 2 => wminor() ) : array( 1 => wadult(), 2 => wminor(), 3 => wminor( 'Minor Two' ) ) ) ), 'date' => $GLOBALS['date'], 'time' => '09:00' ), bin2hex( random_bytes( 16 ) ), GuestSession::identity()['hash'] ) ), 'create waiver fixture hold' );
  wok( Checkout::transfer( $r['request_key'] ), 'transfer waiver fixture' );
  $order = wc_create_order( array( 'created_via' => 'store-api' ) ); $GLOBALS['orders'][] = $order->get_id();
  $order->add_product( $GLOBALS['product'], $qty ); $order->set_currency( 'USD' ); $order->set_payment_method( 'square_credit_card' );

@@ -36,3 +36,17 @@
 .brp-booking .brp-details { max-width: 42rem; margin: 2rem auto 0; }
 .brp-booking .brp-details h2 { margin-top: 1.5rem; font-size: 1.4rem; }
 .brp-booking .brp-logo { display: block; max-width: min(100%, 300px); width: auto; height: auto; margin-block: 0 1rem; }
+
+.brp-booking .brp-time-disclaimer { margin: 1.25rem 0; padding: 1.25rem; border: 2px solid var(--brp-accent, CanvasText); border-inline-start-width: .5rem; border-radius: var(--brp-radius, .5rem); background: Canvas; color: CanvasText; font-size: 1.1rem; }
+.brp-booking .brp-time-disclaimer h3 { margin-top: 0; color: CanvasText; }
+.brp-booking .brp-time-disclaimer a { color: LinkText; text-decoration: underline; }
+.brp-booking .brp-location { margin: 1.5rem 0; min-width: 0; }
+.brp-booking .brp-location-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+.brp-booking .brp-location-field { min-width: 0; }
+.brp-booking .brp-location-field input, .brp-booking .brp-location-field select, .brp-booking .brp-location-field textarea { box-sizing: border-box; width: 100%; max-width: 100%; font: inherit; padding: .6rem; }
+.brp-booking [data-location-field="notes"] { grid-column: 1 / -1; }
+.brp-booking .brp-policy { margin: 1.5rem 0; }
+.brp-booking .brp-policy-content { max-height: 22rem; overflow: auto; border: 1px solid GrayText; padding: 1rem; background: Canvas; color: CanvasText; overflow-wrap: anywhere; }
+.brp-booking .brp-policy-content a { color: LinkText; text-decoration: underline; }
+.brp-booking .brp-policy-content h2, .brp-booking .brp-policy-content h3, .brp-booking .brp-policy-content h4 { color: inherit; }
+.brp-booking .brp-receipt p { white-space: pre-line; }

@@ -44,6 +44,7 @@ defined( 'ABSPATH' ) || exit;
 			<tr><th scope="row"><label for="brp-payment-mode">Payment Mode</label></th><td><select id="brp-payment-mode" name="brp_settings[payment_mode]"><option value="full" <?php selected( $values['payment_mode'], 'full' ); ?>>Full Payment</option><option value="deposit" <?php selected( $values['payment_mode'], 'deposit' ); ?>>Deposit</option></select><p class="description">Deposit mode blocks new rental checkout until a compatible provider is configured. Existing checkout payment-mode snapshots are retained.</p></td></tr>
 			<tr><th scope="row"><label for="brp-business-name"><?php esc_html_e( 'Business name', 'bike-rental-plugin' ); ?></label></th>
 				<td><input class="regular-text" type="text" id="brp-business-name" name="brp_settings[business_name]" value="<?php echo esc_attr( $values['business_name'] ); ?>" placeholder="<?php esc_attr_e( 'Your rental business', 'bike-rental-plugin' ); ?>"><p class="description"><?php esc_html_e( 'Plain text. Leave blank while setting up.', 'bike-rental-plugin' ); ?></p></td></tr>
+			<tr><th scope="row"><label for="brp-dropoff-disclaimer">Drop Off / Pick Up Time Disclaimer</label></th><td><textarea class="large-text" id="brp-dropoff-disclaimer" name="brp_settings[dropoff_disclaimer]" rows="5"><?php echo esc_textarea( $values['dropoff_disclaimer'] ); ?></textarea><p class="description">Shown prominently after a valid start date is selected. Basic paragraphs, bold text, lists and links are allowed. Leave blank to omit.</p></td></tr>
 			<?php foreach ( Settings::number_fields() as $key => $field ) : ?>
 				<tr><th scope="row"><label for="brp-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $field['label'] ); ?></label></th>
 					<td><input class="small-text" type="number" required step="1" id="brp-<?php echo esc_attr( $key ); ?>" name="brp_settings[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( $values[ $key ] ); ?>" min="<?php echo esc_attr( $field['min'] ); ?>" max="<?php echo esc_attr( $field['max'] ); ?>"></td></tr>
@@ -55,8 +56,9 @@ defined( 'ABSPATH' ) || exit;
 					<?php endforeach; ?>
 				</select></td></tr>
 			<tr><th scope="row"><label for="brp-pickup-time"><?php esc_html_e( 'Calendar-day pickup time', 'bike-rental-plugin' ); ?></label></th>
-				<td><input type="time" required step="60" id="brp-pickup-time" name="brp_settings[pickup_time]" value="<?php echo esc_attr( $values['pickup_time'] ); ?>"><p class="description"><?php esc_html_e( 'Business-controlled local pickup time in the WordPress timezone. Calendar rentals end on start date + (duration - 1) days at this time, independently of final-day delivery/start hours. Intermediate and final days may be closed for new starts. A one-day rental must start before pickup. Check AM/PM when entering the time.', 'bike-rental-plugin' ); ?></p></td></tr>
+				<td><?php Settings::time_control( 'brp-pickup-time', 'brp_settings[pickup_time]', $values['pickup_time'] ); ?><p class="description"><?php esc_html_e( 'Business-controlled local pickup time in the WordPress timezone. Calendar rentals end on start date + (duration - 1) days at this time, independently of final-day delivery/start hours. Intermediate and final days may be closed for new starts. A one-day rental must start before pickup. Check AM/PM when entering the time.', 'bike-rental-plugin' ); ?></p></td></tr>
 		</table>
+		<p>Public rentals start automatically at the selected day's configured opening time. Customers select a date, not a time. Set opening hours to your standard delivery start and use the disclaimer to explain the delivery/pickup window.</p>
 		<h2><?php esc_html_e( 'Weekly operating hours', 'bike-rental-plugin' ); ?></h2>
 		<p><?php esc_html_e( 'All days start closed. Opening and closing times are retained for closed days but do not make those days open. Open days must close later on the same day.', 'bike-rental-plugin' ); ?></p>
 		<table class="widefat striped">
@@ -71,7 +73,7 @@ defined( 'ABSPATH' ) || exit;
 							<option value="1" <?php selected( $values['weekly_hours'][ $day ]['open'], 1 ); ?>><?php esc_html_e( 'Open', 'bike-rental-plugin' ); ?></option>
 						</select></td>
 					<?php foreach ( array( 'start' => __( 'Opening time', 'bike-rental-plugin' ), 'end' => __( 'Closing time', 'bike-rental-plugin' ) ) as $part => $part_label ) : ?>
-						<td><label class="screen-reader-text" for="brp-<?php echo esc_attr( $day . '-' . $part ); ?>"><?php echo esc_html( $label . ' ' . $part_label ); ?></label><input type="time" required step="60" id="brp-<?php echo esc_attr( $day . '-' . $part ); ?>" name="brp_settings[weekly_hours][<?php echo esc_attr( $day ); ?>][<?php echo esc_attr( $part ); ?>]" value="<?php echo esc_attr( $values['weekly_hours'][ $day ][ $part ] ); ?>"></td>
+						<td><label class="screen-reader-text" for="brp-<?php echo esc_attr( $day . '-' . $part ); ?>"><?php echo esc_html( $label . ' ' . $part_label ); ?></label><?php Settings::time_control( 'brp-' . $day . '-' . $part, 'brp_settings[weekly_hours][' . $day . '][' . $part . ']', $values['weekly_hours'][$day][$part] ); ?></td>
 					<?php endforeach; ?>
 				</tr>
 			<?php endforeach; ?>

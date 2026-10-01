@@ -28,7 +28,7 @@ $product = new WC_Product_Simple(); $product->set_name( 'Public booking fixture'
 foreach ( array( Packages::ENABLED => 'yes', Packages::ACTIVE => 'yes', Packages::TYPE => 'hours', Packages::AMOUNT => 4, Packages::PROMO => 'Fixture offer' ) as $key => $value ) { $product->update_meta_data( $key, $value ); }
 $package_id = $product->save();
 $date = ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+7 days' )->format( 'Y-m-d' );
-$input = array( 'package_id' => $package_id, 'date' => $date, 'time' => '09:00' );
+$input = array( 'package_id' => $package_id, 'date' => $date );
 wp_set_current_user( 0 );
 // Plugin is loaded by the fixture after WordPress init; explicitly register its shortcode hook.
 do_action( 'init' );
@@ -82,7 +82,7 @@ $dst = BookingSchedule::calculate( $days, '2030-03-09', '09:00', $settings, '203
 public_check( ! is_wp_error( $dst ) && '2030-03-11T17:00' === $dst['local_end'], 'calendar day endpoint remains local pickup across DST' );
 $availability = public_request( 'availability', $input )->get_data();
 public_check( $availability['valid'] && 7 === $availability['available_quantity'], 'public availability uses configured fleet rather than fixed ten' );
-public_check( '13:00' === substr( $availability['rental_end'], 11 ), 'public endpoint returns calculated actual end' );
+public_check( '12:00' === substr( $availability['rental_end'], 11 ), 'public endpoint returns calculated actual end' );
 $times = public_request( 'times', array_intersect_key( $input, array_flip( array( 'package_id', 'date' ) ) ) )->get_data()['times'];
 public_check( in_array( '14:00', array_column( $times, 'time' ), true ) && ! in_array( '14:30', array_column( $times, 'time' ), true ), 'offered times honor closing endpoint and increment' );
 $private = array( 'snapshot', 'occupied_start_utc', 'request_hash', 'session_hash', 'issue_code', 'reference', 'id' );
@@ -93,7 +93,7 @@ public_check( $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Databa
 $response = public_request( 'availability', $input + array( 'session_hash' => 'secret' ) );
 public_check( 400 === $response->get_status(), 'extra private fields rejected' );
 public_check( str_contains( public_request( 'packages' )->get_headers()['Cache-Control'], 'no-store' ), 'REST payloads explicitly bypass caches' );
-$hold_input = $input + array( 'quantity' => 3, 'riders' => brp_test_riders( 3 ), 'request_key' => 'public-first' );
+$hold_input = $input + array( 'quantity' => 3, 'riders' => brp_test_riders( 3 ), 'request_key' => 'public-first', 'rental_location' => brp_test_location() );
 public_check( 403 === public_request( 'holds', $hold_input )->get_status(), 'mutation requires guest cookie and CSRF token' );
 public_check( 403 === public_request( 'session', array(), null, 'https://other.invalid' )->get_status(), 'cross-origin session bootstrap rejected' );
 $session = public_request( 'session' )->get_data(); $cookie = $_COOKIE[ GuestSession::cookie_name() ];
@@ -127,9 +127,9 @@ public_check( 3 === public_request( 'availability', $input )->get_data()['availa
 public_reset();
 $settings['preparation_buffer'] = 30; $settings['turnaround_buffer'] = 30; update_option( Settings::OPTION, $settings );
 $buffer_hold = public_request( 'holds', array_replace( $hold_input, array( 'quantity' => 7, 'riders' => brp_test_riders( 7 ), 'request_key' => 'buffered' ) ), $session['token'] )->get_data();
-$adjacent = array_replace( $input, array( 'time' => '13:00' ) );
-public_check( 0 === public_request( 'availability', $adjacent )->get_data()['available_quantity'], 'occupied buffers affect adjacent availability' );
-public_check( '09:00' === substr( $buffer_hold['rental_start'], 11 ) && '13:00' === substr( $buffer_hold['rental_end'], 11 ), 'buffers never change customer displayed rental period' );
+$adjacent = Database::public_booking( static fn() => \BikeRentalPlugin\Availability::check( \BikeRentalPlugin\RentalTime::from_local( $date . 'T12:00' ), \BikeRentalPlugin\RentalTime::from_local( $date . 'T16:00' ) ) );
+public_check( 0 === $adjacent['available_quantity'], 'occupied buffers affect adjacent availability' );
+public_check( '08:00' === substr( $buffer_hold['rental_start'], 11 ) && '12:00' === substr( $buffer_hold['rental_end'], 11 ), 'buffers never change customer displayed rental period' );
 $product->update_meta_data( Packages::ACTIVE, 'no' ); $product->save();
 public_check( 400 === public_request( 'holds', array_replace( $hold_input, array( 'request_key' => 'removed-package' ) ), $session['token'] )->get_status(), 'hold revalidates package after earlier availability lookup' );
 $product->update_meta_data( Packages::ACTIVE, 'yes' ); $product->save();

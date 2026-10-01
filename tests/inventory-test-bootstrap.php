@@ -17,7 +17,9 @@ wp_set_current_user( 1 );
 function brp_test_riders( $quantity ) {
  $riders = array(); for ( $i = 1; $i <= (int) $quantity; ++$i ) { $riders[$i] = array( 'legal_name' => 'Fixture Rider ' . $i, 'age' => '25', 'email' => 'rider' . $i . '@example.test' ); } return $riders;
 }
+function brp_test_location() { return array( 'name' => 'Fixture Rider', 'address_1' => '123 Example Street', 'city' => 'Example City', 'state' => 'FL', 'postcode' => '34205', 'country' => 'US' ); }
 function brp_test_hold( $input, $key, $session ) {
+ if ( ! array_key_exists( 'rental_location', $input ) ) { $input['rental_location'] = brp_test_location(); }
  if ( ! array_key_exists( 'riders', $input ) ) { $input['riders'] = brp_test_riders( $input['quantity'] ?? 0 ); }
  return \BikeRentalPlugin\Reservations::create_booking_hold( $input, $key, $session );
 }
