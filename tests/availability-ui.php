@@ -8,7 +8,7 @@ namespace BikeRentalPlugin {
   public static function get() { return array( 'time_increment' => $GLOBALS['increment'] ); }
   public static function can_manage() { return $GLOBALS['allowed']; }
  }
- class Plugin { const VERSION = '1.1.1'; }
+ class Plugin { const VERSION = '1.1.2'; }
  class Database {
   public static $capacity = 10; public static $blocks = array(); public static $locked = false; public static $locks = 0;
   public static function error( $code, $text ) { return new \WP_Error( $code, $text ); }

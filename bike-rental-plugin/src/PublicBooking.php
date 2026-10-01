@@ -160,21 +160,21 @@ final class PublicBooking {
 	private static function status( $input ) {
 		global $wpdb;
 		$key = $input['request_key'] ?? null;
-		if ( ! is_string( $key ) || ! preg_match( '/\A[a-zA-Z0-9_-]{1,64}\z/', $key ) ) { return BookingSchedule::error( 'Please check your temporary reservation.' ); }
+		if ( ! is_string( $key ) || ! preg_match( '/\A[a-zA-Z0-9_-]{1,64}\z/', $key ) ) { return BookingSchedule::error( 'Please check your reservation.' ); }
 		// Reconcile removed/restored Woo cart bindings before restoring a browser receipt.
 		if ( function_exists( 'wc_load_cart' ) ) { wc_load_cart(); WC()->cart->get_cart(); }
 		return Database::locked( static function () use ( $key ) {
 			global $wpdb;
 			$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE request_key = %s AND session_hash = %s FOR UPDATE', Database::table( 'reservations' ), strtolower( $key ), GuestSession::identity()['hash'] ), ARRAY_A );
 			if ( $wpdb->last_error ) { return Database::retry_error(); }
-			return $row ? self::hold_view( $row ) : BookingSchedule::error( 'This temporary reservation is not available in your booking session.' );
+			return $row ? self::hold_view( $row ) : BookingSchedule::error( 'This reservation is not available in your booking session.' );
 		} );
 	}
 	private static function hold_view( $row ) {
 		$s = json_decode( $row['snapshot'], true );
 		$now = Database::now() ?? gmdate( 'Y-m-d H:i:s' );
 		$live = 'hold' === $row['status'] && $row['hold_expires_at'] > $now;
-		$message = $live ? self::next_step_message() : 'Your temporary reservation has expired or is no longer held. Bikes are not reserved by this form.';
+		$message = $live ? self::next_step_message() : 'Your reservation hold has expired or is no longer available. Bikes are not reserved by this form.';
 		if ( in_array( $row['status'], array( 'pending_waivers', 'confirmed', 'active', 'completed' ), true ) ) { $message = 'Reservation status: ' . Reservations::status_label( $row['status'] ) . '. Check your order confirmation or contact the shop for details.'; }
 		return array( 'valid' => true, 'reserved' => $live, 'reservation_status' => $row['status'], 'reference' => $row['reference'], 'package' => self::package_view( $s ), 'quantity' => (int) $row['quantity'], 'rental_start' => $s['local_start'], 'rental_end' => $s['local_end'], 'timezone' => $s['timezone'], 'expires_at' => $row['hold_expires_at'] ? str_replace( ' ', 'T', $row['hold_expires_at'] ) . 'Z' : null, 'rental_location' => RentalLocation::text( RentalLocation::from_row( $row ) ), 'waiver_notice' => trim( wp_strip_all_tags( WaiverUI::notice( $row ) ) ), 'server_time' => str_replace( ' ', 'T', $now ) . 'Z', 'message' => $message );
 	}

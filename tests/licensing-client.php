@@ -47,7 +47,7 @@ try{
  cl_check(!str_contains(wp_json_encode($s),$key)&&$s['key_cipher']!==$key,'key encrypted in client option');
  cl_check(!in_array($wpdb->get_var($wpdb->prepare('SELECT autoload FROM %i WHERE option_name=%s',$wpdb->options,License::OPTION)),array('yes','on','auto-on','auto'),true),'secret option not autoloaded');
  cl_check(array_keys($payloads[0])===array('license_key','product_slug','installation_id','site_url','plugin_version','wordpress_version','php_version'),'activation sends only documented licensing fields');
- cl_check($payloads[0]['plugin_version']==='1.1.1'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
+ cl_check($payloads[0]['plugin_version']==='1.1.2'&&$payloads[0]['site_url']==='https://rental.example.test','plugin version and normalized site sent');
  $_GET=array('tab'=>'license');ob_start();(new Settings())->render();$html=ob_get_clean();
  cl_check(str_contains($html,'Check License Now')&&str_contains($html,'Deactivate License')&&str_contains($html,'License Status'),'License tab renders actions and status');
  cl_check(!str_contains($html,'Controller URL')&&!str_contains($html,License::endpoint())&&!str_contains($html,'Daily validation sends'),'License tab omits controller URL and transmission description');

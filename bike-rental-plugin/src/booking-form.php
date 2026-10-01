@@ -50,7 +50,7 @@ defined( 'ABSPATH' ) || exit;
 <h2>4. Rider Information</h2>
 <p>Enter one rider per bike. Adults sign their own waiver; a parent or guardian signs for each minor. Waiver invitations are sent after successful payment.</p>
 <div class="brp-riders"></div>
-<h2>5. Review / Temporary Reservation</h2>
+<h2>5. Review Your Reservation</h2>
 <div class="brp-summary" aria-live="polite"></div>
 <?php $policy = BookingContent::policy(); if ( trim( wp_strip_all_tags( $policy ) ) ) : ?>
 <section class="brp-policy" aria-labelledby="<?php echo esc_attr( $uid ); ?>-policy"><h3 id="<?php echo esc_attr( $uid ); ?>-policy">Refund &amp; Returns Policy</h3><div class="brp-policy-content" role="region" aria-label="Refund and Returns Policy content" tabindex="0"><?php echo $policy; ?></div></section>
@@ -61,8 +61,8 @@ defined( 'ABSPATH' ) || exit;
 </fieldset>
 </form>
 <div class="brp-status" role="status" aria-live="polite" aria-atomic="true">Loading booking options…</div>
-<section class="brp-result" hidden tabindex="-1" aria-label="Temporary reservation">
-<h2>6. Checkout</h2><h3>Temporary reservation</h3><div class="brp-receipt"></div>
+<section class="brp-result" hidden tabindex="-1" aria-label="Reservation summary">
+<h2>6. Checkout</h2><h3>Your Reservation</h3><div class="brp-receipt"></div>
 <p class="brp-expiry" role="status" aria-live="polite"></p>
 <button class="brp-checkout" type="button" hidden>Continue to checkout</button>
 <button class="brp-restart" type="button" hidden>Start over</button>

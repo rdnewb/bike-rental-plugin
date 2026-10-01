@@ -133,7 +133,7 @@ final class Reservations {
 				if ( is_wp_error( $check ) ) { return $check; }
 				$other = $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM %i WHERE session_hash = %s AND status = %s AND hold_expires_at > %s LIMIT 1 FOR UPDATE', Database::table( 'reservations' ), $identity['session_hash'], 'hold', Database::now() ) );
 				if ( $wpdb->last_error ) { return Database::retry_error(); }
-				if ( $other ) { return Database::error( 'existing_hold', 'You already have a temporary reservation. Wait for it to expire before starting another.' ); }
+				if ( $other ) { return Database::error( 'existing_hold', 'You already have bikes held for checkout. Wait for the hold to expire before starting another reservation.' ); }
 			}
 			if ( $data['quantity'] > $capacity ) { return Database::error( 'quantity', 'Reservation quantity must be at least 1 and no greater than total fleet.' ); }
 			$status_time = self::validate_status_time( $data );

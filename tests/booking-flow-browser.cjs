@@ -12,7 +12,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
  const browser = await chromium.launch({headless:true, channel:process.env.BRP_BROWSER_CHANNEL || 'chrome'});
  try {
   for (const [name,width] of [['desktop',1280],['tablet',768],['mobile',390]]) {
-   const page = await browser.newPage({viewport:{width,height:1000}}), errors=[], requests=[];
+   const page = await browser.newPage({viewport:{width,height:1000},timezoneId:name==='mobile'?'Pacific/Honolulu':'Pacific/Kiritimati'}), errors=[], requests=[];
    let rejectDate=false;
    page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{
@@ -38,7 +38,9 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
    await page.locator('.brp-submit:enabled').waitFor();
    check(await page.locator('.brp-time-disclaimer').isVisible(),name+': disclaimer revealed after valid date');
    check(!requests.some(r=>r.action==='times')&&!requests.find(r=>r.action==='availability').input.time,name+': date-only availability request');
-   check(await page.locator('.brp-summary').textContent().then(v=>v.includes('8:00 AM')),name+': derived schedule shown in 12-hour time');
+   check(await page.locator('.brp-summary').textContent().then(v=>!v.includes('8:00 AM')&&!v.includes('5:00 PM')&&!v.includes('America/New_York')&&!v.includes('Start:')&&!v.includes('Pickup / end:')&&!v.includes(fixture.date)),name+': review omits internal times, timezone and raw dates');
+   check(await page.getByRole('heading',{name:'5. Review Your Reservation',exact:true}).count()===1&&!/temporary reservation/i.test(await page.locator('.brp-booking').textContent()),name+': customer review heading and terminology');
+   check(await page.locator('.brp-summary').textContent().then(v=>v.includes('Rental: '+fixture.package.name)&&v.includes('Quantity: 1 bike')&&v.includes('Riders: 1')),name+': selected package quantity and rider count');
    const positions=await page.evaluate(()=>{const q=s=>document.querySelector(s).getBoundingClientRect().top;return {date:q('[name=date]'),notice:q('.brp-time-disclaimer'),address:q('.brp-location'),policy:q('.brp-policy'),button:q('.brp-submit')};});
    check(positions.date<positions.notice&&positions.notice<positions.address&&positions.address<positions.policy&&positions.policy<positions.button,name+': notice/address/policy/button order');
    check(await page.locator('.brp-submit').evaluate(b=>b.previousElementSibling.classList.contains('brp-policy')),name+': policy immediately above Reserve Bikes');
@@ -49,6 +51,14 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
    for(const [key,value] of Object.entries({name:'Example Guest',address_1:'123 Example Street',city:'Example City',postcode:'34205',notes:'Front desk'}))await page.locator('[name=location_'+key+']').fill(value);
    await page.locator('[name=location_state]').selectOption('FL');
    await page.locator('[data-field=legal_name]').fill('Example Rider');await page.locator('[data-field=age]').fill('25');await page.locator('[data-field=email]').fill('rider@example.test');
+   const review=await page.locator('.brp-summary').textContent();
+   check(review.includes('123 Example Street')&&review.includes('Florida')&&review.includes('34205')&&review.includes('Front desk')&&!review.includes('United States')&&!review.includes('_brp_'),name+': review previews readable address and notes without internal metadata');
+   await page.locator('[name=quantity]').fill('2');
+   check(await page.locator('.brp-summary').textContent().then(v=>v.includes('Quantity: 2 bikes')&&v.includes('Riders: 2')),name+': quantity and rider count update together');
+   await page.locator('[name=quantity]').fill('1');
+   await page.locator('[name=location_notes]').fill('<img src=x onerror=alert(1)>');
+   check(await page.locator('.brp-summary img').count()===0&&await page.locator('.brp-summary').textContent().then(v=>v.includes('<img')),name+': address preview treats input as text');
+   await page.locator('[name=location_notes]').fill('Front desk');
    await page.locator('.brp-policy-content').focus();for(let i=0;i<5&&!await page.locator('.brp-submit').evaluate(e=>e===document.activeElement);i++)await page.keyboard.press('Tab');check(await page.locator('.brp-submit').evaluate(e=>e===document.activeElement),name+': keyboard reaches reserve after policy');
    check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),name+': no horizontal page overflow');
    await page.locator('.brp-time-disclaimer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(dir,name+'-booking.png'),fullPage:true});
@@ -60,10 +70,14 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
    check(errors.length===0,name+': no JavaScript errors');await page.close();
   }
   // Failed dates must clear a previously shown disclaimer and disable reservation.
-  const page=await browser.newPage();let fail=false;
-  await page.route('**/*',route=>{const url=new URL(route.request().url());if(url.pathname==='/reserve/')return route.fulfill({contentType:'text/html',body:'<style>'+css+'</style>'+markup+'<script>'+js+'</script>'});if(url.pathname.endsWith('packages'))return route.fulfill({json:{packages:[fixture.package],min_date:'2026-01-01',max_date:'2035-12-31'}});if(url.pathname.endsWith('availability'))return route.fulfill({status:fail?400:200,json:fail?{message:'Please choose an open start day.'}:{valid:true,package:fixture.package,available_quantity:1,rental_start:fixture.date+'T08:00',rental_end:fixture.date+'T17:00',timezone:'America/New_York',message:'Available'}});return route.abort();});
+  const page=await browser.newPage({timezoneId:'America/Los_Angeles'});let fail=false, reviewStart=fixture.date, reviewEnd=fixture.date;
+  await page.route('**/*',route=>{const url=new URL(route.request().url());if(url.pathname==='/reserve/')return route.fulfill({contentType:'text/html',body:'<meta charset="utf-8"><style>'+css+'</style>'+markup+'<script>'+js+'</script>'});if(url.pathname.endsWith('packages'))return route.fulfill({json:{packages:[fixture.package],min_date:'2026-01-01',max_date:'2035-12-31'}});if(url.pathname.endsWith('availability'))return route.fulfill({status:fail?400:200,json:fail?{message:'Please choose an open start day.'}:{valid:true,package:fixture.package,available_quantity:1,rental_start:reviewStart+'T08:00',rental_end:reviewEnd+'T17:00',timezone:'America/New_York',message:'Available'}});return route.abort();});
   await page.goto('http://127.0.0.1:33319/reserve/?rental=flow-fixture');await page.locator('[name=date]:enabled').waitFor();await page.locator('[name=date]').fill(fixture.date);await page.locator('[name=date]').dispatchEvent('change');await page.locator('.brp-submit:enabled').waitFor();
-  fail=true;await page.locator('[name=date]').dispatchEvent('change');await page.getByRole('status').filter({hasText:'open start day'}).waitFor();check(!await page.locator('.brp-time-disclaimer').isVisible()&&await page.locator('.brp-submit').isDisabled(),'invalid date clears notice and prevents booking');await page.close();
+  for(const [start,end,expected] of [['2032-10-01','2032-10-01','October 1, 2032'],['2032-10-01','2032-10-03','October 1, 2032 \u2013 October 3, 2032'],['2032-10-31','2032-11-02','October 31, 2032 \u2013 November 2, 2032'],['2032-12-31','2033-01-02','December 31, 2032 \u2013 January 2, 2033']]) {
+   reviewStart=start;reviewEnd=end;await page.locator('[name=date]').fill(start);await page.locator('[name=date]').dispatchEvent('change');await page.locator('.brp-submit:enabled').waitFor();
+   const text=await page.locator('.brp-summary').textContent();check(text.includes('Rental Date: '+expected)&&!text.includes('AM')&&!text.includes('PM'), 'friendly single/range date without device-timezone drift: '+start+' / '+end);
+  }
+  fail=true;await page.locator('[name=date]').dispatchEvent('change');await page.getByRole('status').filter({hasText:'open start day'}).waitFor();check(!await page.locator('.brp-time-disclaimer').isVisible()&&await page.locator('.brp-submit').isDisabled()&&await page.locator('.brp-summary').textContent()==='','invalid date clears notice and prevents booking');await page.close();
   const unavailable=await browser.newPage(), errors=[];
   unavailable.on('pageerror',e=>errors.push(e.message));
   await unavailable.route('**/*',route=>new URL(route.request().url()).pathname==='/reserve/'?route.fulfill({contentType:'text/html',body:markup.replace(/<fieldset class="brp-location"[\s\S]*?<\/fieldset>/,'')+'<script>'+js+'</script>'}):route.fulfill({json:{packages:[],min_date:'2026-01-01',max_date:'2035-12-31'}}));

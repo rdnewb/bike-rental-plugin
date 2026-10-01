@@ -17,8 +17,8 @@
         const disclaimer = root.querySelector('.brp-time-disclaimer');
         const locationFields = root.querySelector('.brp-location');
         const readLocation = () => Object.fromEntries(Array.from(locationFields?.querySelectorAll('[data-location]') || [], (input) => [input.dataset.location, input.disabled ? '' : input.value]));
-        locationFields?.addEventListener('input', () => { requestKey = ''; store(''); });
-        locationFields?.addEventListener('change', () => { requestKey = ''; store(''); });
+        locationFields?.addEventListener('input', () => { requestKey = ''; store(''); renderReview(); });
+        locationFields?.addEventListener('change', () => { requestKey = ''; store(''); renderReview(); });
         const readRiders = () => Object.fromEntries(Array.from(riders.children, (section, index) => [index + 1,
             Object.fromEntries(Array.from(section.querySelectorAll('input'), (input) => [input.dataset.field, input.value]))]));
         const renderRiders = () => {
@@ -48,7 +48,7 @@
                 inputs.age.addEventListener('input', classify); classify(); riders.append(section);
             }
         };
-        riders.addEventListener('input', () => { requestKey = ''; store(''); });
+        riders.addEventListener('input', () => { requestKey = ''; store(''); renderReview(); });
         const cards = Array.from(root.querySelectorAll('.brp-card'));
         const details = root.querySelector('.brp-details');
         const changeRental = root.querySelector('.brp-change-rental');
@@ -111,6 +111,33 @@
             const p = document.createElement('p'); p.append(document.createTextNode('Price per bike: '));
             const span = document.createElement('span'); span.innerHTML = item.price_html; p.append(span); target.append(p);
         };
+        // These are already store-local calendar dates. Anchor formatting to UTC
+        // so the customer's device timezone cannot shift either calendar day.
+        const rentalDates = (start, end) => {
+            const first = start.split('T')[0], last = end.split('T')[0];
+            const format = (date) => new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(date + 'T12:00:00Z'));
+            return first === last ? format(first) : `${format(first)} – ${format(last)}`;
+        };
+        const renderReview = () => {
+            summary.replaceChildren();
+            if (!selection) return;
+            line(summary, 'Rental', selection.package.name);
+            line(summary, 'Rental Date', rentalDates(selection.rental_start, selection.rental_end));
+            if (fields.quantity.checkValidity() && !fields.quantity.disabled) {
+                const count = Number(fields.quantity.value);
+                line(summary, 'Quantity', `${count} ${count === 1 ? 'bike' : 'bikes'}`);
+                line(summary, 'Riders', riders.children.length);
+            }
+            // Preview unsaved form text; the server's existing address helper
+            // remains authoritative for saved confirmations and orders.
+            const address = readLocation();
+            const state = locationFields?.querySelector('[data-location="state"]');
+            if (state?.tagName === 'SELECT') address.state = state.value ? state.selectedOptions[0].textContent : '';
+            const lines = ['name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode'].map((key) => (address[key] || '').trim()).filter(Boolean);
+            if (address.notes?.trim()) lines.push('Location / Delivery Notes: ' + address.notes.trim());
+            if (lines.length) line(summary, 'Drop Off / Pick Up Location', lines.join('\n'));
+            price(summary, selection.package);
+        };
         const dateLabel = (value) => {
             const [date, time] = value.split('T');
             if (!time) return date;
@@ -150,7 +177,7 @@
                 if (!hold.reserved || !seconds) {
                     clearInterval(timer); restart.hidden = false;
                     checkout.hidden = true;
-                    expiry.textContent = 'Your temporary reservation has expired or is no longer held.';
+                    expiry.textContent = 'Your reservation hold has expired or is no longer available.';
                     message('Bikes are no longer reserved by this form. Start over to check availability.');
                 } else expiry.textContent = 'Temporary hold remaining: ' + Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
             };
@@ -182,8 +209,7 @@
                 fields.quantity.value = String(Math.max(1, Math.min(Number(fields.quantity.value), data.available_quantity)));
                 fields.quantity.disabled = !data.available_quantity; submit.disabled = !data.available_quantity;
                 renderRiders();
-                line(summary, 'Start', dateLabel(data.rental_start)); line(summary, 'Pickup / end', dateLabel(data.rental_end));
-                line(summary, 'Timezone', data.timezone); price(summary, data.package); message(data.message);
+                renderReview(); message(data.message);
             } catch (error) { if (current === generation) message(error.message); }
             finally { if (current === generation) root.removeAttribute('aria-busy'); }
         };
@@ -205,7 +231,7 @@
             message('Choose a different rental, or continue with your selected rental.');
         });
         fields.date.addEventListener('change', loadDate);
-        fields.quantity.addEventListener('input', () => { requestKey = ''; store(''); submit.disabled = !selection || !fields.quantity.checkValidity(); renderRiders(); });
+        fields.quantity.addEventListener('input', () => { requestKey = ''; store(''); submit.disabled = !selection || !fields.quantity.checkValidity(); renderRiders(); renderReview(); });
         form.addEventListener('submit', async (event) => {
             event.preventDefault(); if (!selection || !form.reportValidity()) return;
             if (!requestKey) { const bytes = crypto.getRandomValues(new Uint8Array(24)); requestKey = Array.from(bytes, (v) => v.toString(16).padStart(2, '0')).join(''); }

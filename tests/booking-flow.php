@@ -1,5 +1,5 @@
 <?php
-/** 1.1.1 date-only booking, service address, safe content, ownership and snapshot integration. */
+/** 1.1.2 date-only booking, service address, safe content, ownership and snapshot integration. */
 ob_start();
 require __DIR__ . '/inventory-test-bootstrap.php';
 require_once ABSPATH . 'wp-admin/includes/template.php';
@@ -69,6 +69,7 @@ try {
  wp_update_post(array('ID'=>$page,'post_status'=>'publish','post_password'=>'secret'));flow_check(BookingContent::policy()==='', 'password-protected policy is not exposed');
  wp_update_post(array('ID'=>$page,'post_password'=>''));
  $_GET=array('rental'=>'flow-fixture');$html=PublicBooking::shortcode();
+ flow_check(str_contains($html,'5. Review Your Reservation')&&stripos($html,'temporary reservation')===false,'public review heading and receipt labels omit temporary reservation wording');
  flow_check(!str_contains($html,'location_country')&&!str_contains($html,'data-location="country"')&&!str_contains($html,'Select country'),'no country input, label or hidden control');
  flow_check(!str_contains($html,'name="time"')&&str_contains($html,'name="date"'),'public date remains and customer time selector is absent');
  flow_check(str_contains($html,'data-preselected="'.$product->get_id().'"'), 'product deep link still preselects');

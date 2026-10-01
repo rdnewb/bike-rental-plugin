@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,7 +9,11 @@ Bicycle rental booking, shared fleet availability, reservation management, and r
 
 == Description ==
 
-Version 1.1.1 removes customer country selection for rental locations and derives
+Version 1.1.2 presents a customer-focused Review Your Reservation section with
+rental name, friendly dates, quantity, rider count and rental location. Internal
+times/timezone are omitted from that review; scheduling and order data are retained.
+
+The location form removes customer country selection for rental locations and derives
 the country from the WooCommerce store base. State/postal validation follows that
 country; existing stored addresses and Woo billing/shipping remain unchanged.
 
@@ -82,6 +86,11 @@ No end date preserves indefinite blocks until disabled. Quantity cannot exceed f
 capacity or available inventory. Lists and Calendar show All Day or AM/PM ranges.
 
 == Changelog ==
+
+= 1.1.2 =
+Simplify the public review with friendly reservation details and live location
+preview. Remove internal review times/timezone and Temporary Reservation wording
+from public booking labels/messages. Schema 2 and booking logic unchanged.
 
 = 1.1.1 =
 Remove the rental-location country control. Derive the store base country on the

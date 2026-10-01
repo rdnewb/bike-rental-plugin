@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.2 - Customer booking review
+
+- Rename the public review to Review Your Reservation; show package name, friendly local rental date/date range, bike quantity, rider count, entered location/notes and existing price per bike.
+- Refresh review details with form edits, render address input as text and format calendar dates without device-timezone shifts. Remove precise start/end times and timezone from the pre-reservation review.
+- Replace Temporary Reservation wording in public labels/messages while preserving checkout hold behavior and countdown. Keep disclaimer, refund policy, internal scheduling, reservation/order metadata, admin calendars, waivers, payments, availability and licensing unchanged. Schema remains 2.
+
 ## 1.1.1 - Store-derived rental location country
 
 - Remove the public rental-location Country control and its JavaScript selection logic. Render state options and postal requirements from the configured WooCommerce store base country.

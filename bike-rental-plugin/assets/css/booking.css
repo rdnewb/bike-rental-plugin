@@ -49,4 +49,4 @@
 .brp-booking .brp-policy-content { max-height: 22rem; overflow: auto; border: 1px solid GrayText; padding: 1rem; background: Canvas; color: CanvasText; overflow-wrap: anywhere; }
 .brp-booking .brp-policy-content a { color: LinkText; text-decoration: underline; }
 .brp-booking .brp-policy-content h2, .brp-booking .brp-policy-content h3, .brp-booking .brp-policy-content h4 { color: inherit; }
-.brp-booking .brp-receipt p { white-space: pre-line; }
+.brp-booking .brp-receipt p, .brp-booking .brp-summary p { white-space: pre-line; overflow-wrap: anywhere; }
