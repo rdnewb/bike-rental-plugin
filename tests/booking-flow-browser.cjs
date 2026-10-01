@@ -42,11 +42,9 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
    const positions=await page.evaluate(()=>{const q=s=>document.querySelector(s).getBoundingClientRect().top;return {date:q('[name=date]'),notice:q('.brp-time-disclaimer'),address:q('.brp-location'),policy:q('.brp-policy'),button:q('.brp-submit')};});
    check(positions.date<positions.notice&&positions.notice<positions.address&&positions.address<positions.policy&&positions.policy<positions.button,name+': notice/address/policy/button order');
    check(await page.locator('.brp-submit').evaluate(b=>b.previousElementSibling.classList.contains('brp-policy')),name+': policy immediately above Reserve Bikes');
-   await page.locator('[name=location_country]').selectOption('US');
-   check(await page.locator('[name=location_state]').evaluate(e=>e.tagName==='SELECT'&&e.required),name+': country updates required state selector');
-   await page.locator('[name=location_country]').selectOption('AE');
-   check(await page.locator('[name=location_postcode]').evaluate(e=>!e.required),name+': postcode requirement follows country');
-   await page.locator('[name=location_country]').selectOption('US');
+   check(await page.locator('[name=location_country], [data-location=country], [autocomplete="section-rental country"]').count()===0,name+': no editable or hidden country control');
+   check(await page.locator('[name=location_state]').evaluate(e=>e.tagName==='SELECT'&&e.required&&Array.from(e.options).some(o=>o.value==='FL')),name+': store country initializes required state selector');
+   check(await page.locator('[name=location_postcode]').evaluate(e=>e.required),name+': postcode requirement follows store country');
    await page.locator('.brp-submit').click();check(!requests.some(r=>r.action==='holds'),name+': required location blocks incomplete submit');
    for(const [key,value] of Object.entries({name:'Example Guest',address_1:'123 Example Street',city:'Example City',postcode:'34205',notes:'Front desk'}))await page.locator('[name=location_'+key+']').fill(value);
    await page.locator('[name=location_state]').selectOption('FL');
@@ -56,7 +54,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
    await page.locator('.brp-time-disclaimer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(dir,name+'-booking.png'),fullPage:true});
    await page.locator('.brp-submit').click();await page.locator('.brp-result:visible').waitFor();
    const sent=requests.find(r=>r.action==='holds').input;
-   check(sent.rental_location.address_1==='123 Example Street'&&!('time'in sent)&&sent.riders['1'].legal_name==='Example Rider',name+': hold includes address and riders with no client time');
+   check(!('country' in sent.rental_location)&&sent.rental_location.address_1==='123 Example Street'&&!('time'in sent)&&sent.riders['1'].legal_name==='Example Rider',name+': hold includes address and riders with no client time');
    check(await page.locator('.brp-receipt').textContent().then(v=>v.includes('Drop Off / Pick Up Location')),name+': receipt shows service address');
    await page.locator('.brp-checkout').click();await page.waitForURL('**/checkout/');check(true,name+': Continue to checkout works');
    check(errors.length===0,name+': no JavaScript errors');await page.close();

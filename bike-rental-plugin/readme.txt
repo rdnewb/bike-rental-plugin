@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,7 +9,11 @@ Bicycle rental booking, shared fleet availability, reservation management, and r
 
 == Description ==
 
-Version 1.1.0 uses each start weekday's configured opening time automatically.
+Version 1.1.1 removes customer country selection for rental locations and derives
+the country from the WooCommerce store base. State/postal validation follows that
+country; existing stored addresses and Woo billing/shipping remain unchanged.
+
+The booking flow uses each start weekday's configured opening time automatically.
 General settings offer a Drop Off / Pick Up Time Disclaimer shown after date selection.
 The published WooCommerce Refund & Returns Policy appears above Reserve Bikes.
 Rental location is separate from Woo billing/shipping and appears for staff and
@@ -78,6 +82,11 @@ No end date preserves indefinite blocks until disabled. Quantity cannot exceed f
 capacity or available inventory. Lists and Calendar show All Day or AM/PM ranges.
 
 == Changelog ==
+
+= 1.1.1 =
+Remove the rental-location country control. Derive the store base country on the
+server, retaining country-aware state/postal validation and structured storage.
+Schema remains 2; billing, shipping and existing reservation addresses unchanged.
 
 = 1.1.0 =
 Separate rental-service location, date-only booking at configured opening time,

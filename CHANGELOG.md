@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 - Store-derived rental location country
+
+- Remove the public rental-location Country control and its JavaScript selection logic. Render state options and postal requirements from the configured WooCommerce store base country.
+- Derive country server-side with the WooCommerce base-country API, preserving structured reservation/order storage and rejecting customer country overrides. Missing or invalid configuration fails safely without inventing a country.
+- Preserve historical stored addresses, Woo billing/shipping countries, fixed scheduling, disclaimer, refund policy, waivers, payment and licensing. Schema remains 2; no migration.
+
 ## 1.1.0 - Rental location and fixed-time booking
 
 - Collect a separate country-aware Drop Off / Pick Up Location before checkout; persist it in the reservation snapshot and `_brp_rental_location` WooCommerce order metadata. Display it in reservation/order administration, authorized customer confirmation and HTML/plain-text order emails. Billing/shipping addresses remain owned by WooCommerce.

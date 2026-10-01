@@ -25,9 +25,9 @@ function sapi( $method, $route, $body = array() ) {
 	if ( $response->get_status() >= 400 ) { echo 'API RESULT: ' . wp_json_encode( $response->get_data() ) . PHP_EOL; }
 	return $response;
 }
-$saved = array(); foreach ( array( Settings::OPTION, 'woocommerce_calc_taxes', 'woocommerce_prices_include_tax', 'woocommerce_tax_based_on', 'woocommerce_currency', 'woocommerce_enable_guest_checkout', 'woocommerce_tax_classes' ) as $key ) { $saved[$key] = get_option( $key ); }
+$saved = array(); foreach ( array( Settings::OPTION, 'woocommerce_default_country', 'woocommerce_calc_taxes', 'woocommerce_prices_include_tax', 'woocommerce_tax_based_on', 'woocommerce_currency', 'woocommerce_enable_guest_checkout', 'woocommerce_tax_classes' ) as $key ) { $saved[$key] = get_option( $key ); }
 $settings = Settings::defaults(); foreach ( $settings['weekly_hours'] as &$hours ) { $hours = array( 'open' => 1, 'start' => '08:00', 'end' => '18:00' ); } unset( $hours );
-update_option( Settings::OPTION, $settings ); update_option( 'woocommerce_currency', 'USD' ); update_option( 'woocommerce_enable_guest_checkout', 'yes' );
+update_option( Settings::OPTION, $settings ); update_option( 'woocommerce_default_country', 'CA:ON' ); update_option( 'woocommerce_currency', 'USD' ); update_option( 'woocommerce_enable_guest_checkout', 'yes' );
 update_option( 'woocommerce_calc_taxes', 'yes' ); update_option( 'woocommerce_prices_include_tax', 'no' ); update_option( 'woocommerce_tax_based_on', 'billing' );
 $tax_class = WC_Tax::create_tax_class( 'BRP store fixture' );
 $rate = WC_Tax::_insert_tax_rate( array( 'tax_rate_country' => 'US', 'tax_rate_state' => '', 'tax_rate' => '7.0000', 'tax_rate_name' => 'Fixture tax', 'tax_rate_priority' => 1, 'tax_rate_compound' => 0, 'tax_rate_shipping' => 0, 'tax_rate_order' => 0, 'tax_rate_class' => 'brp-store-fixture' ) );
@@ -45,7 +45,7 @@ try {
 	$payload = array( 'billing_address' => $billing, 'shipping_address' => $address, 'payment_method' => 'square_credit_card', 'payment_data' => array(), 'customer_note' => '', 'create_account' => false );
 	if ( ! in_array( '--normal', $argv, true ) ) {
 	$date = ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+7 days' )->format( 'Y-m-d' );
-	$hold = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $product->get_id(), 'quantity' => 3, 'date' => $date, 'time' => '09:00' ), 'store-api-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $hold ), 'three-bike calendar hold created' );
+	$hold = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $product->get_id(), 'quantity' => 3, 'date' => $date, 'time' => '09:00', 'rental_location' => array_replace( brp_test_location(), array( 'state' => 'ON', 'postcode' => 'K1A 0B1' ) ) ), 'store-api-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $hold ), 'three-bike calendar hold created' );
 	$transfer = Checkout::transfer( $hold['request_key'] ); scheck( ! is_wp_error( $transfer ), 'hold transfers to real Woo cart' );
 	$cart = json_decode( wp_json_encode( sapi( 'GET', 'cart' )->get_data() ), true );
 	scheck( $cart['needs_shipping'] && count( $cart['items'] ) === 1, 'real Store API exposes rental delivery and single item' );
@@ -72,6 +72,9 @@ try {
 	$location = $order->get_meta( \BikeRentalPlugin\RentalLocation::META );
  scheck( $location['address_1'] === brp_test_location()['address_1'], 'service location copied to separate structured order meta' );
  scheck( $order->get_billing_address_1() === $billing['address_1'] && $order->get_billing_email() === $billing['email'] && $order->get_billing_address_1() !== $location['address_1'], 'Woo billing is retained and never overwritten by service location' );
+ scheck($location['country']==='CA'&&$location['country']===\BikeRentalPlugin\RentalLocation::base_country(),'derived country copied to structured order meta');
+ scheck($order->get_billing_country()===$billing['country'],'billing country remains untouched');
+ scheck($order->get_shipping_country()===$address['country'],'shipping country remains untouched');
  wp_set_current_user(1); ob_start(); \BikeRentalPlugin\RentalLocation::order_admin($order); $admin_location=ob_get_clean();
  scheck(str_contains($admin_location,'Drop Off / Pick Up Location')&&str_contains($admin_location,$location['address_1']), 'order admin renders formatted rental address');
  wp_set_current_user(0); $_GET['key']=$order->get_order_key(); ob_start(); \BikeRentalPlugin\RentalLocation::order_customer($order->get_id()); $customer_location=ob_get_clean();

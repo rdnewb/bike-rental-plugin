@@ -16,29 +16,7 @@
         const riders = root.querySelector('.brp-riders');
         const disclaimer = root.querySelector('.brp-time-disclaimer');
         const locationFields = root.querySelector('.brp-location');
-        const locationRules = JSON.parse(locationFields?.dataset.rules || '{}');
         const readLocation = () => Object.fromEntries(Array.from(locationFields?.querySelectorAll('[data-location]') || [], (input) => [input.dataset.location, input.disabled ? '' : input.value]));
-        const updateCountry = () => {
-            if (!locationFields) return;
-            const rules = locationRules[fields.location_country.value];
-            const oldState = locationFields.querySelector('[data-location="state"]');
-            const states = rules?.states || {};
-            const state = document.createElement(Object.keys(states).length ? 'select' : 'input');
-            for (const attr of ['id', 'name', 'data-location', 'autocomplete']) state.setAttribute(attr, oldState.getAttribute(attr));
-            if (state.tagName === 'SELECT') {
-                state.add(new Option('Select state/province', ''));
-                Object.entries(states).forEach(([code, name]) => state.add(new Option(name, code)));
-            } else { state.type = 'text'; state.maxLength = 240; }
-            oldState.replaceWith(state);
-            for (const key of ['state', 'postcode']) {
-                const input = locationFields.querySelector(`[data-location="${key}"]`);
-                input.required = Boolean(rules?.[key]?.required);
-                input.disabled = Boolean(rules?.[key]?.hidden);
-                input.closest('label').hidden = input.disabled;
-                if (input.disabled) input.value = '';
-            }
-        };
-        fields.location_country?.addEventListener('change', updateCountry); updateCountry();
         locationFields?.addEventListener('input', () => { requestKey = ''; store(''); });
         locationFields?.addEventListener('change', () => { requestKey = ''; store(''); });
         const readRiders = () => Object.fromEntries(Array.from(riders.children, (section, index) => [index + 1,
@@ -242,7 +220,7 @@
             riders.replaceChildren();
             fields.package_id.value = ''; updateCards(); details.hidden = true;
             filtered = false; showCards(); changeRental.hidden = true; syncUrl(''); root.dataset.selectionSource = 'none';
-            fields.date.disabled = true; updateCountry();
+            fields.date.disabled = true;
             if (focus) cards.find((card) => !card.hidden)?.querySelector('.brp-select').focus();
             message('Choose a package to check availability again.');
         };

@@ -5,6 +5,13 @@ defined( 'ABSPATH' ) || exit;
 
 final class RentalLocation {
  const META = '_brp_rental_location';
+ /** Prefer Woo's API; never use its implicit default when store configuration is absent. */
+ public static function base_country() {
+  $configured = get_option( 'woocommerce_default_country', '' );
+  if ( ! is_string( $configured ) || '' === $configured ) { return ''; }
+  $country = function_exists( 'WC' ) && WC()->countries ? WC()->countries->get_base_country() : explode( ':', $configured )[0];
+  return is_string( $country ) && preg_match( '/\A[A-Z]{2}\z/', $country ) ? $country : '';
+ }
  public static function labels() { return array( 'name' => 'Name', 'company' => 'Company / Property Name', 'address_1' => 'Address Line 1', 'address_2' => 'Address Line 2', 'city' => 'City', 'state' => 'State/Province', 'postcode' => 'Postal Code', 'country' => 'Country', 'notes' => 'Location / Delivery Notes' ); }
  public static function rules( $country ) {
   $fields = WC()->countries->get_address_fields( $country, 'rental_' );
@@ -18,15 +25,15 @@ final class RentalLocation {
  }
  public static function validate( $input ) {
   if ( ! is_array( $input ) || ! function_exists( 'WC' ) || ! WC()->countries ) { return self::error( 'Enter the Drop Off / Pick Up Location.' ); }
-  if ( array_diff( array_keys( $input ), array_keys( self::labels() ) ) ) { return self::error( 'Please check the Drop Off / Pick Up Location fields.' ); }
+  $country = self::base_country();
+  if ( ! isset( WC()->countries->get_countries()[$country] ) ) { return self::error( 'Rental delivery is temporarily unavailable. Please contact the shop.' ); }
+  if ( array_diff( array_keys( $input ), array_diff( array_keys( self::labels() ), array( 'country' ) ) ) ) { return self::error( 'Please check the Drop Off / Pick Up Location fields.' ); }
   $values = array();
   foreach ( self::labels() as $key => $label ) {
-   $value = $input[$key] ?? '';
+   $value = 'country' === $key ? $country : ( $input[$key] ?? '' );
    if ( ! is_string( $value ) || strlen( $value ) > ( 'notes' === $key ? 2000 : 240 ) ) { return self::error( $label . ' is invalid or too long.' ); }
    $values[$key] = 'notes' === $key ? sanitize_textarea_field( $value ) : sanitize_text_field( $value );
   }
-  $values['country'] = strtoupper( $values['country'] );
-  if ( ! isset( WC()->countries->get_countries()[$values['country']] ) ) { return self::error( 'Select a valid country for the Drop Off / Pick Up Location.' ); }
   $rules = self::rules( $values['country'] );
   foreach ( array( 'name', 'address_1', 'city', 'state', 'postcode' ) as $key ) {
    if ( ( ! isset( $rules[$key] ) || $rules[$key]['required'] ) && '' === $values[$key] ) { return self::error( self::labels()[$key] . ' is required for the Drop Off / Pick Up Location.' ); }
@@ -71,16 +78,18 @@ final class RentalLocation {
  }
  public static function form( $uid ) {
   if ( ! function_exists( 'WC' ) || ! WC()->countries ) { return; }
-  $countries = WC()->countries->get_countries(); $rules = array();
-  foreach ( $countries as $code => $name ) { $rules[$code] = self::rules( $code ); }
-  echo '<fieldset class="brp-location" data-rules="' . esc_attr( wp_json_encode( $rules ) ) . '"><legend>Drop Off / Pick Up Location</legend><p>Where the bikes will be delivered and picked up. Billing details are collected separately at checkout.</p><div class="brp-location-grid">';
-  foreach ( array( 'country', 'name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'notes' ) as $key ) {
+  $country = self::base_country();
+  if ( ! isset( WC()->countries->get_countries()[$country] ) ) { echo '<p>Rental delivery is temporarily unavailable. Please contact the shop.</p>'; return; }
+  $rules = self::rules( $country );
+  echo '<fieldset class="brp-location"><legend>Drop Off / Pick Up Location</legend><p>Where the bikes will be delivered and picked up. Billing details are collected separately at checkout.</p><div class="brp-location-grid">';
+  foreach ( array( 'name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'notes' ) as $key ) {
+   if ( ! empty( $rules[$key]['hidden'] ) ) { continue; }
    $id = $uid . '-location-' . $key; $optional = in_array( $key, array( 'company', 'address_2', 'notes' ), true );
    echo '<label class="brp-location-field" data-location-field="' . esc_attr( $key ) . '" for="' . esc_attr( $id ) . '">' . esc_html( self::labels()[$key] . ( $optional ? ' (optional)' : '' ) );
-   $attrs = ' id="' . esc_attr( $id ) . '" name="location_' . esc_attr( $key ) . '" data-location="' . esc_attr( $key ) . '"' . ( $optional || in_array( $key, array( 'state', 'postcode' ), true ) ? '' : ' required' );
-   if ( 'country' === $key ) {
-    echo '<select' . $attrs . ' autocomplete="section-rental country"><option value="">Select country</option>';
-    foreach ( $countries as $code => $name ) { echo '<option value="' . esc_attr( $code ) . '">' . esc_html( $name ) . '</option>'; } echo '</select>';
+   $attrs = ' id="' . esc_attr( $id ) . '" name="location_' . esc_attr( $key ) . '" data-location="' . esc_attr( $key ) . '"' . ( $optional || ( isset( $rules[$key] ) && ! $rules[$key]['required'] ) ? '' : ' required' );
+   if ( 'state' === $key && $rules['states'] ) {
+    echo '<select' . $attrs . ' autocomplete="section-rental address-level1"><option value="">Select state/province</option>';
+    foreach ( $rules['states'] as $code => $name ) { echo '<option value="' . esc_attr( $code ) . '">' . esc_html( $name ) . '</option>'; } echo '</select>';
    } elseif ( 'notes' === $key ) { echo '<textarea' . $attrs . ' rows="3" maxlength="2000"></textarea>'; }
    else { echo '<input type="text"' . $attrs . ' maxlength="240" autocomplete="section-rental ' . esc_attr( array( 'name' => 'name', 'company' => 'organization', 'address_1' => 'address-line1', 'address_2' => 'address-line2', 'city' => 'address-level2', 'state' => 'address-level1', 'postcode' => 'postal-code' )[$key] ) . '">'; }
    echo '</label>';
