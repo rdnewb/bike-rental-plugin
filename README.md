@@ -2,14 +2,14 @@
 
 A WordPress/WooCommerce bicycle rental plugin with shared fleet availability, public booking, staff reservation management, Full Payment checkout, rider waivers, and licensing.
 
-**Runtime version: 1.1.2. Database schema: 2 (unchanged).**
+**Runtime version: 1.1.3. Database schema: 2 (unchanged).**
 
 ## Booking and operations
 
 - Publish `[bike_rental_booking]` on a dedicated page. Customers select an active rental package, a start date and quantity, provide the Drop Off / Pick Up Location and one rider per bike, then review the configured refund policy before a temporary hold and checkout. The server derives the start time from that weekday's opening time in the WordPress timezone; there is no public time selector.
 - Link directly to a package with `/reserve/?rental=product-slug`. Valid active packages appear selected; **Change Rental** returns to the grid. Invalid links use normal selection.
 - Rental packages are WooCommerce Simple products configured under **Product data > Rental Settings**. Shared fleet capacity, operating hours, notice, booking horizon, preparation, and turnaround control availability.
-- **Review Your Reservation** shows the selected rental, friendly date/date range, bike quantity, rider count and entered location/notes. Internal scheduling times and timezone are omitted from this pre-reservation review; scheduling and order data remain unchanged.
+- **Review Your Reservation** shows the selected rental, friendly date/date range, bike quantity, rider count and entered location/notes. Customer reviews, receipts, Woo cart/order displays and customer emails use friendly dates instead of operational times/timezone. Stored timing metadata and staff views remain unchanged.
 - General settings include an optional safe-formatted **Drop Off / Pick Up Time Disclaimer**, shown prominently after a valid date selection. Opening/closing and calendar pickup settings use explicit AM/PM labels. Existing custom branding text is preserved; the old stock introduction is updated for date-only selection.
 - The Refund & Returns Policy comes from the published WooCommerce `refund_returns` page via `wc_get_page_id()`. It appears directly above Reserve Bikes; missing, draft, private or password-protected policies are omitted. No extra policy editor or consent checkbox is added.
 - The rental-location form derives country from the configured WooCommerce store base and displays the corresponding state/postal controls, without a customer country field. Drop Off / Pick Up Location is structured reservation snapshot data and separate `_brp_rental_location` Woo order metadata. Staff, authorized customers and order email recipients receive a formatted address. WooCommerce retains billing and shipping. Guarded abandoned-data cleanup includes the location.
@@ -53,7 +53,7 @@ The licensing server is maintained independently in [NT License Controller](http
 2. Upload the complete inner `bike-rental-plugin/` directory to **`wp-content/plugins/bike-rental-plugin/`**, relative to the rental site's WordPress root. The main file is `wp-content/plugins/bike-rental-plugin/bike-rental-plugin.php`. The host-specific absolute document root is not recorded in this repository.
 3. Activate Bike Rental Plugin. Configure the business, named-city WordPress timezone, operating hours, and fleet capacity. All days initially remain closed; initial fleet capacity is 10 and must be reviewed.
 4. Create active rental packages with valid prices and durations. Publish the booking page, select Full Payment, configure Square, and activate the license.
-5. Configure waivers and the signing page if required, then perform the [production QA checklist](docs/booking-review-1.1.2.md) before accepting bookings.
+5. Configure waivers and the signing page if required, then perform the [production QA checklist](docs/customer-summary-1.1.3.md) before accepting bookings.
 
 Use a maintenance window to avoid serving mixed PHP versions. Upload neither the repository root nor tests, docs, tooling, or controller source. Normal initialization verifies schema 2; reactivation is not required. Deactivation, uninstall, and file replacement preserve stored data. Do not restore an old database over newer business records or run older allocation code against current commitments.
 
@@ -61,7 +61,7 @@ Use a maintenance window to avoid serving mixed PHP versions. Upload neither the
 
 Runtime code is under `bike-rental-plugin/`. `Plugin` coordinates hooks; `Settings`, `Branding`, and `Packages` validate configuration; `BlockInput` converts admin date/time controls; `Database`, `Reservations`, `Fleet`, and `Availability` manage persistence and allocation; `BookingSchedule`, `GuestSession`, and `PublicBooking` handle public booking. Checkout, payment, cart, waiver, and license services retain separate responsibilities.
 
-The four prefixed tables are `brp_reservations`, `brp_availability`, `brp_riders`, and `brp_waivers`. Code version (`brp_plugin_version`) and schema version (`brp_db_version`) are separate. No schema migration is introduced in 1.1.2. Snapshots, hashes, and revision values remain stored for integrity and concurrency checks.
+The four prefixed tables are `brp_reservations`, `brp_availability`, `brp_riders`, and `brp_waivers`. Code version (`brp_plugin_version`) and schema version (`brp_db_version`) are separate. No schema migration is introduced in 1.1.3. Snapshots, hashes, and revision values remain stored for integrity and concurrency checks.
 
 Admin mutations require capabilities and nonces. Public booking uses same-origin checks, a signed HttpOnly guest cookie, session-bound CSRF protection, and server-side ownership checks. Required hidden form values and protocol fields remain; they are not presented as diagnostic data. Inventory writes use prepared SQL and shared locking. License keys, payment credentials, session hashes, and raw callbacks are not displayed in normal reservation UI.
 
@@ -71,6 +71,6 @@ Work directly on `main` unless instructed otherwise. Push or deploy only when ex
 
 Run `php -n tests/packages.php` for foundation/package checks, `php -n tests/production-cleanup.php` for reservation UI regressions, and `php -n tests/availability-ui.php` for block input, rendering, and in-memory allocation checks. The last suite can export markup with `BRP_BLOCK_FIXTURE_DIR` for `tests/availability-ui-browser.cjs`. Integration, browser, concurrency, payment, waiver, and licensing suites remain in `tests/`; database suites require the strictly guarded disposable WordPress fixture and run sequentially. Do not weaken guards or point tests at business data.
 
-Build with `python tools/package.py`. The release is `.release/production/bike-rental-plugin-1.1.2.zip`; every entry is compared with runtime source. See [release verification and QA](docs/booking-review-1.1.2.md) for actual results and pending QA. Live Square acceptance, WPForms signing/mail delivery, and host/theme behavior must be verified on the deployment site.
+Build with `python tools/package.py`. The release is `.release/production/bike-rental-plugin-1.1.3.zip`; every entry is compared with runtime source. See [release verification and QA](docs/customer-summary-1.1.3.md) for actual results and pending QA. Live Square acceptance, WPForms signing/mail delivery, and host/theme behavior must be verified on the deployment site.
 
 Developer references (not shipped): [reservation storage](docs/reservation-storage.md), [waiver architecture](docs/waiver-architecture.md), [WPForms setup](docs/wpforms-waiver-provider.md), [license setup](docs/license-client-setup.md), and [license architecture](docs/licensing-architecture.md). Other verification documents in `docs/` are historical developer records; their release counts and terminology describe the versions named there, not current release acceptance.

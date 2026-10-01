@@ -63,6 +63,12 @@ function check(value, label) { assert.ok(value, label); checks++; console.log('P
    check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),name+': no horizontal page overflow');
    await page.locator('.brp-time-disclaimer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(dir,name+'-booking.png'),fullPage:true});
    await page.locator('.brp-submit').click();await page.locator('.brp-result:visible').waitFor();
+   const receipt=await page.locator('.brp-receipt').textContent();
+   check(receipt.includes('Reference: BRP-FIXTURE')&&receipt.includes('Package: '+fixture.package.name)&&receipt.includes('Bikes: 1')&&receipt.includes('Rental Date:'),name+': checkout receipt preserves identity and friendly dates');
+   check(!receipt.includes('Start:')&&!receipt.includes('Pickup / end:')&&!receipt.includes('Timezone:')&&!receipt.includes('America/New_York')&&!receipt.includes(fixture.date),name+': checkout receipt hides operational timing');
+   check(await page.locator('.brp-time-disclaimer:visible').count()===1,name+': single existing disclaimer follows customer to receipt');
+   check(receipt.includes(review.match(/Rental Date: (.*?)Quantity:/)[1]),name+': checkout reuses review date-range formatting');
+   await page.screenshot({path:path.join(dir,name+'-receipt.png'),fullPage:true});
    const sent=requests.find(r=>r.action==='holds').input;
    check(!('country' in sent.rental_location)&&sent.rental_location.address_1==='123 Example Street'&&!('time'in sent)&&sent.riders['1'].legal_name==='Example Rider',name+': hold includes address and riders with no client time');
    check(await page.locator('.brp-receipt').textContent().then(v=>v.includes('Drop Off / Pick Up Location')),name+': receipt shows service address');

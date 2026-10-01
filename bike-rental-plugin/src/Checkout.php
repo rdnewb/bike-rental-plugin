@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Checkout {
 	private static $adding = false;
 	public static function register_hooks() {
+		CustomerSummary::register_hooks();
 		add_action( 'woocommerce_admin_order_data_after_order_details', array( RentalLocation::class, 'order_admin' ), 30 );
 		add_action( 'woocommerce_thankyou', array( RentalLocation::class, 'order_customer' ), 30 );
 		add_action( 'woocommerce_view_order', array( RentalLocation::class, 'order_customer' ), 30 );
@@ -102,7 +103,7 @@ final class Checkout {
 	public static function item_data( $data, $item ) {
 		$row = self::validate_item( $item );
 		if ( is_wp_error( $row ) ) { $data[] = array( 'key' => 'Rental', 'value' => esc_html( $row->get_error_message() ) ); }
-		elseif ( $row ) { foreach ( self::details( $row ) as $key => $value ) { $data[] = array( 'key' => $key, 'value' => esc_html( $value ) ); } }
+		elseif ( $row ) { foreach ( CustomerSummary::details( $row ) as $key => $value ) { $data[] = array( 'key' => $key, 'value' => esc_html( $value ) ); } }
 		return $data;
 	}
 	public static function rental_order( $order ) {

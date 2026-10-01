@@ -138,12 +138,6 @@
             if (lines.length) line(summary, 'Drop Off / Pick Up Location', lines.join('\n'));
             price(summary, selection.package);
         };
-        const dateLabel = (value) => {
-            const [date, time] = value.split('T');
-            if (!time) return date;
-            const [hour, minute] = time.split(':');
-            return `${date} ${Number(hour) % 12 || 12}:${minute} ${Number(hour) < 12 ? 'AM' : 'PM'}`;
-        };
         const resetSelection = () => {
             generation++; selection = null; submit.disabled = true; fields.quantity.disabled = true;
             root.removeAttribute('aria-busy');
@@ -160,9 +154,9 @@
             checkout.hidden = !hold.reserved;
             clearInterval(timer); form.hidden = true; result.hidden = false; restart.hidden = hold.reserved;
             const receipt = root.querySelector('.brp-receipt'); receipt.replaceChildren();
+            if (disclaimer) { disclaimer.hidden = false; result.insertBefore(disclaimer, receipt); }
             line(receipt, 'Reference', hold.reference); line(receipt, 'Package', hold.package.name);
-            line(receipt, 'Bikes', hold.quantity); line(receipt, 'Start', dateLabel(hold.rental_start));
-            line(receipt, 'Pickup / end', dateLabel(hold.rental_end)); line(receipt, 'Timezone', hold.timezone); price(receipt, hold.package);
+            line(receipt, 'Bikes', hold.quantity); line(receipt, 'Rental Date', rentalDates(hold.rental_start, hold.rental_end)); price(receipt, hold.package);
             if (hold.rental_location) line(receipt, 'Drop Off / Pick Up Location', hold.rental_location);
             line(receipt, 'Hold expires', new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(hold.expires_at)) + ' (your device time)');
             message(hold.message + (hold.waiver_notice ? ' ' + hold.waiver_notice : ''));
@@ -243,6 +237,7 @@
         });
         const resetBooking = (focus = true) => {
             clearInterval(timer); result.hidden = true; form.hidden = false; resetSelection(); form.reset();
+            if (disclaimer) fields.date.insertAdjacentElement('afterend', disclaimer);
             riders.replaceChildren();
             fields.package_id.value = ''; updateCards(); details.hidden = true;
             filtered = false; showCards(); changeRental.hidden = true; syncUrl(''); root.dataset.selectionSource = 'none';

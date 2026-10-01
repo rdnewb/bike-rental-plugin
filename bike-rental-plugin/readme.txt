@@ -1,7 +1,7 @@
 === Bike Rental Plugin ===
 Requires at least: 6.6
 Requires PHP: 8.3
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPL-2.0-or-later
 Text Domain: bike-rental-plugin
 
@@ -9,7 +9,10 @@ Bicycle rental booking, shared fleet availability, reservation management, and r
 
 == Description ==
 
-Version 1.1.2 presents a customer-focused Review Your Reservation section with
+Version 1.1.3 extends friendly dates to checkout receipts, Woo cart/customer
+order displays and customer emails while preserving staff timing and stored data.
+
+The booking form presents a customer-focused Review Your Reservation section with
 rental name, friendly dates, quantity, rider count and rental location. Internal
 times/timezone are omitted from that review; scheduling and order data are retained.
 
@@ -86,6 +89,12 @@ No end date preserves indefinite blocks until disabled. Quantity cannot exceed f
 capacity or available inventory. Lists and Calendar show All Day or AM/PM ranges.
 
 == Changelog ==
+
+= 1.1.3 =
+Replace customer-facing operational times with friendly rental dates in receipts,
+Woo cart/order displays and emails. Retain precise timing for staff and storage.
+Reuse the existing receipt date formatter and keep one disclaimer visible.
+Waiver email date placeholders use dates only. Schema remains 2.
 
 = 1.1.2 =
 Simplify the public review with friendly reservation details and live location

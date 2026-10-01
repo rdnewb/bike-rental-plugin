@@ -11,7 +11,7 @@ final class WaiverSettings {
 			'guardian_body' => "{business_name}\nReservation: {reservation_reference}\nPackage: {package_name}\n\n{guardian_name}, please read and sign as parent/guardian for {rider_name}, age {rider_age}:\n{waiver_url}\n\nYour reservation is not confirmed until all required rider waivers are complete. This private link expires in 7 days. Do not forward it."
 		);
 	}
-	public static function placeholders() { return array( 'business_name', 'reservation_reference', 'rider_name', 'rider_age', 'guardian_name', 'guardian_relationship', 'package_name', 'rental_start', 'rental_end', 'waiver_url', 'waiver_version' ); }
+	public static function placeholders() { return array( 'business_name', 'reservation_reference', 'rider_name', 'rider_age', 'guardian_name', 'guardian_relationship', 'package_name', 'rental_start', 'rental_end', 'rental_dates', 'waiver_url', 'waiver_version' ); }
 	/** Page and templates are operational settings; frozen legal/provider policy remains unchanged. */
 	public static function signing_url() {
 		$id = self::get()['signing_page']; $page = $id ? get_post( $id ) : null;
@@ -87,6 +87,6 @@ final class WaiverSettings {
 				else { echo '<input class="large-text" id="brp-' . esc_attr( $key ) . '" name="' . esc_attr( $name ) . '" maxlength="200" value="' . esc_attr( $v[ $key ] ) . '">'; } echo '</td></tr>';
 			} echo '</table>';
 		}
-		echo '<p>Available placeholders: <code>' . esc_html( '{' . implode( '} {', self::placeholders() ) . '}' ) . '</code>. Unknown placeholders stay as literal text. Resends use the current templates.</p>';
+		echo '<p>Available placeholders: <code>' . esc_html( '{' . implode( '} {', self::placeholders() ) . '}' ) . '</code>. Rental date placeholders contain dates only; {rental_dates} provides the full date range. Unknown placeholders stay as literal text. Resends use the current templates.</p>';
 	}
 }

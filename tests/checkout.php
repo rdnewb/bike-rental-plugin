@@ -89,7 +89,7 @@ try {
 	WC()->cart->cart_contents[$key]['data']->set_price( 0.01 ); WC()->cart->calculate_totals();
 	ccheck( WC()->cart->get_total( 'edit' ) === '59.97', 'cart price restored from Woo catalog, not client or session amount' );
 	$display = Checkout::item_data( array(), $item ); $rendered = wp_json_encode( $display );
-	ccheck( str_contains( $rendered, '8:00 AM' ) && str_contains( $rendered, '12:00 PM' ), 'rental start/end displayed in 12-hour local time' );
+	ccheck( str_contains( $rendered, 'Rental Date' ) && ! str_contains( $rendered, '8:00 AM' ) && ! str_contains( $rendered, '12:00 PM' ) && ! str_contains( $rendered, 'America/' ), 'rental cart shows friendly dates without operational times' );
 	ccheck( ! str_contains( $rendered, $identity['hash'] ) && ! str_contains( $rendered, $hold['request_key'] ) && ! str_contains( $rendered, '<script>' ), 'display excludes secrets and escapes package text' );
 	update_option( Settings::OPTION, $deposit ); ccheck( json_decode( cread( $hold['id'] )['snapshot'], true )['payment_mode'] === 'full', 'global payment-mode change does not change snapshot' );
 	cok( Checkout::validate_item( $item ), 'existing Full Payment checkout retains agreed mode' ); update_option( Settings::OPTION, $settings );

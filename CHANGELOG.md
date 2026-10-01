@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.3 - Customer reservation timing output
+
+- Reuse friendly date/date-range formatting in the post-reservation checkout receipt; remove its Start, Pickup / end and Timezone fields. Move the existing disclaimer into the receipt and back on reset, without duplication.
+- Present friendly rental dates in Woo cart/checkout item data, customer thank-you/account order details and HTML/plain-text emails. Filter display metadata for existing orders without rewriting saved timing fields; staff order administration and staff emails retain precise times.
+- Format waiver invitation rental_start/rental_end placeholders as friendly dates and add rental_dates for a full range. Preserve templates, waiver evidence, payment, inventory, licensing and all scheduling logic. Schema remains 2.
+
 ## 1.1.2 - Customer booking review
 
 - Rename the public review to Review Your Reservation; show package name, friendly local rental date/date range, bike quantity, rider count, entered location/notes and existing price per bike.
