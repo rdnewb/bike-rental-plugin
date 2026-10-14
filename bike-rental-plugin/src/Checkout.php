@@ -28,7 +28,6 @@ final class Checkout {
 		add_action( 'woocommerce_before_pay_action', array( self::class, 'pay_order' ), 5 );
 		add_action( 'woocommerce_after_checkout_validation', static function ( $data, $errors ) { if ( self::has_rental_cart() ) { $errors->add( 'brp_checkout', 'Rental checkout requires the WooCommerce Checkout Block. Please contact the shop.' ); } }, 10, 2 );
 		add_filter( 'woocommerce_available_payment_gateways', array( self::class, 'gateways' ), 100 );
-		add_filter( 'woocommerce_coupon_is_valid', static function ( $valid ) { if ( self::has_rental_cart() ) { throw new \Exception( 'Coupons are not available for rental checkout.' ); } return $valid; }, 100 );
 		// Woo/Square retail stock is not the shared rental fleet. Never synchronize fleet quantities.
 		add_filter( 'woocommerce_product_get_manage_stock', static fn( $value, $product ) => Packages::is_rental_package( $product ) ? false : $value, 100, 2 );
 		add_filter( 'woocommerce_product_is_in_stock', static fn( $value, $product ) => Packages::is_rental_package( $product ) ? true : $value, 100, 2 );
@@ -83,7 +82,7 @@ final class Checkout {
 		$row = null; $items = WC()->cart ? WC()->cart->get_cart() : array();
 		foreach ( $items as $item ) {
 			$valid = self::validate_item( $item ); if ( is_wp_error( $valid ) ) { return $valid; }
-			if ( $valid ) { if ( $row || count( $items ) !== 1 || WC()->cart->get_applied_coupons() ) { return Database::error( 'checkout', 'Checkout one rental reservation at a time, without coupons or other cart items.' ); } $row = $valid; }
+			if ( $valid ) { if ( $row || count( $items ) !== 1 ) { return Database::error( 'checkout', 'Checkout one rental reservation at a time, without other cart items.' ); } $row = $valid; }
 		}
 		return $row;
 	}
@@ -133,7 +132,8 @@ final class Checkout {
 	public static function pay_order( $order ) {
 		if ( ! self::rental_order( $order ) ) { return; }
 		$valid = PaymentMode::validate_provider( $order->get_meta( '_brp_payment_mode' ) ); if ( is_wp_error( $valid ) ) { self::raise( $valid ); }
-		$items = $order->get_items(); if ( count( $items ) !== 1 || $order->get_coupon_codes() || (float) $order->get_total() <= 0 ) { self::raise( CheckoutReservation::error() ); }
+		$items = $order->get_items(); if ( count( $items ) !== 1 ) { self::raise( CheckoutReservation::error() ); }
+		if ( (float) $order->get_total() <= 0 ) { self::raise( Database::error( 'checkout', 'Rental checkout requires a payment total greater than zero. Please remove discounts that make the rental free or contact the shop.' ) ); }
 		$item = reset( $items );
 		$row = CheckoutReservation::owned( $order->get_meta( '_brp_reservation_id' ), GuestSession::identity()['hash'] ?? null, $item->get_product_id(), $item->get_quantity(), $order->get_meta( '_brp_fingerprint' ) );
 		if ( is_wp_error( $row ) ) { self::raise( $row ); }

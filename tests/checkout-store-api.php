@@ -8,6 +8,7 @@ class BRP_Checkout_Test_Gateway extends WC_Payment_Gateway {
 	public function __construct() { $this->id = 'square_credit_card'; $this->enabled = 'yes'; $this->title = 'Fixture gateway — no Square connection'; $this->supports = array( 'products' ); }
 	public function process_payment( $id ) {
 		$order = wc_get_order( $id );
+		$GLOBALS['gateway_process_payment_calls']++; $GLOBALS['gateway_order_ids'][] = (int) $id;
 		if ( $GLOBALS['fixture_decline'] ) { $order->update_status( 'failed' ); return array( 'result' => 'failure', 'message' => 'Fixture decline' ); }
 		$order->update_meta_data( '_wc_square_credit_card_charge_captured', 'yes' ); $order->update_meta_data( '_wc_square_credit_card_authorization_amount', $order->get_total() ); $order->save();
 		$order->payment_complete( 'fixture-store-api-' . $id );
@@ -25,6 +26,18 @@ function sapi( $method, $route, $body = array() ) {
 	if ( $response->get_status() >= 400 ) { echo 'API RESULT: ' . wp_json_encode( $response->get_data() ) . PHP_EOL; }
 	return $response;
 }
+function scheck_coupon_error( $response, $message, $label ) {
+	$data = $response->get_data();
+	scheck( $response->get_status() === 400 && ( $data['code'] ?? '' ) === 'woocommerce_rest_cart_coupon_error' && str_contains( strtolower( wp_json_encode( $data ) ), strtolower( $message ) ) && ! WC()->cart->get_applied_coupons(), $label );
+}
+function scoupon( $code, $type, $amount, $args = array() ) {
+	$coupon = new WC_Coupon();
+	$coupon->set_code( $code ); $coupon->set_discount_type( $type ); $coupon->set_amount( $amount );
+	if ( isset( $args['date_expires'] ) ) { $coupon->set_date_expires( $args['date_expires'] ); }
+	if ( isset( $args['usage_limit'] ) ) { $coupon->set_usage_limit( $args['usage_limit'] ); }
+	if ( isset( $args['usage_count'] ) ) { $coupon->set_usage_count( $args['usage_count'] ); }
+	$coupon->save(); $GLOBALS['created_coupons'][] = $coupon->get_id(); return $coupon;
+}
 $saved = array(); foreach ( array( Settings::OPTION, 'woocommerce_default_country', 'woocommerce_calc_taxes', 'woocommerce_prices_include_tax', 'woocommerce_tax_based_on', 'woocommerce_currency', 'woocommerce_enable_guest_checkout', 'woocommerce_tax_classes' ) as $key ) { $saved[$key] = get_option( $key ); }
 $settings = Settings::defaults(); foreach ( $settings['weekly_hours'] as &$hours ) { $hours = array( 'open' => 1, 'start' => '08:00', 'end' => '18:00' ); } unset( $hours );
 update_option( Settings::OPTION, $settings ); update_option( 'woocommerce_default_country', 'CA:ON' ); update_option( 'woocommerce_currency', 'USD' ); update_option( 'woocommerce_enable_guest_checkout', 'yes' );
@@ -35,7 +48,7 @@ $zone = new WC_Shipping_Zone(); $zone->set_zone_name( 'BRP disposable delivery' 
 $shipping_id = $zone->add_shipping_method( 'flat_rate' ); update_option( 'woocommerce_flat_rate_' . $shipping_id . '_settings', array( 'title' => 'Fixture delivery', 'cost' => '0', 'tax_status' => 'none' ) );
 $product = new WC_Product_Simple(); $product->set_name( 'Store API rental fixture' ); $product->set_status( 'publish' ); $product->set_regular_price( '19.99' ); $product->set_tax_status( 'taxable' ); $product->set_tax_class( 'brp-store-fixture' );
 foreach ( array( Packages::ENABLED => 'yes', Packages::ACTIVE => 'yes', Packages::TYPE => 'calendar_days', Packages::AMOUNT => 3 ) as $key => $value ) { $product->update_meta_data( $key, $value ); } $product->save();
-$created_orders = array(); add_action( 'woocommerce_new_order', static function ( $id ) { $GLOBALS['created_orders'][] = $id; } );
+$created_orders = array(); $created_coupons = array(); $fixture_decline = false; $gateway_process_payment_calls = 0; $gateway_order_ids = array(); add_action( 'woocommerce_new_order', static function ( $id ) { $GLOBALS['created_orders'][] = $id; } );
 $wpdb->query( 'DELETE FROM ' . Database::table( 'reservations' ) ); $wpdb->query( 'DELETE FROM ' . Database::table( 'availability' ) . ' WHERE id <> 1' ); $wpdb->update( Database::table( 'availability' ), array( 'quantity' => 3 ), array( 'id' => 1 ) );
 try {
 	wp_set_current_user( 0 ); WC()->cart->empty_cart(); WC()->session->set( 'store_api_draft_order', null ); unset( $_COOKIE[ GuestSession::cookie_name() ] ); $identity = GuestSession::start();
@@ -45,14 +58,49 @@ try {
 	$payload = array( 'billing_address' => $billing, 'shipping_address' => $address, 'payment_method' => 'square_credit_card', 'payment_data' => array(), 'customer_note' => '', 'create_account' => false );
 	if ( ! in_array( '--normal', $argv, true ) ) {
 	$date = ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+7 days' )->format( 'Y-m-d' );
-	$hold = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $product->get_id(), 'quantity' => 3, 'date' => $date, 'time' => '09:00', 'rental_location' => array_replace( brp_test_location(), array( 'state' => 'ON', 'postcode' => 'K1A 0B1' ) ) ), 'store-api-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $hold ), 'three-bike calendar hold created' );
-	$transfer = Checkout::transfer( $hold['request_key'] ); scheck( ! is_wp_error( $transfer ), 'hold transfers to real Woo cart' );
+	$plain_hold = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $product->get_id(), 'quantity' => 1, 'date' => $date, 'time' => '09:00', 'rental_location' => array_replace( brp_test_location(), array( 'state' => 'ON', 'postcode' => 'K1A 0B1' ) ) ), 'store-api-plain-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $plain_hold ), 'one-bike no-coupon hold created' );
+	$transfer = Checkout::transfer( $plain_hold['request_key'] ); scheck( ! is_wp_error( $transfer ), 'no-coupon hold transfers to real Woo cart' );
+	$cart = json_decode( wp_json_encode( sapi( 'GET', 'cart' )->get_data() ), true ); $rate_id = $cart['shipping_rates'][0]['shipping_rates'][0]['rate_id'];
+	scheck( sapi( 'POST', 'cart/select-shipping-rate', array( 'package_id' => 0, 'rate_id' => $rate_id ) )->get_status() === 200, 'Woo delivery method selected for no-coupon rental' );
+	$plain_orders_before = array_unique( $created_orders ); $plain_gateway_before = $gateway_process_payment_calls;
+	$fixture_decline = false; $plain_response = sapi( 'POST', 'checkout', $payload ); scheck( $plain_response->get_status() === 200, 'actual no-coupon rental checkout completes using gateway double' );
+	$plain_after = Database::public_booking( static fn() => Reservations::read( $plain_hold['id'] ) ); $plain_orders = array_values( array_diff( array_unique( $created_orders ), $plain_orders_before ) );
+	scheck( count( $plain_orders ) === 1 && $plain_after['status'] === 'confirmed' && (int) $plain_after['order_id'] === (int) $plain_orders[0] && $gateway_process_payment_calls === $plain_gateway_before + 1, 'no-coupon rental checkout creates exactly one paid primary order' );
+	$plain_order = wc_get_order( $plain_after['order_id'] ); scheck( $plain_order->get_total() === '21.39' && ! $plain_order->get_coupon_codes() && wc_format_decimal( $plain_order->get_discount_total(), 2 ) === '0.00' && PaymentMode::paid( $plain_order ), 'no-coupon rental order preserves undiscounted Woo total' );
+	WC()->cart->empty_cart(); WC()->session->set( 'store_api_draft_order', null );
+	$date = ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+14 days' )->format( 'Y-m-d' );
+	$zero_hold = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $product->get_id(), 'quantity' => 1, 'date' => $date, 'time' => '09:00', 'rental_location' => array_replace( brp_test_location(), array( 'state' => 'ON', 'postcode' => 'K1A 0B1' ) ) ), 'store-api-zero-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $zero_hold ), 'zero-total hold created' );
+	$transfer = Checkout::transfer( $zero_hold['request_key'] ); scheck( ! is_wp_error( $transfer ), 'zero-total hold transfers to real Woo cart' );
+	scoupon( 'brp-percent', 'percent', 10 ); scoupon( 'brp-fixed-cart', 'fixed_cart', 5 ); scoupon( 'brp-fixed-product', 'fixed_product', 2 ); scoupon( 'brp-expired', 'fixed_cart', 5, array( 'date_expires' => time() - DAY_IN_SECONDS ) ); scoupon( 'brp-used', 'fixed_cart', 5, array( 'usage_limit' => 1, 'usage_count' => 1 ) ); scoupon( 'brp-zero-total', 'fixed_cart', 500 );
+	scheck_coupon_error( sapi( 'POST', 'cart/apply-coupon', array( 'code' => 'brp-missing' ) ), 'does not exist', 'invalid coupon rejected by native Woo validation with coupon error code' );
+	scheck_coupon_error( sapi( 'POST', 'cart/apply-coupon', array( 'code' => 'brp-expired' ) ), 'expired', 'expired coupon rejected by native Woo validation with coupon error code' );
+	scheck_coupon_error( sapi( 'POST', 'cart/apply-coupon', array( 'code' => 'brp-used' ) ), 'usage limit', 'usage-limit coupon rejected by native Woo validation with coupon error code' );
+	scheck( sapi( 'POST', 'cart/apply-coupon', array( 'code' => 'brp-zero-total' ) )->get_status() === 200 && wc_format_decimal( WC()->cart->get_total( 'edit' ), 2 ) === '0.00', 'zero-total coupon can be calculated before checkout guard' );
+	$cart = json_decode( wp_json_encode( sapi( 'GET', 'cart' )->get_data() ), true ); $rate_id = $cart['shipping_rates'][0]['shipping_rates'][0]['rate_id'];
+	scheck( sapi( 'POST', 'cart/select-shipping-rate', array( 'package_id' => 0, 'rate_id' => $rate_id ) )->get_status() === 200, 'Woo delivery method selected for zero-total rental' );
+	$zero_before = Database::public_booking( static fn() => Reservations::read( $zero_hold['id'] ) ); $zero_gateway_before = $gateway_process_payment_calls;
+	$fixture_decline = false; $zero = sapi( 'POST', 'checkout', $payload ); $zero_after = Database::public_booking( static fn() => Reservations::read( $zero_hold['id'] ) );
+	scheck( $zero->get_status() >= 400 && str_contains( wp_json_encode( $zero->get_data() ), 'payment total greater than zero' ), 'zero-total rental checkout blocked with customer-facing message' );
+	scheck( $gateway_process_payment_calls === $zero_gateway_before && $zero_after === $zero_before && 'hold' === $zero_after['status'] && empty( $zero_after['order_id'] ) && empty( $zero_after['order_item_id'] ), 'zero-total rental checkout never reaches gateway or payment claim' );
+	WC()->cart->empty_cart(); WC()->session->set( 'store_api_draft_order', null );
+	unset( $_COOKIE[ GuestSession::cookie_name() ] ); $identity = GuestSession::start();
+	$date = ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+21 days' )->format( 'Y-m-d' );
+	$hold = Database::public_booking( static fn() => brp_test_hold( array( 'package_id' => $product->get_id(), 'quantity' => 3, 'date' => $date, 'time' => '09:00', 'rental_location' => array_replace( brp_test_location(), array( 'state' => 'ON', 'postcode' => 'K1A 0B1' ) ) ), 'store-api-discount-fixture', $identity['hash'] ) ); scheck( ! is_wp_error( $hold ), 'three-bike discounted calendar hold created' );
+	scheck( $plain_hold['end_utc'] <= $zero_hold['start_utc'] && $zero_hold['end_utc'] <= $hold['start_utc'], 'coupon checkout fixture rental periods do not overlap' );
+	$positive_orders_before = array_unique( $created_orders );
+	$transfer = Checkout::transfer( $hold['request_key'] ); scheck( ! is_wp_error( $transfer ), 'discounted hold transfers to real Woo cart' );
 	$cart = json_decode( wp_json_encode( sapi( 'GET', 'cart' )->get_data() ), true );
 	scheck( $cart['needs_shipping'] && count( $cart['items'] ) === 1, 'real Store API exposes rental delivery and single item' );
 	scheck( $cart['items'][0]['quantity'] === 3 && ! $cart['items'][0]['quantity_limits']['editable'], 'Store API reports locked held quantity' );
 	scheck( $cart['totals']['total_price'] === '6417' && $cart['totals']['total_tax'] === '420', 'real Woo cart computes full fractional price plus tax' );
 	scheck( sapi( 'POST', 'cart/update-item', array( 'key' => $cart['items'][0]['key'], 'quantity' => 2 ) )->get_status() >= 400, 'actual Store API rejects independent rental quantity edit' );
 	scheck( sapi( 'POST', 'cart/add-item', array( 'id' => $product->get_id(), 'quantity' => 1 ) )->get_status() >= 400, 'actual Store API rejects direct rental add-to-cart' );
+	$percent = sapi( 'POST', 'cart/apply-coupon', array( 'code' => 'brp-percent' ) ); $percent_cart = json_decode( wp_json_encode( $percent->get_data() ), true );
+	scheck( $percent->get_status() === 200 && WC()->cart->has_discount( 'brp-percent' ) && (int) $percent_cart['totals']['total_price'] < 6417, 'percentage coupon applies to rental cart through Store API' );
+	scheck( sapi( 'POST', 'cart/remove-coupon', array( 'code' => 'brp-percent' ) )->get_status() === 200 && ! WC()->cart->has_discount( 'brp-percent' ), 'percentage coupon removal restores rental cart' );
+	$cart = json_decode( wp_json_encode( sapi( 'GET', 'cart' )->get_data() ), true ); scheck( $cart['totals']['total_price'] === '6417', 'rental cart total restores after coupon removal' );
+	scheck( sapi( 'POST', 'cart/apply-coupon', array( 'code' => 'brp-fixed-cart' ) )->get_status() === 200 && wc_format_decimal( WC()->cart->get_coupon_discount_amount( 'brp-fixed-cart' ), 2 ) === '5.00', 'fixed-cart coupon discount calculated by Woo' );
+	scheck( sapi( 'POST', 'cart/remove-coupon', array( 'code' => 'brp-fixed-cart' ) )->get_status() === 200 && ! WC()->cart->has_discount( 'brp-fixed-cart' ), 'fixed-cart coupon removal succeeds' );
 	$rate_id = $cart['shipping_rates'][0]['shipping_rates'][0]['rate_id'];
 	scheck( sapi( 'POST', 'cart/select-shipping-rate', array( 'package_id' => 0, 'rate_id' => $rate_id ) )->get_status() === 200, 'Woo delivery method selected' );
 	$before = Database::public_booking( static fn() => Reservations::read( $hold['id'] ) );
@@ -60,13 +108,17 @@ try {
 	scheck( sapi( 'GET', 'checkout' )->get_status() === 200, 'Checkout Block refresh succeeds' );
 	scheck( Database::public_booking( static fn() => Reservations::read( $hold['id'] ) ) === $before, 'real checkout loads do not extend or rewrite hold' );
 	$payload = array( 'billing_address' => $billing, 'shipping_address' => $address, 'payment_method' => 'square_credit_card', 'payment_data' => array(), 'customer_note' => '', 'create_account' => false );
-	$fixture_decline = true; $response = sapi( 'POST', 'checkout', $payload ); scheck( $response->get_status() >= 400, 'fixture decline returned by actual checkout route' );
+	scheck( sapi( 'POST', 'cart/apply-coupon', array( 'code' => 'brp-fixed-product' ) )->get_status() === 200 && wc_format_decimal( WC()->cart->get_coupon_discount_amount( 'brp-fixed-product' ), 2 ) === '6.00', 'fixed-product coupon discount calculated by Woo' );
+	$positive_gateway_before = $gateway_process_payment_calls; $positive_gateway_orders_before = count( $gateway_order_ids );
+	$fixture_decline = true; $response = sapi( 'POST', 'checkout', $payload ); scheck( $response->get_status() >= 400 && $gateway_process_payment_calls === $positive_gateway_before + 1, 'fixture decline returned by actual checkout route' );
 	$failed = Database::public_booking( static fn() => Reservations::read( $hold['id'] ) ); scheck( $failed['status'] === 'hold' && $failed['order_id'], 'failed payment preserves one bounded linked hold' );
-	$fixture_decline = false; $response = sapi( 'POST', 'checkout', $payload ); scheck( $response->get_status() === 200, 'actual checkout retry completes using gateway double' );
+	$failed_order_id = (int) $failed['order_id']; $fixture_decline = false; $response = sapi( 'POST', 'checkout', $payload ); scheck( $response->get_status() === 200 && $gateway_process_payment_calls === $positive_gateway_before + 2, 'actual checkout retry completes using gateway double' );
 	$after = Database::public_booking( static fn() => Reservations::read( $hold['id'] ) );
-	scheck( $after['status'] === 'confirmed' && $after['order_id'] === $failed['order_id'], 'real checkout retry reuses primary order and confirms same reservation' );
-	scheck( count( array_unique( $created_orders ) ) === 1, 'retry creates exactly one Woo primary order' );
-	$order = wc_get_order( $after['order_id'] ); scheck( $order->get_total() === '64.17' && $order->get_total_tax() === '4.2', 'full Woo order and tax totals preserved through payment' );
+	$positive_orders = array_values( array_diff( array_unique( $created_orders ), $positive_orders_before ) );
+	scheck( $after['status'] === 'confirmed' && (int) $after['id'] === (int) $hold['id'] && (int) $failed['id'] === (int) $hold['id'] && (int) $after['order_id'] === $failed_order_id, 'real checkout retry reuses same reservation and primary order' );
+	scheck( count( $positive_orders ) === 1 && (int) $positive_orders[0] === $failed_order_id, 'declined-payment retry creates exactly one Woo primary order' );
+	$positive_gateway_order_ids = array_slice( $gateway_order_ids, $positive_gateway_orders_before ); scheck( $positive_gateway_order_ids === array( $failed_order_id, $failed_order_id ), 'declined-payment retry sends the same order ID to the gateway twice' );
+	$order = wc_get_order( $after['order_id'] ); scheck( $order->get_total() === '57.75' && $order->get_total_tax() === '3.78' && wc_format_decimal( $order->get_discount_total(), 2 ) === '6.00' && in_array( 'brp-fixed-product', $order->get_coupon_codes(), true ), 'discounted Woo order, tax, and coupon totals preserved through payment' );
 	scheck( $order->get_customer_id() === 0 && $order->get_shipping_address_1() === $address['address_1'], 'guest order retains Woo delivery address without account' );
 	$items = $order->get_items(); $item = reset( $items ); scheck( $item->get_meta( 'Rental Quantity' ) === '3' && str_contains( $item->get_meta( 'Rental Start' ), '8:00 AM' ), 'rental metadata persists through actual order construction' );
 	$location = $order->get_meta( \BikeRentalPlugin\RentalLocation::META );
@@ -82,7 +134,9 @@ try {
  $_GET['key']='wrong-key-123456';ob_start();\BikeRentalPlugin\RentalLocation::order_customer($order->get_id());$denied=ob_get_clean();unset($_GET['key']);
  scheck($denied==='', 'wrong customer key cannot disclose order location');
  foreach(array(false,true) as $plain){ob_start();\BikeRentalPlugin\RentalLocation::email($order,false,$plain,null);$mail=ob_get_clean();scheck(str_contains($mail,$location['address_1'])&&str_contains($mail,'Drop Off / Pick Up Location'),'location appears in customer email format '.($plain?'plain':'HTML'));}
-	scheck( PaymentMode::paid( $order ), 'payment lifecycle adapter recognizes fixture capture evidence' );
+	scheck( $order->get_meta( '_wc_square_credit_card_authorization_amount' ) === $order->get_total() && PaymentMode::paid( $order ), 'payment lifecycle adapter recognizes discounted Square capture evidence' );
+	$order->update_meta_data( '_wc_square_credit_card_authorization_amount', '64.17' ); $order->save();
+	scheck( ! PaymentMode::paid( wc_get_order( $order->get_id() ) ), 'Square capture evidence must match discounted order total' );
 	} else {
 	$fixture_decline = false;
 	WC()->cart->empty_cart(); WC()->session->set( 'store_api_draft_order', null );
@@ -98,6 +152,7 @@ try {
 } finally {
 	wp_set_current_user( 1 ); WC()->cart->empty_cart();
 	foreach ( array_unique( $created_orders ) as $id ) { $order = wc_get_order( $id ); if ( $order ) { $order->delete( true ); } }
+	foreach ( array_unique( $created_coupons ) as $id ) { wp_delete_post( $id, true ); }
 	$product->delete( true ); $zone->delete(); delete_option( 'woocommerce_flat_rate_' . $shipping_id . '_settings' ); WC_Tax::_delete_tax_rate( $rate ); WC_Tax::delete_tax_class_by( 'slug', 'brp-store-fixture' );
 	foreach ( $saved as $key => $value ) { if ( false === $value ) { delete_option( $key ); } else { update_option( $key, $value ); } }
 }
